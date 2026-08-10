@@ -1,5 +1,10 @@
 mod xyz;
 
 fn main() {
-    println!("Hello, world!");
+    let result = xyz::parse_xyz("sample.xyz", true);
+
+    match result {
+        Ok(structure) => println!("{:?}", structure),
+        Err(e) => eprintln!("error: {}", e),
+    }
 }
