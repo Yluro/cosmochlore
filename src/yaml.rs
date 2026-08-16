@@ -31,7 +31,8 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
     for (line_no, raw_line) in content.lines().enumerate() {
 
         if raw_line.trim().is_empty() { continue; }
-
+        if raw_line.trim().starts_with("#") { continue;}
+        
         // New entry means not start with whitespace and end with ":"
         let is_new_entry = !raw_line.starts_with(' ') && raw_line.trim_end().ends_with(':');
         let line = raw_line.trim();
