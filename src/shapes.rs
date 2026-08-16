@@ -18,7 +18,7 @@ pub struct ReferenceShape {
 }
 
 
-pub fn shape_by_vertex(no_vertices: u8) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
+fn shape_by_vertex(no_vertices: u8) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
     let shapes_map = builtin_shapes();
     match shapes_map.get(&no_vertices) {
         Some(shapes) => Ok(shapes.clone()),
@@ -26,7 +26,7 @@ pub fn shape_by_vertex(no_vertices: u8) -> Result<Vec<ReferenceShape>, ShapeLook
     }
 }
 
-pub fn shapes_by_index(shapes: &[ReferenceShape], indices: &[usize]) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
+fn shapes_by_index(shapes: &[ReferenceShape], indices: &[usize]) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
     let mut result: Vec<ReferenceShape> = Vec::new();
 
     for idx in indices {
@@ -69,7 +69,6 @@ impl std::error::Error for ShapeLookupError {}
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use super::*;
     #[test]
     fn finds_correct_number_of_shapes() {
