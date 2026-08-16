@@ -53,14 +53,28 @@ pub fn resolve_shapes(no_vertices: u8, indices: Option<&[usize]>) -> Result<Vec<
 #[derive(Debug)]
 pub enum ShapeLookupError {
     NoShapesForVertexCount(u8),
-    IndexOutOfBounds(usize)
+    IndexOutOfBounds(usize),
+    VertexCountMismatch { symbol: String, expected: u8, found: usize}, // Used for user input.
 }
+
+pub fn check_vertex_count(shape: &ReferenceShape, count: u8) -> Result<(), ShapeLookupError> {
+    if shape.vertices.len() == count as usize {
+        return Ok(());
+    }
+    Err(ShapeLookupError::VertexCountMismatch {
+        symbol: shape.symbol.clone(),
+        expected: count as usize as u8,
+        found: shape.vertices.len()
+    })
+}
+
 
 impl std::fmt::Display for ShapeLookupError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             ShapeLookupError::NoShapesForVertexCount(n) => write!(f, "no reference shapes with {} vertices.", n),
             ShapeLookupError::IndexOutOfBounds(idx) => write!(f, "there is no reference shape with index {}", idx),
+            ShapeLookupError::VertexCountMismatch { symbol, expected, found} => write!(f, "wrong number of vertices for shape {}: expected {}, found {}", symbol, expected, found),
         }
     }
 }
