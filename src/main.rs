@@ -3,10 +3,12 @@ mod cli;
 mod yaml;
 mod shapes;
 mod data;
+mod cshm;
+mod points;
 
 use clap::Parser;
 use crate::cli::Cli;
-use crate::shapes::ReferenceShape;
+use crate::shapes::{check_vertex_count, ReferenceShape};
 
 fn main() {
     let args = Cli::parse();
@@ -36,7 +38,13 @@ fn main() {
                 Err(err) => panic!("{}", err)
             }
         }
-        ref_shapes.append(&mut user_shapes);  // fold custom shapes into the main list
+
+        for shape in user_shapes { // For each parsed shape, check its vertex count and append to list if right.
+            match check_vertex_count(&shape, n) {
+                Ok(()) => ref_shapes.push(shape),
+                Err(err) => panic!("{}", err),
+            }
+        }
     }
 
     // 5. Print the resulting shape names
