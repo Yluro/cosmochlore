@@ -14,13 +14,16 @@ fn read_file(path: &str) -> Result<String,XyzParseError> {
     std::fs::read_to_string(path).map_err(XyzParseError::Io)
 }
 
-pub fn parse_xyz(path: &str, centered: bool) -> Result<Structure, XyzParseError> {
+pub fn parse_xyz(path: &str, not_centered: bool) -> Result<Structure, XyzParseError> {
     let content = read_file(path)?;
-    parse_xyz_contents(&content, centered)
+    parse_xyz_contents(&content, not_centered)
 }
 
-fn parse_xyz_contents(content: &str, centered: bool) -> Result<Structure, XyzParseError> {
+fn parse_xyz_contents(content: &str, not_centered: bool) -> Result<Structure, XyzParseError> {
+    // Parses through a .xyz file and gets the header, the comment and the atom table.
     let mut lines = content.lines();
+
+    // Get the header of the line
     let header = match lines.next() {
         Some(line) => line,
         None => return Err(XyzParseError::Empty),
@@ -58,9 +61,6 @@ fn parse_xyz_contents(content: &str, centered: bool) -> Result<Structure, XyzPar
 
         let atom = Atom {label:label.to_string(), coords};
         atoms.push(atom);
-
-
-
     };
 
     // Sanity checks.
@@ -74,7 +74,7 @@ fn parse_xyz_contents(content: &str, centered: bool) -> Result<Structure, XyzPar
     }
 
 
-    let structure = if centered {
+    let structure = if !not_centered {
         let center_atom = atoms.remove(0);
         Structure {
             centre: Some(center_atom),
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn parses_valid_file() {
         let input = "5\ncomment\nC 0.0 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
-        let result = parse_xyz_contents(input, true);
+        let result = parse_xyz_contents(input, false);
 
         println!("{:?}", result);
         assert!(result.is_ok());
