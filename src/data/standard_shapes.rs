@@ -143,7 +143,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 5,
             symm: "D3h".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[1.0, 0.0, 0.0], [-0.5, 0.8660254, 0.0], [-0.5, -0.8660254, 0.0], [0.0, 0.0, 1.41421356], [0.0, 0.0, -1.41421356]],
+            vertices: vec![[1.0, 0.0, 0.0], [-0.5, 0.8660254, 0.0], [-0.5, -0.8660254, 0.0], [0.0, 0.0, std::f64::consts::SQRT_2], [0.0, 0.0, -std::f64::consts::SQRT_2]],
         },
     ]);
 
@@ -256,7 +256,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 1,
             symm: "D8h".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[1.0, 0.0, 0.0], [0.70710678, 0.70710678, 0.0], [0.0, 1.0, 0.0], [-0.70710678, 0.70710678, 0.0], [-1.0, 0.0, 0.0], [-0.70710678, -0.70710678, 0.0], [-0.0, -1.0, 0.0], [0.70710678, -0.70710678, 0.0]],
+            vertices: vec![[1.0, 0.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [0.0, 1.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [-1.0, 0.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0], [-0.0, -1.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0]],
         },
         ReferenceShape {
             symbol: "HPY-8".to_string(),
@@ -280,7 +280,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 4,
             symm: "Oh".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[1.0, 0.0, -0.70710678], [0.0, 1.0, -0.70710678], [-1.0, 0.0, -0.70710678], [-0.0, -1.0, -0.70710678], [1.0, 0.0, 0.70710678], [0.0, 1.0, 0.70710678], [-1.0, 0.0, 0.70710678], [-0.0, -1.0, 0.70710678]],
+            vertices: vec![[1.0, 0.0, -std::f64::consts::FRAC_1_SQRT_2], [0.0, 1.0, -std::f64::consts::FRAC_1_SQRT_2], [-1.0, 0.0, -std::f64::consts::FRAC_1_SQRT_2], [-0.0, -1.0, -std::f64::consts::FRAC_1_SQRT_2], [1.0, 0.0, std::f64::consts::FRAC_1_SQRT_2], [0.0, 1.0, std::f64::consts::FRAC_1_SQRT_2], [-1.0, 0.0, std::f64::consts::FRAC_1_SQRT_2], [-0.0, -1.0, std::f64::consts::FRAC_1_SQRT_2]],
         },
         ReferenceShape {
             symbol: "SAPR-8".to_string(),
@@ -288,7 +288,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 5,
             symm: "D4d".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[0.70710678, 0.70710678, -0.59460356], [-0.70710678, 0.70710678, -0.59460356], [-0.70710678, -0.70710678, -0.59460356], [0.70710678, -0.70710678, -0.59460356], [1.0, 0.0, 0.59460356], [0.0, 1.0, 0.59460356], [-1.0, 0.0, 0.59460356], [-0.0, -1.0, 0.59460356]],
+            vertices: vec![[std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [-std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [-std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [1.0, 0.0, 0.59460356], [0.0, 1.0, 0.59460356], [-1.0, 0.0, 0.59460356], [-0.0, -1.0, 0.59460356]],
         },
         ReferenceShape {
             symbol: "TDD-8".to_string(),
@@ -371,7 +371,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 2,
             symm: "C8v".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [0.70710678, 0.70710678, 0.0], [0.0, 1.0, 0.0], [-0.70710678, 0.70710678, 0.0], [-1.0, 0.0, 0.0], [-0.70710678, -0.70710678, 0.0], [-0.0, -1.0, 0.0], [0.70710678, -0.70710678, 0.0]],
+            vertices: vec![[0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [0.0, 1.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [-1.0, 0.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0], [-0.0, -1.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0]],
         },
         ReferenceShape {
             symbol: "HBPY-9".to_string(),
@@ -395,7 +395,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 5,
             symm: "C4v".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[1.0, 0.0, 0.70710678], [1.0, 0.0, -0.70710678], [0.0, 1.0, 0.70710678], [0.0, 1.0, -0.70710678], [-1.0, 0.0, 0.70710678], [-1.0, 0.0, -0.70710678], [-0.0, -1.0, 0.70710678], [-0.0, -1.0, -0.70710678], [0.0, 0.0, 1.70710678]],
+            vertices: vec![[1.0, 0.0, std::f64::consts::FRAC_1_SQRT_2], [1.0, 0.0, -std::f64::consts::FRAC_1_SQRT_2], [0.0, 1.0, std::f64::consts::FRAC_1_SQRT_2], [0.0, 1.0, -std::f64::consts::FRAC_1_SQRT_2], [-1.0, 0.0, std::f64::consts::FRAC_1_SQRT_2], [-1.0, 0.0, -std::f64::consts::FRAC_1_SQRT_2], [-0.0, -1.0, std::f64::consts::FRAC_1_SQRT_2], [-0.0, -1.0, -std::f64::consts::FRAC_1_SQRT_2], [0.0, 0.0, 1.70710678]],
         },
         ReferenceShape {
             symbol: "CCU-9".to_string(),
@@ -411,7 +411,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 7,
             symm: "C4v".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[1.0, 0.0, 0.59460356], [0.70710678, 0.70710678, -0.59460356], [0.0, 1.0, 0.59460356], [-0.70710678, 0.70710678, -0.59460356], [-1.0, 0.0, 0.59460356], [-0.70710678, -0.70710678, -0.59460356], [-0.0, -1.0, 0.59460356], [0.70710678, -0.70710678, -0.59460356], [0.0, 0.0, -1.59460356]],
+            vertices: vec![[1.0, 0.0, 0.59460356], [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [0.0, 1.0, 0.59460356], [-std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [-1.0, 0.0, 0.59460356], [-std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [-0.0, -1.0, 0.59460356], [std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [0.0, 0.0, -1.59460356]],
         },
         ReferenceShape {
             symbol: "CSAPR-9".to_string(),
@@ -486,7 +486,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 3,
             symm: "D8h".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [0.70710678, 0.70710678, 0.0], [0.0, 1.0, 0.0], [-0.70710678, 0.70710678, 0.0], [-1.0, 0.0, 0.0], [-0.70710678, -0.70710678, 0.0], [-0.0, -1.0, 0.0], [0.70710678, -0.70710678, 0.0], [0.0, 0.0, 1.0]],
+            vertices: vec![[0.0, 0.0, -1.0], [1.0, 0.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [0.0, 1.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [-1.0, 0.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0], [-0.0, -1.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0], [0.0, 0.0, 1.0]],
         },
         ReferenceShape {
             symbol: "PPR-10".to_string(),
@@ -518,7 +518,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 7,
             symm: "D4d".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[1.0, 0.0, 0.59460356], [0.70710678, 0.70710678, -0.59460356], [0.0, 1.0, 0.59460356], [-0.70710678, 0.70710678, -0.59460356], [-1.0, 0.0, 0.59460356], [-0.70710678, -0.70710678, -0.59460356], [-0.0, -1.0, 0.59460356], [0.70710678, -0.70710678, -0.59460356], [0.0, 0.0, 1.59460356], [0.0, 0.0, -1.59460356]],
+            vertices: vec![[1.0, 0.0, 0.59460356], [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [0.0, 1.0, 0.59460356], [-std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [-1.0, 0.0, 0.59460356], [-std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [-0.0, -1.0, 0.59460356], [std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, -0.59460356], [0.0, 0.0, 1.59460356], [0.0, 0.0, -1.59460356]],
         },
         ReferenceShape {
             symbol: "JMBIC-10".to_string(),
@@ -684,7 +684,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 7,
             symm: "Oh".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[0.5, 0.5, -0.70710678], [0.5, -0.5, -0.70710678], [1.0, 0.0, 0.0], [-0.5, 0.5, -0.70710678], [0.0, 1.0, 0.0], [-0.5, -0.5, -0.70710678], [-1.0, 0.0, 0.0], [-0.0, -1.0, 0.0], [0.5, 0.5, 0.70710678], [0.5, -0.5, 0.70710678], [-0.5, 0.5, 0.70710678], [-0.5, -0.5, 0.70710678]],
+            vertices: vec![[0.5, 0.5, -std::f64::consts::FRAC_1_SQRT_2], [0.5, -0.5, -std::f64::consts::FRAC_1_SQRT_2], [1.0, 0.0, 0.0], [-0.5, 0.5, -std::f64::consts::FRAC_1_SQRT_2], [0.0, 1.0, 0.0], [-0.5, -0.5, -std::f64::consts::FRAC_1_SQRT_2], [-1.0, 0.0, 0.0], [-0.0, -1.0, 0.0], [0.5, 0.5, std::f64::consts::FRAC_1_SQRT_2], [0.5, -0.5, std::f64::consts::FRAC_1_SQRT_2], [-0.5, 0.5, std::f64::consts::FRAC_1_SQRT_2], [-0.5, -0.5, std::f64::consts::FRAC_1_SQRT_2]],
         },
         ReferenceShape {
             symbol: "ACOC-12".to_string(),
@@ -708,7 +708,7 @@ pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {
             id: 10,
             symm: "C4v".to_string(),
             centre: [0.0, 0.0, 0.0],
-            vertices: vec![[1.0, 0.0, 0.0], [0.70710678, 0.70710678, 0.0], [0.0, 1.0, 0.0], [-0.70710678, 0.70710678, 0.0], [-1.0, 0.0, 0.0], [-0.70710678, -0.70710678, 0.0], [-0.0, -1.0, 0.0], [0.70710678, -0.70710678, 0.0], [0.5, 0.20710678, -0.5411961], [-0.20710678, 0.5, -0.5411961], [-0.5, -0.20710678, -0.5411961], [0.20710678, -0.5, -0.5411961]],
+            vertices: vec![[1.0, 0.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [0.0, 1.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, std::f64::consts::FRAC_1_SQRT_2, 0.0], [-1.0, 0.0, 0.0], [-std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0], [-0.0, -1.0, 0.0], [std::f64::consts::FRAC_1_SQRT_2, -std::f64::consts::FRAC_1_SQRT_2, 0.0], [0.5, 0.20710678, -0.5411961], [-0.20710678, 0.5, -0.5411961], [-0.5, -0.20710678, -0.5411961], [0.20710678, -0.5, -0.5411961]],
         },
         ReferenceShape {
             symbol: "JEPBPY-12".to_string(),
