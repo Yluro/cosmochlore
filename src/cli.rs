@@ -1,16 +1,32 @@
 use clap::Parser;
 
+pub fn welcome_msg() {
+    let version = env!("CARGO_PKG_VERSION");
+    let authors = env!("CARGO_PKG_AUTHORS");
+
+    let msg: &str = {"\n
+#########################################################################
+### KOSMOCHLOR -- Continuous Shape and Symmetry Measurements in Rust. ###
+#########################################################################
+"
+    };
+    println!("{}", msg);
+    println!("Version: {}", version);
+    println!("Authors: {}", authors);
+}
+
+
 #[derive(Parser, Debug)]
 #[clap(name = "kosmochlor", about = "Continuous Shape and Symmetry Measurements in Rust.", author = "JSG (jose.serranog@ub.edu)", version = env!("CARGO_PKG_VERSION"))]
 pub struct Cli {
     /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
     pub name: String,
 
-    /// Treat the problem shape as a non-centered polyhedron.
+    /// Treat the problem shape as a non-centered.
     #[arg(short = 'n', long = "nc")]
     pub not_centered: bool,
 
-    /// IDs of the standard reference shapes to compare the problem shape to as found in the SHAPE 2.1 user manual.
+    /// Indices of the standard reference shapes to compare the problem shape to as found in the SHAPE 2.1 user manual.
     #[arg(short = 's', long = "sh", num_args = 1..)]
     pub shapes: Option<Vec<usize>>,
 
