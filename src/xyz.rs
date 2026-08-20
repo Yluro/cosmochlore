@@ -25,7 +25,7 @@ fn parse_xyz_contents(content: &str, not_centered: bool) -> Result<Structure, Xy
 
     // Get the header of the line
     let header = match lines.next() {
-        Some(line) => line,
+        Some(line) => line.trim(),
         None => return Err(XyzParseError::Empty),
     };
 
