@@ -7,10 +7,12 @@ mod cshm;
 mod points;
 
 use clap::Parser;
-use crate::cli::Cli;
+use crate::cli::{Cli, welcome_msg};
 use crate::shapes::{check_vertex_count, ReferenceShape};
 
 fn main() {
+
+    welcome_msg();
     let args = Cli::parse();
 
     // 1. Parse input .xyz file and form structure.
