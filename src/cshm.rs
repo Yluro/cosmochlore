@@ -1,5 +1,6 @@
 use itertools::Itertools;
-use nalgebra::{Matrix3, SMatrix, Vector3};
+use nalgebra::{Matrix3, Vector3};
+use std::time::Instant;
 
 pub fn center_and_normalise(points: &mut [Vector3<f64>]) {
     let n = points.len() as f64;
@@ -71,6 +72,7 @@ pub fn shape_measure(singular_values: &Vector3<f64>, n: usize) -> f64 {
     (1.0 - a*a/(n as f64 * n as f64)) * 100.0
 }
 
+
 /// Brute-force search all n! automorphisms of a Reference Shape. Expects centered and normalised coordinates to work.
 pub fn naive_find_automorphism(points: &[Vector3<f64>]) -> Vec<Vec<usize>> {
     // Expects centered and normalised coordinates.
@@ -122,7 +124,7 @@ pub fn best_permutation_brute_force(
         // Mark every permutation equivalent to this one (perm composed with
         // each automorphism) as visited, so we don't redo them later.
         for a in &ref_automorphisms {
-            let equiv: Vec<usize> = a.iter().map(|&i| perm[i]).collect();
+            let equiv: Vec<usize> = (0..n).map(|i| a[perm[i]]).collect();
             visited.insert(equiv);
         }
 
@@ -150,8 +152,12 @@ pub fn best_permutation_branch_and_bound(
 
     center_and_normalise(reference);
     center_and_normalise(problem);
-
+    let naive_find_start= Instant::now();
     let ref_automorphisms: Vec<Vec<usize>> = naive_find_automorphism(reference);
+    let naive_time = naive_find_start.elapsed();
+    println!("naive time: {:?}", naive_time);
+
+    let mut visited: std::collections::HashSet<Vec<usize>> = std::collections::HashSet::new();
 
     let mut best_s = f64::INFINITY;
     let mut best_perm: Vec<usize> = Vec::new();
@@ -161,16 +167,14 @@ pub fn best_permutation_branch_and_bound(
 
     let mut h_partial = Matrix3::zeros();
 
-    let reference_v: Vec<Vector3<f64>> = reference.iter().map(|p| Vector3::from(*p)).collect();
-    let problem_v: Vec<Vector3<f64>> = problem.iter().map(|p| Vector3::from(*p)).collect();
-
-    let hi = precompute_correlation_blocks(&reference_v, &problem_v);
+    let hi = precompute_correlation_blocks(&reference, &problem);
 
     branch(
-        &reference_v,
-        &problem_v,
+        &reference,
+        &problem,
         &hi,
         &ref_automorphisms,
+        &mut visited,
         &mut assigned,
         &mut current_perm,
         &mut h_partial,
@@ -183,10 +187,11 @@ pub fn best_permutation_branch_and_bound(
 
 
 fn branch(
-    reference_v: &[Vector3<f64>],
-    problem_v: &[Vector3<f64>],
+    reference: &[Vector3<f64>],
+    problem: &[Vector3<f64>],
     hi: &Vec<Vec<Matrix3<f64>>>,
     ref_automorphisms: &Vec<Vec<usize>>,
+    visited: &mut std::collections::HashSet<Vec<usize>>,
     assigned: &mut [bool],
     current_perm: &mut Vec<usize>,
     h_partial: &mut Matrix3<f64>,
@@ -195,18 +200,26 @@ fn branch(
 
 ) {
 
-    let n = reference_v.len();
-    debug_assert_eq!(n, problem_v.len());
+    let n = reference.len();
+    debug_assert_eq!(n, problem.len());
 
 
     if current_perm.len() == n { // If a permutation is complete then:
 
-        if ref_automorphisms.contains(current_perm) { return; } // Skip redundant permutations
+        if visited.contains(current_perm) {
+            return;
+        }
 
-        let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference_v[p]).collect();
-        let h = correlation_matrix(problem_v, &reordered);
+        let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference[p]).collect();
+        let h = correlation_matrix(problem, &reordered);
         let (_, a_i) = optimal_rotation(h);
         let s = shape_measure(&a_i, n);
+
+        for a in ref_automorphisms {
+            let equiv: Vec<usize> = (0..n).map(|i| a[current_perm[i]]).collect();
+
+            visited.insert(equiv);
+        }
 
         if s < *best_s {
             *best_s = s;
@@ -222,25 +235,36 @@ fn branch(
             continue;
         }
 
-        *h_partial += hi[ref_idx][pos];
+        *h_partial += hi[ref_idx][pos]; // Sum the corresponding point to the partial correlation matrix
 
-        current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
-        assigned[ref_idx] = true;
 
-        branch( // Recursively call the branch function again.
-                reference_v,
-                problem_v,
-                hi,
-                ref_automorphisms,
-                assigned,
-                current_perm,
-                h_partial,
-                best_s,
-                best_perm,
-        );
+        let a_partial = singular_value_sum(*h_partial); // Calculate the partial SV sum,
+        // Calculate the estimated remaining contributions
+        // to the correlation matrix measure of the rest of points.
+        let remaining_bound = max_unassigned_norm(reference, assigned) * unassigned_norms_sum(&problem[pos + 1..]);
+        let a_bound = a_partial + remaining_bound;
+        let s_bound = (1.0 - a_bound.powi(2)/((n as f64).powi(2))) * 100.0;
 
-        current_perm.pop();
-        assigned[ref_idx] = false;
+
+        if s_bound < *best_s { // If we have found a better s
+            current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
+            assigned[ref_idx] = true;
+
+            branch( // Recursively call the branch function again.
+                    reference,
+                    problem,
+                    hi,
+                    ref_automorphisms,
+                    visited,
+                    assigned,
+                    current_perm,
+                    h_partial,
+                    best_s,
+                    best_perm,
+            );
+            current_perm.pop();
+            assigned[ref_idx] = false;
+        }
         *h_partial -= hi[ref_idx][pos]; // Subtract the matrix when backtracking the current
     }
 }
@@ -254,6 +278,10 @@ fn max_unassigned_norm(reference: &[Vector3<f64>], assigned: &[bool]) -> f64 {
             point.norm()
         })
         .fold(0.0, f64::max)
+}
+
+fn unassigned_norms_sum(problem_remaining: &[Vector3<f64>]) -> f64 {
+    problem_remaining.iter().map(|p| p.norm()).sum()
 }
 
 
@@ -278,12 +306,6 @@ fn precompute_correlation_blocks(
 }
 
 
-
-
-
-
-
-
 /// Reimplementation of cshm.f90's suml routine.
 /// Calculates the singular value sum of a given correlation matrix using
 /// nalgebra's .symmetric_eigen() method. Masks eigenvalues > 0 to 0.0 to avoid floating point errors.
@@ -294,37 +316,9 @@ fn singular_value_sum(h: Matrix3<f64>) -> f64 {
     eig.eigenvalues.iter().map(|&v| v.max(0.0).sqrt()).sum()
 }
 
-/// Uses the jacobi algorithm to rotate a 2x2 block from a 3x3 matrix.
-fn jacobi_rotate_pair(diag: &mut [f64;3], off_diag: &mut [f64;3], i: usize, j: usize) {
-
-    let k:usize  = i + j - 1;
-
-    let aii = diag[i];
-    let ajj = diag[j];
-    let aij = off_diag[k];
-    let aij2 = aij.powi(2);
-
-    let ded = diag[i] - diag[j];
-    let den = ded.abs() + f64::sqrt(ded.powi(2) + 4.0 * aij2);
-
-    let tan = if ded > 0.0 {2.0 * aij / den} else {-2.0 * aij / den};
-    let cos = 1.0 / (1.0 + tan.powi(2)).sqrt();
-    let sin = cos * tan;
-
-    let e0 = 2.0 * sin * cos * aij;
-    let cos2 = cos * cos;
-    let sin2 = sin * sin;
-
-    diag[i] = cos2 * aii + sin2 * ajj + e0;
-    diag[j] = cos2 * ajj + sin2 * aii - e0;
-    off_diag[k] = 0.0;
-
-    unimplemented!()
-
-}
-
 
 mod tests {
+    use std::num::FpCategory::Nan;
     use super::*;
 
     #[test]
@@ -565,5 +559,83 @@ mod tests {
         let (s_bnb, _) = best_permutation_branch_and_bound(&mut reference, &mut problem);
 
         assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.")
+    }
+
+    #[test]
+    fn bnb_mathes_bf_matches_shape21_hard() {
+        let mut problem = [ // Coordinates from refined FeHS dataset.
+            Vector3::new(4.92991, 10.3899, 12.9237),
+            Vector3::new(6.20468, 10.6922, 14.7747),
+            Vector3::new(5.00034, 8.51382, 13.9503),
+            Vector3::new(6.80263, 10.0749, 11.7725),
+            Vector3::new(5.47238, 12.2809, 12.1201),
+            Vector3::new(3.30536, 11.3249, 13.862),
+            Vector3::new(3.74731, 9.47729, 11.4687),
+        ];
+
+        let mut reference = [ // Ideal OC-6
+            Vector3::new(0.0, 0.0, 0.0),
+            Vector3::new(0.0, 0.0, -1.0),
+            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(0.0, 1.0, 0.0),
+            Vector3::new(-1.0, 0.0, 0.0),
+            Vector3::new(-0.0, -1.0, 0.0),
+            Vector3::new(0.0, 0.0, 1.0),
+        ];
+
+        let shape21_result = 2.109;
+
+        let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
+        let (s_bnb, _) = best_permutation_branch_and_bound(&mut reference, &mut problem);
+
+        assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
+        assert!((s_bnb - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}.")
+    }
+
+    #[test]
+    fn bnb_is_faster_than_bf() {
+        let mut problem = [ // From Eu7 dataset.
+            Vector3::new(5.44844, 5.38278, 7.85016),
+            Vector3::new(6.16348, 8.57381, 7.75539),
+            Vector3::new(4.83935, 2.1473, 8.09115),
+            Vector3::new(2.93143, 5.57194, 8.26729),
+            Vector3::new(7.99552, 5.18822, 8.38373),
+            Vector3::new(5.22877, 5.61787, 10.3971),
+            Vector3::new(4.39975, 6.62039, 5.71296),
+            Vector3::new(6.48067, 4.00061, 5.84709),
+        ];
+
+        let mut reference = [ // Capped trigonal prism
+            Vector3::new(0.0, 0.0, 0.0),
+            Vector3::new(0.0, 0.0, 1.0),
+            Vector3::new(0.68689018, 0.68689018, 0.23741035),
+            Vector3::new(-0.68689018, 0.68689018, 0.23741035),
+            Vector3::new(0.68689018, -0.68689018, 0.23741035),
+            Vector3::new(-0.68689018, -0.68689018, 0.23741035),
+            Vector3::new(0.61748904, 0.0, -0.78657949),
+            Vector3::new(-0.61748904, 0.0, -0.78657949),
+        ];
+
+        let mut ref_bf = reference.clone();
+        let mut prob_bf = problem.clone();
+
+        let shape21_result = 2.630;
+
+        let start_bf = Instant::now();
+        let (s_bf,_) = best_permutation_brute_force(&mut ref_bf, &mut prob_bf);
+        let time_bf = start_bf.elapsed();
+
+        let mut ref_bnb = reference.clone();
+        let mut prob_bnb = problem.clone();
+
+        let start_bnb = Instant::now();
+        let (s_bnb, _) = best_permutation_branch_and_bound(&mut ref_bnb, &mut prob_bnb);
+        let time_bnb = start_bnb.elapsed();
+
+        assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
+        assert!((s_bnb - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}.");
+
+        println!("Brute force: {:?}, Branch & bound: {:?}", time_bf, time_bnb);
+        assert!(time_bnb < time_bf, "expected B&B to be faster: bf={:?}, bnb={:?}", time_bf, time_bnb);
     }
 }
