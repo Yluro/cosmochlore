@@ -1,7 +1,7 @@
 use itertools::Itertools;
-use nalgebra::{Matrix3, Vector3};
+use nalgebra::{Matrix3, SMatrix, Vector3};
 
-pub fn center_and_normalise(points: &mut [[f64; 3]]) {
+pub fn center_and_normalise(points: &mut [Vector3<f64>]) {
     let n = points.len() as f64;
     let mut centroid = [0.0; 3];
 
@@ -39,16 +39,14 @@ pub fn center_and_normalise(points: &mut [[f64; 3]]) {
     }
 }
 
-pub fn correlation_matrix(reference: &[[f64; 3]], problem: &[[f64; 3]]) -> Matrix3<f64> {
-    /// Expects centered and normalised points.
 
+/// Calculates the correlation matrix H of two given sets of points.
+/// H = Sum (P^T x Q)
+pub fn correlation_matrix(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> Matrix3<f64> {
+    // Expects centered and normalised points.
     let mut h = Matrix3::<f64>::zeros();
-
     for (p, q) in reference.iter().zip(problem.iter()) {
-        let p_vec = Vector3::new(p[0], p[1], p[2]);
-        let q_vec = Vector3::new(q[0], q[1], q[2]);
-
-        h += p_vec * q_vec.transpose();
+        h += p * q.transpose();
     }
     h
 }
@@ -57,7 +55,7 @@ pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>)  {
     let svd = h.svd(true, true); // computes U and V^T
     let u = svd.u.unwrap();
     let mut v_t = svd.v_t.unwrap();
-    let s = svd.singular_values;
+    let a_i = svd.singular_values;
 
     // The SVD algorithm can produce the reflected shape instead of the actual one.
     // To convert back to the desired rotation, flip one of the rows of the v_t matrix.
@@ -65,7 +63,7 @@ pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>)  {
         // TODO Flip one the rows so Det becomes positive.
         v_t.set_row(2, &(-v_t.row(2)));
     };
-    (v_t.transpose() * u.transpose(), s)
+    (v_t.transpose() * u.transpose(), a_i)
 }
 
 pub fn shape_measure(singular_values: &Vector3<f64>, n: usize) -> f64 {
@@ -74,14 +72,14 @@ pub fn shape_measure(singular_values: &Vector3<f64>, n: usize) -> f64 {
 }
 
 /// Brute-force search all n! automorphisms of a Reference Shape. Expects centered and normalised coordinates to work.
-pub fn naive_find_automorphism(points: &[[f64; 3]]) -> Vec<Vec<usize>> {
+pub fn naive_find_automorphism(points: &[Vector3<f64>]) -> Vec<Vec<usize>> {
     // Expects centered and normalised coordinates.
     let n = points.len();
     let mut automorphisms: Vec<Vec<usize>> = Vec::new();
 
     for perm in (0..n).permutations(n) {
         // Build the reordered point set using this permutation:
-        let reordered: Vec<[f64;3]> = perm.iter().map(|&p| points[p]).collect();
+        let reordered: Vec<Vector3<f64>> = perm.iter().map(|&p| points[p]).collect();
 
         let h = correlation_matrix(points, &reordered);
         let (_, a_i) = optimal_rotation(h);
@@ -94,13 +92,17 @@ pub fn naive_find_automorphism(points: &[[f64; 3]]) -> Vec<Vec<usize>> {
     automorphisms
 }
 
-/// Finds the best permutation but prunes by automorphisms using naive_find_automorphism.
+/// Finds the best permutation but prunes by automorphisms using naive_find_automorphism and iterating over all permutations of n.
 pub fn best_permutation_brute_force(
-    reference: &[[f64; 3]],
-    problem: &[[f64; 3]],
+    reference: &mut [Vector3<f64>],
+    problem: &mut [Vector3<f64>],
 ) -> (f64, Vec<usize>) {
     let n = problem.len();
     debug_assert_eq!(n, reference.len());
+
+    // Normalise inputs
+    center_and_normalise(reference);
+    center_and_normalise(problem);
 
     let mut best_s = f64::INFINITY;
     let mut best_perm: Vec<usize> = Vec::new();
@@ -110,7 +112,7 @@ pub fn best_permutation_brute_force(
 
     for perm in (0..n).permutations(n) {
         // Build the reordered point set using this permutation:
-        let reordered: Vec<[f64;3]> = perm.iter().map(|&p| reference[p]).collect();
+        let reordered: Vec<Vector3<f64>> = perm.iter().map(|&p| reference[p]).collect();
 
         // If this permutation of the reference shape is an automorphism of a visited order, skip it.
         if visited.contains(&perm) {
@@ -139,21 +141,202 @@ pub fn best_permutation_brute_force(
 }
 
 
+pub fn best_permutation_branch_and_bound(
+    reference: &mut [Vector3<f64>],
+    problem: &mut [Vector3<f64>],
+) -> (f64, Vec<usize>) {
+    let n = problem.len();
+    debug_assert_eq!(n, reference.len());
+
+    center_and_normalise(reference);
+    center_and_normalise(problem);
+
+    let ref_automorphisms: Vec<Vec<usize>> = naive_find_automorphism(reference);
+
+    let mut best_s = f64::INFINITY;
+    let mut best_perm: Vec<usize> = Vec::new();
+
+    let mut assigned = vec![false; n];
+    let mut current_perm: Vec<usize> = Vec::with_capacity(n);
+
+    let mut h_partial = Matrix3::zeros();
+
+    let reference_v: Vec<Vector3<f64>> = reference.iter().map(|p| Vector3::from(*p)).collect();
+    let problem_v: Vec<Vector3<f64>> = problem.iter().map(|p| Vector3::from(*p)).collect();
+
+    let hi = precompute_correlation_blocks(&reference_v, &problem_v);
+
+    branch(
+        &reference_v,
+        &problem_v,
+        &hi,
+        &ref_automorphisms,
+        &mut assigned,
+        &mut current_perm,
+        &mut h_partial,
+        &mut best_s,
+        &mut best_perm
+    );
+
+    (best_s, best_perm)
+}
+
+
+fn branch(
+    reference_v: &[Vector3<f64>],
+    problem_v: &[Vector3<f64>],
+    hi: &Vec<Vec<Matrix3<f64>>>,
+    ref_automorphisms: &Vec<Vec<usize>>,
+    assigned: &mut [bool],
+    current_perm: &mut Vec<usize>,
+    h_partial: &mut Matrix3<f64>,
+    best_s: &mut f64,
+    best_perm: &mut Vec<usize>,
+
+) {
+
+    let n = reference_v.len();
+    debug_assert_eq!(n, problem_v.len());
+
+
+    if current_perm.len() == n { // If a permutation is complete then:
+
+        if ref_automorphisms.contains(current_perm) { return; } // Skip redundant permutations
+
+        let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference_v[p]).collect();
+        let h = correlation_matrix(problem_v, &reordered);
+        let (_, a_i) = optimal_rotation(h);
+        let s = shape_measure(&a_i, n);
+
+        if s < *best_s {
+            *best_s = s;
+            *best_perm = current_perm.clone();
+        }
+        return;
+    }
+
+    let pos = current_perm.len(); // Next problem-point index to assign
+
+    for ref_idx in 0..n {
+        if assigned[ref_idx] {
+            continue;
+        }
+
+        *h_partial += hi[ref_idx][pos];
+
+        current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
+        assigned[ref_idx] = true;
+
+        branch( // Recursively call the branch function again.
+                reference_v,
+                problem_v,
+                hi,
+                ref_automorphisms,
+                assigned,
+                current_perm,
+                h_partial,
+                best_s,
+                best_perm,
+        );
+
+        current_perm.pop();
+        assigned[ref_idx] = false;
+        *h_partial -= hi[ref_idx][pos]; // Subtract the matrix when backtracking the current
+    }
+}
+
+fn max_unassigned_norm(reference: &[Vector3<f64>], assigned: &[bool]) -> f64 {
+    reference
+        .iter()
+        .zip(assigned.iter())
+        .filter(|&(_, is_assigned)| !is_assigned )
+        .map(|(point, _)| {
+            point.norm()
+        })
+        .fold(0.0, f64::max)
+}
+
+
+
+/// Precomputes the correlation block for the single point analysis.
+/// Returns a vector of vectors: hi[ref_id][pro_id] that stores the matrix.
+fn precompute_correlation_blocks(
+    reference: &[Vector3<f64>],
+    problem: &[Vector3<f64>],
+) -> Vec<Vec<Matrix3<f64>>> {
+    let n = reference.len();
+    debug_assert_eq!(n, problem.len());
+
+    let mut hi: Vec<Vec<Matrix3<f64>>> = vec![vec![Matrix3::zeros(); n]; n];
+
+    for ref_idx in 0..n {
+        for problem_idx in 0..n {
+            hi[ref_idx][problem_idx] = reference[ref_idx] * problem[problem_idx].transpose();
+        }
+    }
+    hi
+}
+
+
+
+
+
+
+
+
+/// Reimplementation of cshm.f90's suml routine.
+/// Calculates the singular value sum of a given correlation matrix using
+/// nalgebra's .symmetric_eigen() method. Masks eigenvalues > 0 to 0.0 to avoid floating point errors.
+fn singular_value_sum(h: Matrix3<f64>) -> f64 {
+    let m = h.transpose() * h;
+    let eig = m.symmetric_eigen();
+
+    eig.eigenvalues.iter().map(|&v| v.max(0.0).sqrt()).sum()
+}
+
+/// Uses the jacobi algorithm to rotate a 2x2 block from a 3x3 matrix.
+fn jacobi_rotate_pair(diag: &mut [f64;3], off_diag: &mut [f64;3], i: usize, j: usize) {
+
+    let k:usize  = i + j - 1;
+
+    let aii = diag[i];
+    let ajj = diag[j];
+    let aij = off_diag[k];
+    let aij2 = aij.powi(2);
+
+    let ded = diag[i] - diag[j];
+    let den = ded.abs() + f64::sqrt(ded.powi(2) + 4.0 * aij2);
+
+    let tan = if ded > 0.0 {2.0 * aij / den} else {-2.0 * aij / den};
+    let cos = 1.0 / (1.0 + tan.powi(2)).sqrt();
+    let sin = cos * tan;
+
+    let e0 = 2.0 * sin * cos * aij;
+    let cos2 = cos * cos;
+    let sin2 = sin * sin;
+
+    diag[i] = cos2 * aii + sin2 * ajj + e0;
+    diag[j] = cos2 * ajj + sin2 * aii - e0;
+    off_diag[k] = 0.0;
+
+    unimplemented!()
+
+}
+
+
 mod tests {
-    use crate::data::standard_shapes;
-    use crate::shapes::ReferenceShape;
     use super::*;
 
     #[test]
     fn centre_and_normalises_correctly() {
         let mut points = Vec::from(
-            [[1.0, 0.0, 0.0], // Regular octahedron centered at 1 0 0
-                [2.0, 0.0, 1.0],
-                [1.0, 1.0, 0.0],
-                [1.0, 0.0, 1.0],
-                [-0.0, 0.0, 1.0],
-                [1.0, -1.0, 0.0],
-                [1.0, 0.0, -1.0],
+            [Vector3::new(1.0, 0.0, 0.0), // Regular octahedron centered at 1 0 0
+                Vector3::new(2.0, 0.0, 1.0),
+                Vector3::new(1.0, 1.0, 0.0),
+                Vector3::new(1.0, 0.0, 1.0),
+                Vector3::new(-0.0, 0.0, 1.0),
+                Vector3::new(1.0, -1.0, 0.0),
+                Vector3::new(1.0, 0.0, -1.0),
             ]
         );
 
@@ -183,41 +366,37 @@ mod tests {
     #[test]
     fn recovers_from_rotation() {
         let reference = [
-            [1.0, 0.0, 0.0],
-            [2.0, 0.0, 1.0],
-            [1.0, 1.0, 0.0],
-            [1.0, 0.0, 1.0],
-            [-0.0, 0.0, 1.0],
+            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(2.0, 0.0, 1.0),
+            Vector3::new(1.0, 1.0, 0.0),
+            Vector3::new(1.0, 0.0, 1.0),
+            Vector3::new(-0.0, 0.0, 1.0),
         ];
 
-        let know_rotataion = Matrix3::new(
+        let know_rotation = Matrix3::new(
             0.0, -1.0, 0.0,
             1.0,  0.0, 0.0,
             0.0,  0.0, 1.0,
         );
 
-        let rotated: Vec<[f64; 3]> = reference.iter().map(|p| {
-            let v = Vector3::new(p[0], p[1], p[2]);
-            let r = know_rotataion * v;
-            [r[0], r[1], r[2]]
-        }).collect();
+        let rotated = reference.iter().map(|&v| know_rotation * v).collect::<Vec<_>>();
 
         let h = correlation_matrix(&reference, &rotated);
         let (recovered_r, _) = optimal_rotation(h);
 
 
-        recovered_r.iter().zip(know_rotataion.iter()).for_each(|(r1, r2)| {assert!((r1-r2).abs() < 1e-10)});
+        recovered_r.iter().zip(know_rotation.iter()).for_each(|(r1, r2)| {assert!((r1-r2).abs() < 1e-10)});
 
     }
 
     #[test]
     fn perfect_gives_zero() {
         let mut points = [
-            [1.0, 0.0, 0.0],
-            [2.0, 0.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
+            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(2.0, 0.0, 0.0),
+            Vector3::new(1.0, 1.0, 0.0),
+            Vector3::new(1.0, 1.0, 0.0),
+            Vector3::new(0.0, 0.0, 1.0),
         ];
 
         center_and_normalise(&mut points);
@@ -233,26 +412,26 @@ mod tests {
     fn water_matches_result_from_shape21 () {
         // Coords from problem taken from water dataset from Olex2
         let mut problem = [
-            [0.0,       8.0648,     0.0],       // Central Mn
-            [-1.332417, 6.56007,   -1.099508],  // N2'
-            [1.3324,    9.5695,     1.0995],    // N2
-            [0.521462,  6.437162,   1.333904],  // O4
-            [-0.5215,   9.6924,    -1.3339],    // O4'
-            [1.619207,  7.429778,  -1.386425],  // O5
-            [-1.6192,   8.6998,     1.3864],    // O5'
+            Vector3::new(0.0,       8.0648,     0.0),       // Central Mn
+            Vector3::new(-1.332417, 6.56007,   -1.099508),  // N2'
+            Vector3::new(1.3324,    9.5695,     1.0995),    // N2
+            Vector3::new(0.521462,  6.437162,   1.333904),  // O4
+            Vector3::new(-0.5215,   9.6924,    -1.3339),    // O4'
+            Vector3::new(1.619207,  7.429778,  -1.386425),  // O5
+            Vector3::new(-1.6192,   8.6998,     1.3864),    // O5'
         ];
 
 
         // This list of atoms is manually set in order to correspond
         // to the correct assignation of point pairs.
         let mut reference = [
-            [0.0, 0.0, 0.0], // Central atom first.
-            [1.0, 0.0, 0.0],
-            [-1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, -1.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [0.0, 0.0, -1.0],
+            Vector3::new(0.0, 0.0, 0.0), // Central atom first.
+            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(-1.0, 0.0, 0.0),
+            Vector3::new(0.0, 1.0, 0.0),
+            Vector3::new(0.0, -1.0, 0.0),
+            Vector3::new(0.0, 0.0, 1.0),
+            Vector3::new(0.0, 0.0, -1.0),
         ];
 
         center_and_normalise(&mut reference);
@@ -265,12 +444,12 @@ mod tests {
         assert!((s - 0.18).abs() < 1e-2);
     }
 
-    fn square() -> Vec<[f64; 3]> {
+    fn square() -> Vec<Vector3<f64>> {
         vec![
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [0.0, 1.0, 0.0],
+            Vector3::new(0.0, 0.0, 0.0),
+            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(1.0, 1.0, 0.0),
+            Vector3::new(0.0, 1.0, 0.0),
         ]
     }
 
@@ -279,10 +458,8 @@ mod tests {
         let mut reference = square();
         let mut problem = square();
 
-        center_and_normalise(&mut reference);
-        center_and_normalise(&mut problem);
 
-        let (best_s, best_perm) = best_permutation_brute_force(&reference, &problem);
+        let (best_s, best_perm) = best_permutation_brute_force(&mut reference, &mut problem);
         assert!(best_s.abs() < 1e-10, "expected near-zero shape measure, got {best_s}");
         assert_eq!(best_perm.len(), 4)
     }
@@ -294,30 +471,27 @@ mod tests {
         // that undoes the shuffle and scores ~0.
         let mut problem = vec![reference[2], reference[0], reference[3], reference[1]];
 
-        center_and_normalise(&mut reference);
-        center_and_normalise(&mut problem);
-
-        let (best_s, _best_perm) = best_permutation_brute_force(&reference, &problem);
+        let (best_s, _best_perm) = best_permutation_brute_force(&mut reference, &mut problem);
         assert!(best_s.abs() < 1e-10, "expected near-zero shape measure, got {best_s}");
     }
 
     #[test]
     fn automorphism_does_not_change_best_score() {
-        let reference = square();
-        let problem = [
-            [0.1, 0.0, 0.0],
-            [1.0, 0.1, 0.0],
-            [0.0, 0.9, 0.0],
-            [0.95, 1.0, 0.0],
+        let mut reference = square();
+        let mut problem = [
+            Vector3::new(0.1, 0.0, 0.0),
+            Vector3::new(1.0, 0.1, 0.0),
+            Vector3::new(0.0, 0.9, 0.0),
+            Vector3::new(0.95, 1.0, 0.0),
         ]; // Noisy square.
-        let (best_s, _) = best_permutation_brute_force(&reference, &problem);
+        let (best_s, _) = best_permutation_brute_force(&mut reference, &mut problem);
 
         // Brute force all n! permutations.
         let n = reference.len();
         let mut true_best_s = f64::INFINITY;
 
         for perm in (0..n).permutations(n) {
-            let reordered: Vec<[f64; 3]> = perm.iter().map(|&p| reference[p]).collect();
+            let reordered: Vec<Vector3<f64>> = perm.iter().map(|&p| reference[p]).collect();
             let h = correlation_matrix(&problem, &reordered);
             let (_, a_i) = optimal_rotation(h);
             let s = shape_measure(&a_i, n);
@@ -335,30 +509,30 @@ mod tests {
     /// Tests main permutation finding algorithm against a benzene ring found in the Olex2 'water' dataset.
     fn unordered_coordinates_matches_shape21() {
         let mut problem = [
-            [-4.09549, 5.2296, -3.52751],
-            [-3.62959, 2.88708, -3.07315],
-            [-2.30454, 4.56031, -1.99152],
-            [-4.37536, 3.8733, -3.71495],
-            [-2.57894, 3.214, -2.20586],
-            [-3.05614, 5.527, -2.6526],
+            Vector3::new(-4.09549, 5.2296, -3.52751),
+            Vector3::new(-3.62959, 2.88708, -3.07315),
+            Vector3::new(-2.30454, 4.56031, -1.99152),
+            Vector3::new(-4.37536, 3.8733, -3.71495),
+            Vector3::new(-2.57894, 3.214, -2.20586),
+            Vector3::new(-3.05614, 5.527, -2.6526),
         ];
 
         let mut reference_hexagon = [ // Regular hexagon reference from standard_shapes.rs
-            [1.0, 0.0, 0.0],
-            [0.5, 0.8660254, 0.0],
-            [-0.5, 0.8660254, 0.0],
-            [-1.0, 0.0, 0.0],
-            [-0.5, -0.8660254, 0.0],
-            [0.5, -0.8660254, 0.0]
+            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(0.5, 0.8660254, 0.0),
+            Vector3::new(-0.5, 0.8660254, 0.0),
+            Vector3::new(-1.0, 0.0, 0.0),
+            Vector3::new(-0.5, -0.8660254, 0.0),
+            Vector3::new(0.5, -0.8660254, 0.0),
         ];
 
         let mut reference_octahedron = [
-            [0.0, 0.0, -1.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [-1.0, 0.0, 0.0],
-            [-0.0, -1.0, 0.0],
-            [0.0, 0.0, 1.0]
+            Vector3::new(0.0, 0.0, -1.0),
+            Vector3::new(1.0, 0.0, 0.0),
+            Vector3::new(0.0, 1.0, 0.0),
+            Vector3::new(-1.0, 0.0, 0.0),
+            Vector3::new(-0.0, -1.0, 0.0),
+            Vector3::new(0.0, 0.0, 1.0)
         ];
 
 
@@ -368,12 +542,28 @@ mod tests {
 
         let shape21_hex = 0.035;
         let shape21_oc = 33.342;
-        let (best_s_hex, _) = best_permutation_brute_force(&reference_hexagon, &problem);
-        let (best_s_oc, _) = best_permutation_brute_force(&reference_octahedron, &problem);
+        let (best_s_hex, _) = best_permutation_brute_force(&mut reference_hexagon, &mut problem);
+        let (best_s_oc, _) = best_permutation_brute_force(&mut reference_octahedron, &mut problem);
 
         assert!((best_s_hex - shape21_hex).abs() < 1e-3,
                 "Result doesn't match SHAPE 2.1. Expected {shape21_hex}, got {best_s_hex}");
         assert!((best_s_oc - shape21_oc).abs() < 1e-3,
                 "Result doesn't match SHAPE 2.1. Expected {shape21_oc}, got {best_s_oc}");
+    }
+
+    #[test]
+    fn branch_and_bound_matches_brute_force_results() {
+        let mut reference = square();
+        let mut problem = [
+            Vector3::new(0.1, 0.0, 0.0),
+            Vector3::new(1.0, 0.1, 0.0),
+            Vector3::new(0.0, 0.9, 0.0),
+            Vector3::new(0.95, 1.0, 0.0),
+        ]; // Noisy square.
+
+        let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
+        let (s_bnb, _) = best_permutation_branch_and_bound(&mut reference, &mut problem);
+
+        assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.")
     }
 }
