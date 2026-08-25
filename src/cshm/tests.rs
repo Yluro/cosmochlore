@@ -3,7 +3,7 @@ use itertools::Itertools;
 use nalgebra::{Vector3, Matrix3};
 use std::time::Instant;
 
-use crate::cshm::{geometry::*, automorphism::*, search::*, test_utils::*};
+use crate::cshm::{geometry::*, automorphism::*, permutations::*, test_utils::*};
 
 #[test]
 fn centre_and_normalises_correctly() {
@@ -104,13 +104,13 @@ fn bnb_automorphisms_matches_naive() {
     let mut reference = octahedron();
 
     center_and_normalise(&mut reference);
-    let mut bnb_autom = find_automorphisms(&reference);
-    let mut all_autom = naive_find_automorphism(&reference);
-    let perms = bnb_autom.len();
-    bnb_autom.sort();
-    all_autom.sort();
+    let mut bnb_automorphisms = find_automorphisms(&reference);
+    let mut all_automorphisms = naive_find_automorphism(&reference);
+    let perms = bnb_automorphisms.len();
+    bnb_automorphisms.sort();
+    all_automorphisms.sort();
     assert_eq!(perms, 48);    // Finds all the 48 symmetry elements of the octahedron.
-    assert_eq!(bnb_autom, all_autom, "Expected {:?}, found: {:?}", all_autom.len(), bnb_autom.len());
+    assert_eq!(bnb_automorphisms, all_automorphisms, "Expected {:?}, found: {:?}", all_automorphisms.len(), bnb_automorphisms.len());
 }
 
 #[test]
@@ -267,7 +267,7 @@ fn branch_and_bound_matches_brute_force_results() {
     ]; // Noisy square.
 
     let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
-    let (s_bnb, _) = best_permutation_branch_and_bound(&mut reference, &mut problem);
+    let (s_bnb, _, _) = find_best_permutation(&mut reference, &mut problem);
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.")
 }
@@ -289,7 +289,7 @@ fn bnb_matches_bf_matches_shape21_hard() {
     let shape21_result = 2.109;
 
     let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
-    let (s_bnb, _) = best_permutation_branch_and_bound(&mut reference, &mut problem);
+    let (s_bnb, _, _) = find_best_permutation(&mut reference, &mut problem);
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
     assert!((s_bnb - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}.")
@@ -297,7 +297,7 @@ fn bnb_matches_bf_matches_shape21_hard() {
 
 #[test]
 fn bnb_is_faster_than_bf() {
-    let mut problem = [ // From Eu7 dataset.
+    let problem = [ // From Eu7 dataset.
         Vector3::new(5.44844, 5.38278, 7.85016),
         Vector3::new(6.16348, 8.57381, 7.75539),
         Vector3::new(4.83935, 2.1473, 8.09115),
@@ -308,7 +308,7 @@ fn bnb_is_faster_than_bf() {
         Vector3::new(6.48067, 4.00061, 5.84709),
     ];
 
-    let mut reference = [ // Capped trigonal prism
+    let reference = [ // Capped trigonal prism
         Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(0.0, 0.0, 1.0),
         Vector3::new(0.68689018, 0.68689018, 0.23741035),
@@ -332,7 +332,7 @@ fn bnb_is_faster_than_bf() {
     let mut prob_bnb = problem.clone();
 
     let start_bnb = Instant::now();
-    let (s_bnb, _) = best_permutation_branch_and_bound(&mut ref_bnb, &mut prob_bnb);
+    let (s_bnb, _, _) = find_best_permutation(&mut ref_bnb, &mut prob_bnb);
     let time_bnb = start_bnb.elapsed();
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
@@ -375,7 +375,7 @@ fn strain_12_point_test() {
     ];
 
     let start = Instant::now();
-    let (s, _) = best_permutation_branch_and_bound(&mut reference, &mut problem);
+    let (s, _, _) = find_best_permutation(&mut reference, &mut problem);
     let time = start.elapsed();
     println!("Find Optimal Permutation Time: {:?}", time);
 
