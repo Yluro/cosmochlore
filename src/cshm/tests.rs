@@ -1,3 +1,4 @@
+/// TESTS FOR CSHM MODULE
 use itertools::Itertools;
 use nalgebra::{Vector3, Matrix3};
 use std::time::Instant;

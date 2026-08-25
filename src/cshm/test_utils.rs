@@ -1,4 +1,5 @@
 #![cfg(test)]
+/// BRUTE FORCE FUNCTIONS USED FOR SANITY-CHECKS AND TESTING. NOT USING THEM IN FINAL BUILDS.
 use std::time::Instant;
 use nalgebra::Vector3;
 use itertools::Itertools;

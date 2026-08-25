@@ -1,4 +1,5 @@
 use nalgebra::{Matrix3, Vector3};
+/// HELPER FUNCTIONS TO DEFINE THE BOUNDS FOR THE BRANCHING ALGORITHMS
 
 /// Precomputes the correlation block for the single point analysis.
 /// Returns a vector of vectors: hi[ref_id][pro_id] that stores the matrix.

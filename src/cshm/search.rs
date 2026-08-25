@@ -1,3 +1,5 @@
+/// MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
+
 use std::collections::HashSet;
 use std::time::Instant;
 use nalgebra::{Matrix3, Vector3};

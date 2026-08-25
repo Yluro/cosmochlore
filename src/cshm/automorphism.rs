@@ -1,3 +1,5 @@
+/// AUTOMORPHISM FINDING FOR REFERENCE SHAPES
+
 use nalgebra::{Matrix3, Vector3};
 
 use crate::cshm::geometry::*;

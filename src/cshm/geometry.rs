@@ -1,4 +1,6 @@
+/// GEOMETRY RELATED FUNCTIONS
 use nalgebra::{Matrix3, Vector3};
+
 
 /// Puts the shape centroid in the origin of coordinates and calculate the A
 /// normalization factor for a cloud of points A²Σ|P_i|² = N
