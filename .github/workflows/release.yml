@@ -42,11 +42,16 @@ jobs:
       - name: Package
         shell: bash
         run: |
-          mkdir -p dist
+          mkdir -p dist/${{ matrix.target }}
           cp target/${{ matrix.target }}/release/cosmochlore${{ matrix.ext }} \
-             dist/cosmochlore-${{ matrix.target }}${{ matrix.ext }}
-
+             dist/${{ matrix.target }}/cosmochlore${{ matrix.ext }}
+          cd dist/${{ matrix.target }}
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a ../cosmochlore-${{ matrix.target }}.zip cosmochlore${{ matrix.ext }}
+          else
+            tar czf ../cosmochlore-${{ matrix.target }}.tar.gz cosmochlore${{ matrix.ext }}
+          fi
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/cosmochlore-${{ matrix.target }}${{ matrix.ext }}
+          files: dist/cosmochlore-${{ matrix.target }}.*
