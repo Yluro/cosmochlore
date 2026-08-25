@@ -39,7 +39,7 @@ cosmochlore.exe [OPTIONS] <NAME>
 |---|---|---|
 | `-n` `--nc` | None |Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the .xyz file.  |
 |`-s` `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. |
-| `-r` `--ref` | `<USER_SHAPES>...` | Path to the .yaml files to that contain user-defined shapes to include in the calculation, alongside (or instead of) the built-in set of shapes. |
+| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the .yaml files to that contain user-defined shapes to include in the CShM calculation.
 
 
 ### Example
