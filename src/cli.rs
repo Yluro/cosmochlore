@@ -1,20 +1,5 @@
 use clap::Parser;
 
-pub fn welcome_msg() {
-    let version = env!("CARGO_PKG_VERSION");
-    let authors = env!("CARGO_PKG_AUTHORS");
-
-    let msg: &str = {"\n
-#########################################################################
-### KOSMOCHLOR -- Continuous Shape and Symmetry Measurements in Rust. ###
-#########################################################################
-"
-    };
-    println!("{}", msg);
-    println!("Version: {}", version);
-    println!("Authors: {}", authors);
-}
-
 
 #[derive(Parser, Debug)]
 #[clap(name = "kosmochlor", about = "Continuous Shape and Symmetry Measurements in Rust.", author = "JSG (jose.serranog@ub.edu)", version = env!("CARGO_PKG_VERSION"))]
