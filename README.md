@@ -276,17 +276,17 @@ Comments are also supported by the YAML parser, every line that starts with `#` 
 
 ## The algorithm
 
-The Continuous Shape Measure of a problem shape `Q` relative to a reference shape `P` is defined as:
+The Continuous Shape Measure of a problem shape $$Q$$ relative to a reference shape $$P$$ is defined as:
 
 ```math
 S_P(Q)= \mathrm{min} \left( \frac{\sum_i^n |q_i - p_i|^2}{ \sum_i^n |p_i - p_0|^2} \right) × 100
 ```
 where $$N$$ is the number of vertices in the structures we are comparing, $$q_i$$ and $$p_i$$ are the position vectors of the vertices of $$Q$$ and $$P$$, respectively, and $$q_0$$ the geometric center of the problem structure $$Q$$. 
-This is done over all rotations, translations and scaligns **and** over all `N!` possible permutations of point pairs asignements.
+This minimization is carried out over all rotations, translations and scaligns **and** over all $$N!$$ possible permutations of point pairs asignements.
 
-The rotation/translation/scaling part is solved via an SVD-based Kabsch-style alignment. The combinatorial part — finding the best correspondence out of `N!` permutations — is the expensive step, and is where Cosmochlore diverges from a naive implementation:
+The rotation/translation/scaling part is solved via an SVD-based Kabsch-style alignment. The combinatorial problem: finding the best point pair matches between $$Q$$ and $$P$$ is done by:
 
-- **Automorphism-aware deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (due to the reference shape's symmetry) are never evaluated twice.
+- **Automorphism-aware deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (automorphisms of the reference shape's point group) are never evaluated twice.
 - **Branch-and-bound pruning**: partial assignments are bounded using the subadditivity property of the singular-value sum, allowing branches that provably cannot beat the current best score to be discarded early.
 
 This algorithm mirrors the pruning strategy used by `cosymlib`'s Fortran `shp.f90` engine. Cosmochlores implementation is writen in fully safe Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
