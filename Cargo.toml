@@ -1,0 +1,14 @@
+[package]
+name = "cosmochlore"
+version = "0.1.0"
+edition = "2024"
+authors = ["José Serrano Guarinos <jose.serranog@ub.edu>"]
+description = "Continious Shape Measurements in Rust."
+repository = "https://github.com/Yluro/cosmochlore"
+homepage = "https://github.com/Yluro/cosmochlore"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.6.6", features = ["derive"] }
+nalgebra = "0.35.0"
+itertools = "0.15.0"
