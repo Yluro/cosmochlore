@@ -1,14 +1,18 @@
 # Cosmochlore
 
-**COSM**ochlo**R**e (**Co**ntinious **S**hape **M**easuremensts in **R**ust) _a.k.a. Kosmochlor_ is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
+**COSM**ochlo**R**e (**Co**ntinious **S**hape **M**easuremensts in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
 
-It is a from-scratch Rust reimplementation of the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and SHAPE<sup>1</sup> 2.1. Cosmochlore acurately reproduces SHAPE's 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. On of the advantages of of Rust is that Cosmochlore's error handling will always tell the user if something went wrong with the program, the program will never silently crash or give you a number without you knowing something went wrong. 
+It is a from-scratch Rust reimplementation of the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and SHAPE<sup>1</sup> 2.1. Cosmochlore acurately reproduces SHAPE's 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
 
-The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare pyroxene mineral commonly found along chromium oxide.
+The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accesory mineral various other chromium-containing pyroxenes.
 
 ## What it does
 
-Given a molecular structure (or any set of 3-dimensional points), Cosmochlore computes the **Continuous Shape Measure (CShM)** between the structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 
+Given a molecular structure (or any set of 3-dimensional points), Cosmochlore computes the **Continuous Shape Measure (CShM)** between the structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry.
+
+### Other Features
+
+There are more features planned to be added to Cosmochlore. _See you in 25 years..._
 
 ## Installation
 **From source:**
@@ -21,7 +25,7 @@ The compiled binary will be at `target/release/cosmochlore`.
 
 **Alternatively, precompiled binaries are available in this repository's [releases](https://github.com/Yluro/cosmochlore/releases).**
 
-I recommend placing cosmochlore.exe in the systems `PATH`. I'm planning tu support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future.
+_Note: I recommend placing cosmochlore.exe in the systems `PATH`. I'm planning tu support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future._
 
 ## Usage
 
@@ -39,7 +43,7 @@ cosmochlore.exe [OPTIONS] <NAME>
 |---|---|---|
 | `-n` `--nc` | None |Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the .xyz file.  |
 |`-s` `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. |
-| `-r` `--ref` | `<USER_SHAPES>...` | Path to the .yaml files to that contain user-defined shapes to include in the calculation, alongside (or instead of) the built-in set of shapes. |
+| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the .yaml files to that contain user-defined shapes to include in the CShM calculation.
 
 
 ### Example
@@ -57,7 +61,7 @@ Cl     3.0890196344   -1.0506757097   -0.9841728488
 ````
 Running:
 
-````bash
+````cmd
 cosmochlore FeCl6.xyz --ref ebcT-6.yaml
 ````
 
@@ -202,12 +206,15 @@ The geometries of 90 reference polyhedra are internally defined in Cosmochlore. 
 <tr><td>12</td><td>JSPMC-12</td><td>Sphenomegacorona (J88)</td><td>C<sub>s</sub></td></tr>
 
 <tr><td>20</td><td>0</td><td>DD-20</td><td>Dodecahedron†</td><td>I<sub>h</sub></td></tr>
-<tr><td>24</td><td>0</td><td>TCU-24</td><td>Truncated cube</td><td>O<sub>h</sub></td></tr>
-<tr><td>24</td><td>1</td><td>TOC-24</td><td>Truncated octahedron</td><td>O<sub>h</sub></td></tr>
+<tr><td rowspan="2">24</td></td><td>0</td><td>TCU-24</td><td>Truncated cube</td><td>O<sub>h</sub></td></tr>
+<tr><td>1</td><td>TOC-24</td><td>Truncated octahedron</td><td>O<sub>h</sub></td></tr>
 <tr><td>48</td><td>0</td><td>TCOC-48</td><td>Truncated cuboctahedron</td><td>O<sub>h</sub></td></tr>
 <tr><td>60</td><td>0</td><td>TRIC-60</td><td>Truncated icosahedron (fullerene)</td><td>I<sub>h</sub></td></tr>
 </tbody>
 </table>
+
+_Be noted that the index of each shape differs from SHAPE's 2.1 by 1. 
+I have certain suspicion that the original numbering starting from one is due to [arrays](https://xkcd.com/163/) being silly._
 
 ### User defined polyhedra 
 
@@ -281,7 +288,7 @@ The rotation/translation/scaling part is solved via an SVD-based Kabsch-style al
 - **Automorphism-aware deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (due to the reference shape's symmetry) are never evaluated twice.
 - **Branch-and-bound pruning**: partial assignments are bounded using the subadditivity property of the singular-value sum, allowing branches that provably cannot beat the current best score to be discarded early.
 
-This mirrors the pruning strategy used internally by `cosymlib`'s Fortran `SHAPE` engine, reimplemented in safe, idiomatic Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
+This algorithm mirrors the pruning strategy used by `cosymlib`'s Fortran `shp.f90` engine. Cosmochlores implementation is writen in fully safe Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
 
 ## Acknowledgements
 
@@ -289,7 +296,9 @@ This project reimplements the shape-measure methodology originally developed for
 
 ## License
 
-Not yet!
+This program is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
+
+Portions of this software are based on cosymlib (shp.f90), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT License.
 
 ## References
 
