@@ -90,7 +90,7 @@ Repository: https://github.com/Yluro/cosmochlore
  JPPY-6   Johnson pentagonal pyramid J2   34.028 
  ebcT-6   Edge-bicapped tetrahedron       22.347 
 -------------------------------------------------
-Calculations done in 547.2532ms
+Calculations done in 14.478ms
 ````
 _Note that ebcT-6 is a non-standard reference shape included by including the `--ref` flag. See more below._
 
