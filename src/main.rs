@@ -4,14 +4,19 @@ mod yaml;
 mod shapes;
 mod data;
 mod cshm;
-mod points;
+mod coordinates;
+mod out;
 
+use std::time::Instant;
 use clap::Parser;
-use crate::cli::{Cli, welcome_msg};
+use crate::cli::{Cli};
+use crate::out::{welcome_msg, MeasureResult, output_table};
+use crate::coordinates::{points_from_reference_shape, points_from_structure};
+use crate::cshm::find_best_permutation;
 use crate::shapes::{check_vertex_count, ReferenceShape};
 
 fn main() {
-
+    let main_start = Instant::now();
     welcome_msg();
     let args = Cli::parse();
 
@@ -49,8 +54,30 @@ fn main() {
         }
     }
 
-    // 5. Print the resulting shape names
-    for shape in ref_shapes{
-        println!("{}, {}", shape.name, shape.symbol);
+    // 5. Compute the CShM for each reference shape against the selected problem structures.
+    let has_centre = !args.not_centered;
+    let problem = points_from_structure(&structure);
+
+    let mut results: Vec<MeasureResult> = Vec::new();
+
+    for shape in ref_shapes {
+        let mut reference = points_from_reference_shape(&shape, has_centre);
+        let mut problem_copy = problem.clone();
+
+        let (s, _, rot_mat) = find_best_permutation(&mut reference, &mut problem_copy);
+
+        results.push(
+            MeasureResult {
+                name: shape.name,
+                symbol: shape.symbol,
+                symm: shape.symm,
+                cshm: s,
+                rot_mat: rot_mat,
+            }
+        );
     }
+
+    output_table(&results);
+    let main_time = main_start.elapsed();
+    println!("Calculations done in {:?}", main_time);
 }
