@@ -288,7 +288,7 @@ The rotation/translation/scaling part is solved via an SVD-based Kabsch-style al
 - **Automorphism-aware deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (due to the reference shape's symmetry) are never evaluated twice.
 - **Branch-and-bound pruning**: partial assignments are bounded using the subadditivity property of the singular-value sum, allowing branches that provably cannot beat the current best score to be discarded early.
 
-This mirrors the pruning strategy used internally by `cosymlib`'s Fortran `SHAPE` engine, reimplemented in safe, idiomatic Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
+This algorithm mirrors the pruning strategy used by `cosymlib`'s Fortran `shp.f90` engine. Cosmochlores implementation is writen in fully safe Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
 
 ## Acknowledgements
 
