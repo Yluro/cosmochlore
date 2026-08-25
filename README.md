@@ -296,7 +296,7 @@ This project reimplements the shape-measure methodology originally developed for
 
 ## License
 
-Not yet!
+This program is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
 
 ## References
 
