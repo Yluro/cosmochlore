@@ -45,9 +45,9 @@ fn automorphism_branch(
     if current_perm.len() == n {
         // Build the reordered shape
         let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&i| reference[i]).collect();
-        let h = crate::cshm::correlation_matrix(reference, &reordered);
-        let (_, a_i) = crate::cshm::optimal_rotation(h);
-        let s = crate::cshm::shape_measure(&a_i, n);
+        let h = correlation_matrix(reference, &reordered);
+        let (_, a_i) = optimal_rotation(h);
+        let s = shape_measure(&a_i, n);
 
         // If permutation scores a CShM ~ 0 it is an automorphism.
         if s.abs() < epsilon {
@@ -60,7 +60,7 @@ fn automorphism_branch(
 
     for ref_idx in 0..n {
         // Main loop to look for perms.
-        if assigned[ref_idx] { // Skip the currently asigned points in the permutation
+        if assigned[ref_idx] { // Skip the currently assigned points in the permutation
             continue;
         }
         // Choosing the next point starts here:
