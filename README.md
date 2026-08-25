@@ -33,12 +33,13 @@ _Note: I recommend placing cosmochlore.exe in the systems `PATH`. I'm planning t
 cosmochlore.exe [OPTIONS] <NAME>
 ```
 
-### Arguments
+### Arguments:
 | Flag | Description |
 |---|---|
 | `<NAME>` | **Required**. Path to the input `.xyz` file containing the structure to analyze. |
 
-###Options:
+#### Optional arguments:
+
 | Flag | Value | Description |
 |---|---|---|
 | `-n` `--nc` | None |Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the .xyz file.  |
