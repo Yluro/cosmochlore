@@ -298,6 +298,8 @@ This project reimplements the shape-measure methodology originally developed for
 
 This program is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
 
+Portions of this software are based on cosymlib (shp.f90), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT License.
+
 ## References
 
 1. Cirera, J., Ruiz, E., & Alvarez, S. (2005). Continuous Shape Measures as a Stereochemical Tool in Organometallic Chemistry. Organometallics, 24(7), 1556–1562. https://doi.org/10.1021/om049150z
