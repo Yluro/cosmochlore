@@ -1,32 +1,32 @@
 /// MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
 
 use std::collections::HashSet;
-use std::time::Instant;
 use nalgebra::{Matrix3, Vector3};
 
 use crate::cshm::geometry::*;
 use crate::cshm::bounds::*;
 use crate::cshm::automorphism::*;
 
-pub fn best_permutation_branch_and_bound(
+/// Recursively finds the best permutation of a given reference shape so that its points align
+/// to the problem shape. Will prune non-optimal permutations using the partial sum of the singular
+/// values.
+pub fn find_best_permutation(
     reference: &mut [Vector3<f64>],
     problem: &mut [Vector3<f64>],
-) -> (f64, Vec<usize>) {
+) -> (f64, Vec<usize>, Matrix3<f64>) {
     let n = problem.len();
     debug_assert_eq!(n, reference.len());
 
     center_and_normalise(reference);
     center_and_normalise(problem);
 
-    let start = Instant::now();
-    let ref_automorphisms: Vec<Vec<usize>> = find_automorphisms(reference);
-    let time = start.elapsed();
-    println!("Automorphisms Branch Time: {:?}", time);
 
-    let mut visited: HashSet<Vec<usize>> = std::collections::HashSet::new();
+    let ref_automorphisms: Vec<Vec<usize>> = find_automorphisms(reference);
+    let mut visited: HashSet<Vec<usize>> = HashSet::new();
 
     let mut best_s = f64::INFINITY;
     let mut best_perm: Vec<usize> = Vec::new();
+    let mut best_rot_matrix = Matrix3::zeros();
 
     let mut assigned = vec![false; n];
     let mut current_perm: Vec<usize> = Vec::with_capacity(n);
@@ -45,10 +45,10 @@ pub fn best_permutation_branch_and_bound(
         &mut current_perm,
         &mut h_partial,
         &mut best_s,
-        &mut best_perm
+        &mut best_perm,
+        &mut best_rot_matrix,
     );
-
-    (best_s, best_perm)
+    (best_s, best_perm, best_rot_matrix)
 }
 
 fn branch(
@@ -56,13 +56,13 @@ fn branch(
     problem: &[Vector3<f64>],
     hi: &Vec<Vec<Matrix3<f64>>>,
     ref_automorphisms: &Vec<Vec<usize>>,
-    visited: &mut std::collections::HashSet<Vec<usize>>,
+    visited: &mut HashSet<Vec<usize>>,
     assigned: &mut [bool],
     current_perm: &mut Vec<usize>,
     h_partial: &mut Matrix3<f64>,
     best_s: &mut f64,
     best_perm: &mut Vec<usize>,
-
+    best_rot_matrix: &mut Matrix3<f64>,
 ) {
 
     let n = reference.len();
@@ -76,8 +76,8 @@ fn branch(
 
         let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference[p]).collect();
         let h = correlation_matrix(problem, &reordered);
-        let (_, a_i) = optimal_rotation(h);
-        let s = shape_measure(&a_i, n);
+        let (rot_matrix, a_i) = optimal_rotation(h);
+        let s = shape_measure(&a_i, n).max(0.0); // max 0.0 makes sure the s value doesnt go below 0 because floating point errors.
 
         for a in ref_automorphisms {
             let equiv: Vec<usize> = (0..n).map(|i| a[current_perm[i]]).collect();
@@ -87,6 +87,7 @@ fn branch(
         if s < *best_s {
             *best_s = s;
             *best_perm = current_perm.clone();
+            *best_rot_matrix = rot_matrix;
         }
         return;
     }
@@ -114,7 +115,7 @@ fn branch(
             // Recursively call the branch function again.
             branch(
                 reference, problem, hi, ref_automorphisms, visited,
-                assigned, current_perm, h_partial, best_s, best_perm,
+                assigned, current_perm, h_partial, best_s, best_perm, best_rot_matrix
             );
             current_perm.pop();
 
