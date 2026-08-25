@@ -44,3 +44,17 @@ pub fn output_table(results: &[MeasureResult]) {
     println!("{}", "-".repeat(total_width));
     if min_s > 10.0 {println!("Only extremely distorted geometries were found for this shape. Make sure the .xyz file is correct.")}
 }
+
+
+pub fn print_crab() {
+    println!(r"
+     /\
+    ( /   @ @    ()
+     \\ __| |__  /
+      \/   v   \/
+     /-|       |-\
+    / /-\     /-\ \
+     / /-`---'-\ \
+      /         \ "
+    )
+}

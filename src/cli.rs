@@ -17,5 +17,10 @@ pub struct Cli {
 
     /// Name or path of YAML files containing user-defined reference shapes to compare the problem shape to.
     #[arg(short = 'r', long ="ref", num_args = 1..)]
-    pub user_shapes: Option<Vec<String>>
+    pub user_shapes: Option<Vec<String>>,
+    
+    /// Easter-egg
+    #[arg(short = 'c', long = "crab", hide = true)]
+    pub crab: bool,
+    
 }

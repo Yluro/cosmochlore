@@ -10,7 +10,7 @@ mod out;
 use std::time::Instant;
 use clap::Parser;
 use crate::cli::{Cli};
-use crate::out::{welcome_msg, MeasureResult, output_table};
+use crate::out::{welcome_msg, MeasureResult, output_table, print_crab};
 use crate::coordinates::{points_from_reference_shape, points_from_structure};
 use crate::cshm::find_best_permutation;
 use crate::shapes::{check_vertex_count, ReferenceShape};
@@ -80,4 +80,5 @@ fn main() {
     output_table(&results);
     let main_time = main_start.elapsed();
     println!("Calculations done in {:?}", main_time);
+    if args.crab {print_crab()}
 }
