@@ -3,7 +3,7 @@ use nalgebra::{Matrix3, Vector3};
 
 
 /// Puts the shape centroid in the origin of coordinates and calculate the A
-/// normalization factor for a cloud of points A²Σ|P_i|² = N
+/// normalisation factor for a cloud of points A²Σ|P_i|² = N
 pub fn center_and_normalise(points: &mut [Vector3<f64>]) {
     let n = points.len() as f64;
     let mut centroid = [0.0; 3];
