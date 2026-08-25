@@ -25,7 +25,7 @@ The compiled binary will be at `target/release/cosmochlore`.
 
 **Alternatively, precompiled binaries are available in this repository's [releases](https://github.com/Yluro/cosmochlore/releases).**
 
-I recommend placing cosmochlore.exe in the systems `PATH`. I'm planning tu support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future.
+_Note: I recommend placing cosmochlore.exe in the systems `PATH`. I'm planning tu support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future._
 
 ## Usage
 
