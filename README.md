@@ -46,6 +46,7 @@ cosmochlore.exe [OPTIONS] <NAME>
 |`-s` `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. |
 | `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the .yaml files to that contain user-defined shapes to include in the CShM calculation.
 
+_Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 
 ### Example
 Given the following `FeCl6.xyz` file:
