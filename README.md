@@ -2,7 +2,7 @@
 
 **COSM**ochlo**R**e (**Co**ntinious **S**hape **M**easuremensts in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
 
-It is a from-scratch Rust reimplementation of the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1. Cosmochlore acurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
+It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust. Cosmochlore acurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
 
 The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accesory mineral to various other chromium-containing pyroxenes.
 
@@ -10,27 +10,35 @@ The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.or
 
 Given a molecular structure (or any set of 3-dimensional points), Cosmochlore computes the **Continuous Shape Measure (CShM)** between the structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry.
 
-### Other Features
+### Future Features
+I'm planning tu support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future. There are more features planned to be added to Cosmochlore:
+ - Finishing the CShM toolkit: retrieval of the rotation matrix, generalised shape coordinate,... etc.
+ - Might do some octahedral distortion parameters.
+ - Might reimplement the continious symmetry/symmetry operation measures.
 
-There are more features planned to be added to Cosmochlore. _See you in 25 years..._
+_[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
 
 ## Installation
-**From source:**
+**Build from source:**
 ````bash
 git clone https://github.com/Yluro/cosmochlore
 cd cosmochlore
 cargo build --release
 ````
+`cargo` will compile the source code taking into account your system's architecture. The easiest way to get `cargo` is to install the lastest stable release of [Rust](https://rust-lang.org/) using [`rustup`](https://rustup.rs/).
+
 The compiled binary will be at `target/release/cosmochlore`.
 
-**Alternatively, precompiled binaries are available in this repository's [releases](https://github.com/Yluro/cosmochlore/releases).**
+**Alternatively, precompiled binaries for the most common operating systems are available in this repository's [releases](https://github.com/Yluro/cosmochlore/releases).**
 
-_Note: I recommend placing cosmochlore.exe in the systems `PATH`. I'm planning tu support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future._
+_Note: It is strongly recommended to place the cosmochlore executable in the systems `PATH`._
 
 ## Usage
 
+Cosmochlore is a CLI tool. It can be called by running the following command:
+
 ```bash
-cosmochlore.exe <NAME> [OPTIONS]
+cosmochlore <NAME> [OPTIONS]
 ```
 
 ### Arguments:
