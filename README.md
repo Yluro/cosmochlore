@@ -224,7 +224,7 @@ The geometries of 90 reference polyhedra are internally defined in Cosmochlore. 
 </table>
 
 _Be noted that the index of each shape differs from `SHAPE`'s 2.1 by 1. 
-I have certain suspicion that the original numbering starting from one is due to [arrays](https://xkcd.com/163/) being silly._
+I have certain suspicion that the original numbering starting from one is due to  Fortran arrays being [silly](https://xkcd.com/163/)._
 
 ### User defined polyhedra 
 
