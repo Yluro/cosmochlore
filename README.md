@@ -2,7 +2,7 @@
 
 **COSM**ochlo**R**e (**Co**ntinious **S**hape **M**easuremensts in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
 
-It is a from-scratch Rust reimplementation of the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and SHAPE<sup>1</sup> 2.1. Cosmochlore acurately reproduces SHAPE's 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
+It is a from-scratch Rust reimplementation of the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1. Cosmochlore acurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
 
 The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accesory mineral various other chromium-containing pyroxenes.
 
@@ -96,7 +96,7 @@ Calculations done in 14.478ms
 _Note that ebcT-6 is a non-standard reference shape included by including the `--ref` flag. See more below._
 
 ## Reference Polyhedra
-The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the SHAPE 2.1 list and has been discussed in numerous articles by Llunell, Alvarez, Avnir, Cirera, _et at._<sup>2</sup>
+The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list and has been discussed in numerous articles by Llunell, Alvarez, Avnir, Cirera, _et at._<sup>2</sup>
 
 <table>
 <thead>
@@ -215,7 +215,7 @@ The geometries of 90 reference polyhedra are internally defined in Cosmochlore. 
 </tbody>
 </table>
 
-_Be noted that the index of each shape differs from SHAPE's 2.1 by 1. 
+_Be noted that the index of each shape differs from `SHAPE`'s 2.1 by 1. 
 I have certain suspicion that the original numbering starting from one is due to [arrays](https://xkcd.com/163/) being silly._
 
 ### User defined polyhedra 
@@ -294,7 +294,7 @@ This algorithm mirrors the pruning strategy used by `cosymlib`'s Fortran `shp.f9
 
 ## Acknowledgements
 
-This project reimplements the shape-measure methodology originally developed for the SHAPE program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronica/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch Rust implementation and is not affiliated with the original authors.
+This project reimplements the shape-measure methodology originally developed for the `SHAPE` program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronica/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch Rust implementation and is not affiliated with the original authors.
 
 ## License
 
