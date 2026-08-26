@@ -30,7 +30,7 @@ _Note: I recommend placing cosmochlore.exe in the systems `PATH`. I'm planning t
 ## Usage
 
 ```bash
-cosmochlore.exe [OPTIONS] <NAME>
+cosmochlore.exe <NAME> [OPTIONS]
 ```
 
 ### Arguments:
@@ -42,9 +42,9 @@ cosmochlore.exe [OPTIONS] <NAME>
 
 | Flag | Value | Description |
 |---|---|---|
-| `-n` `--nc` | None |Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the .xyz file.  |
-|`-s` `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. |
-| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the .yaml files to that contain user-defined shapes to include in the CShM calculation.
+| `-n` `--nc` | None |Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.  |
+|`-s` `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
+| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files to that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.
 
 _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 
@@ -96,7 +96,7 @@ Calculations done in 14.478ms
 _Note that ebcT-6 is a non-standard reference shape included by including the `--ref` flag. See more below._
 
 ## Reference Polyhedra
-The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list and has been discussed in numerous articles by Llunell, Alvarez, Avnir, Cirera, _et at._<sup>2</sup>
+The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera, _et at._<sup>2</sup>
 
 <table>
 <thead>
@@ -298,7 +298,7 @@ This project reimplements the shape-measure methodology originally developed for
 
 ## License
 
-This program is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
+**The code, binaries and sample tests are provided as is with no warranty of any kind.** This program is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
 
 Portions of this software are based on cosymlib (shp.f90), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT License.
 
