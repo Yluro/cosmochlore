@@ -1,20 +1,20 @@
 # Cosmochlore
 
-**COSM**ochlo**R**e (**Co**ntinious **S**hape **M**easuremensts in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
+**COSM**ochlo**R**e (**Co**ntinuous **S**hape **M**easuremensts in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) Calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
 
-It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust. Cosmochlore acurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
+It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
 
-The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accesory mineral to various other chromium-containing pyroxenes.
+The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accessory mineral to various other chromium-containing pyroxenes.
 
 ## What it does
 
 Given a molecular structure (or any set of 3-dimensional points), Cosmochlore computes the **Continuous Shape Measure (CShM)** between the structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry.
 
 ### Future Features
-I'm planning tu support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future. There are more features planned to be added to Cosmochlore:
- - Finishing the CShM toolkit: retrieval of the rotation matrix, generalised shape coordinate,... etc.
+I'm planning to support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future. More features are planned to be added:
+ - Finishing the CShM toolkit: retrieval of the rotation matrix, generalised shape coordinate, _etc_.
  - Might do some octahedral distortion parameters.
- - Might reimplement the continious symmetry/symmetry operation measures.
+ - Might reimplement the continuous symmetry/symmetry operation measures.
 
 _[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
 
@@ -25,7 +25,7 @@ git clone https://github.com/Yluro/cosmochlore
 cd cosmochlore
 cargo build --release
 ````
-`cargo` will compile the source code taking into account your system's architecture. The easiest way to get `cargo` is to install the lastest stable release of [Rust](https://rust-lang.org/) using [`rustup`](https://rustup.rs/).
+`cargo` will compile the source code taking into account your system's architecture. The easiest way to get `cargo` is to install the latest stable release of [Rust](https://rust-lang.org/) using [`rustup`](https://rustup.rs/).
 
 The compiled binary will be at `target/release/cosmochlore`.
 
@@ -50,9 +50,9 @@ cosmochlore <NAME> [OPTIONS]
 
 | Flag | Value | Description |
 |---|---|---|
-| `-n` `--nc` | None |Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.  |
+| `-n` `--nc` | None | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.  |
 |`-s` `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
-| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files to that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.
+| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.
 
 _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 
@@ -85,7 +85,7 @@ Output:
  | . \ |__| |____) | |  | | |__| | |____| |  | | |___| |__| | | \ \
  |_|\_\____/|_____/|_|  |_|\____/ \_____|_|  |_|______\____/|_|  \_\
 
-Continious Shape Measurements in Rust.
+Continuous Shape Measurements in Rust.
 Version: 0.1.0
 Authors: José Serrano Guarinos <jose.serranog@ub.edu>
 Repository: https://github.com/Yluro/cosmochlore
@@ -101,10 +101,10 @@ Repository: https://github.com/Yluro/cosmochlore
 -------------------------------------------------
 Calculations done in 14.478ms
 ````
-_Note that ebcT-6 is a non-standard reference shape included by including the `--ref` flag. See more below._
+_Note that ebcT-6 is a non-standard reference shape included by passing the `--ref` flag. See more below._
 
 ## Reference Polyhedra
-The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera, _et at._<sup>2</sup>
+The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera _et at._<sup>2</sup>
 
 <table>
 <thead>
@@ -159,7 +159,7 @@ The geometries of 90 reference polyhedra are internally defined in Cosmochlore. 
 <tr><td>5</td><td>TDD-8</td><td>Triangular dodecahedron</td><td>D<sub>2d</sub></td></tr>
 <tr><td>6</td><td>JGBF-8</td><td>Johnson-Gyrobifastigium (J26)</td><td>D<sub>2d</sub></td></tr>
 <tr><td>7</td><td>JETBPY-8</td><td>Johnson-Elongated triangular bipyramid (J14)</td><td>D<sub>3h</sub></td></tr>
-<tr><td>8</td><td>JBTP-8</td><td>Johnson-Biaugmented trigonal prism (J50)</td><td>C<sub>2v</sub></td></tr>
+<tr><td>8</td><td>JBTPR-8</td><td>Johnson-Biaugmented trigonal prism (J50)</td><td>C<sub>2v</sub></td></tr>
 <tr><td>9</td><td>BTPR-8</td><td>Biaugmented trigonal prism</td><td>C<sub>2v</sub></td></tr>
 <tr><td>10</td><td>JSD-8</td><td>Snub disphenoid (J84)</td><td>D<sub>2d</sub></td></tr>
 <tr><td>11</td><td>TT-8</td><td>Triakis tetrahedron</td><td>T<sub>d</sub></td></tr>
@@ -216,15 +216,15 @@ The geometries of 90 reference polyhedra are internally defined in Cosmochlore. 
 <tr><td>12</td><td>JSPMC-12</td><td>Sphenomegacorona (J88)</td><td>C<sub>s</sub></td></tr>
 
 <tr><td>20</td><td>0</td><td>DD-20</td><td>Dodecahedron†</td><td>I<sub>h</sub></td></tr>
-<tr><td rowspan="2">24</td></td><td>0</td><td>TCU-24</td><td>Truncated cube</td><td>O<sub>h</sub></td></tr>
+<tr><td rowspan="2">24</td><td>0</td><td>TCU-24</td><td>Truncated cube</td><td>O<sub>h</sub></td></tr>
 <tr><td>1</td><td>TOC-24</td><td>Truncated octahedron</td><td>O<sub>h</sub></td></tr>
 <tr><td>48</td><td>0</td><td>TCOC-48</td><td>Truncated cuboctahedron</td><td>O<sub>h</sub></td></tr>
-<tr><td>60</td><td>0</td><td>TRIC-60</td><td>Truncated icosahedron (fullerene)</td><td>I<sub>h</sub></td></tr>
+<tr><td>60</td><td>0</td><td>TIC-60</td><td>Truncated icosahedron (fullerene)</td><td>I<sub>h</sub></td></tr>
 </tbody>
 </table>
 
 _Be noted that the index of each shape differs from `SHAPE`'s 2.1 by 1. 
-I have certain suspicion that the original numbering starting from one is due to  Fortran arrays being [silly](https://xkcd.com/163/)._
+I have a certain suspicion that the original numbering starting from one is due to  Fortran arrays being [silly](https://xkcd.com/163/)._
 
 ### User defined polyhedra 
 
@@ -290,25 +290,25 @@ The Continuous Shape Measure of a problem shape $$Q$$ relative to a reference sh
 ```math
 S_P(Q)= \mathrm{min} \left( \frac{\sum_i^n |q_i - p_i|^2}{ \sum_i^n |p_i - p_0|^2} \right) × 100
 ```
-where $$N$$ is the number of vertices in the structures we are comparing, $$q_i$$ and $$p_i$$ are the position vectors of the vertices of $$Q$$ and $$P$$, respectively, and $$q_0$$ the geometric center of the problem structure $$Q$$. 
-This minimization is carried out over all rotations, translations and scaligns **and** over all $$N!$$ possible permutations of point pairs asignements.
+where $$N$$ is the number of vertices in the structures we are comparing, $$q_i$$ and $$p_i$$ are the position vectors of the vertices of $$Q$$ and $$P$$, respectively, and $$p_0$$ the geometric center of the problem structure $$Q$$. 
+This minimization is carried out over all rotations, translations and scalings **and** over all $$N!$$ possible permutations of point pairs assignments.
 
 The rotation/translation/scaling part is solved via an SVD-based Kabsch-style alignment. The combinatorial problem: finding the best point pair matches between $$Q$$ and $$P$$ is done by:
 
 - **Automorphism-aware deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (automorphisms of the reference shape's point group) are never evaluated twice.
 - **Branch-and-bound pruning**: partial assignments are bounded using the subadditivity property of the singular-value sum, allowing branches that provably cannot beat the current best score to be discarded early.
 
-This algorithm mirrors the pruning strategy used by `cosymlib`'s Fortran `shp.f90` engine. Cosmochlores implementation is writen in fully safe Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
+This algorithm mirrors the pruning strategy used by `cosymlib`'s Fortran `shp.f90` engine. Cosmochlore's implementation is writen in fully safe Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
 
 ## Acknowledgements
 
-This project reimplements the shape-measure methodology originally developed for the `SHAPE` program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronica/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch Rust implementation and is not affiliated with the original authors.
+This project reimplements the shape-measure methodology originally developed for the `SHAPE` program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch Rust implementation and is not affiliated with the original authors.
 
 ## License
 
 **The code, binaries and sample tests are provided as is with no warranty of any kind.** This program is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
 
-Portions of this software are based on cosymlib (shp.f90), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT License.
+Portions of this software are based on `cosymlib` (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT License.
 
 ## References
 
