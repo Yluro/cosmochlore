@@ -149,6 +149,15 @@ fn water_matches_result_from_shape21 () {
     assert!((s - 0.18).abs() < 1e-2);
 }
 
+fn noisy_square() -> Vec<Vector3<f64>> {
+    vec![
+        Vector3::new(-0.1, 0.05, 0.0),
+        Vector3::new(0.95, 0.0, 0.1),
+        Vector3::new(1.0, 0.90, 0.0),
+        Vector3::new(0.05, 1.05, 0.0),
+    ]
+}
+
 fn square() -> Vec<Vector3<f64>> {
     vec![
         Vector3::new(0.0, 0.0, 0.0),
@@ -157,6 +166,7 @@ fn square() -> Vec<Vector3<f64>> {
         Vector3::new(0.0, 1.0, 0.0),
     ]
 }
+
 
 #[test]
 fn identity_problem_gives_zero_score() {
