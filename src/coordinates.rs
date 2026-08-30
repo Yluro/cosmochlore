@@ -1,3 +1,5 @@
+/// Functions to convert the input data structures (Structure and ReferenceShape)
+/// into Vector3 coordinates for the math modules.
 use nalgebra::Vector3;
 use crate::xyz::Structure;
 use crate::shapes::ReferenceShape;

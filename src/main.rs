@@ -9,8 +9,8 @@ mod out;
 
 use std::time::Instant;
 use clap::Parser;
-use crate::cli::{Cli};
-use crate::out::{welcome_msg, MeasureResult, output_table, print_crab};
+use crate::cli::{Cli, Command, CshmArgs};
+use crate::out::{welcome_msg, CShMResult, output_table, print_crab, write_cshm_csv, write_cshm_reconstructed_xyz};
 use crate::coordinates::{points_from_reference_shape, points_from_structure};
 use crate::cshm::find_best_permutation;
 use crate::shapes::{check_vertex_count, ReferenceShape};
@@ -20,6 +20,18 @@ fn main() {
     welcome_msg();
     let args = Cli::parse();
 
+
+    match args.command {
+        Command::Cshm(cshm_args) => { main_cshm(&cshm_args) }
+        Command::Csom(csom_args) => { unimplemented!() }
+    }
+
+    let main_time = main_start.elapsed();
+    println!("Program finished in {:?}", main_time);
+    //if args.crab {print_crab()}
+}
+
+fn main_cshm(args: &CshmArgs) {
     // 1. Parse input .xyz file and form structure.
     let structure = match xyz::parse_xyz(&args.name, args.not_centered){
         Ok(s) => s,
@@ -37,7 +49,7 @@ fn main() {
     };
 
     // 4. If user has input any shapes, add them to compare list.
-    if let Some(files) = args.user_shapes {
+    if let Some(files) = &args.user_shapes {
         let mut user_shapes: Vec<ReferenceShape> = Vec::new();
         for file in files {
             match yaml::parse_custom_shapes(&file) {
@@ -58,27 +70,43 @@ fn main() {
     let has_centre = !args.not_centered;
     let problem = points_from_structure(&structure);
 
-    let mut results: Vec<MeasureResult> = Vec::new();
+    let mut results: Vec<CShMResult> = Vec::new();
 
     for shape in ref_shapes {
         let mut reference = points_from_reference_shape(&shape, has_centre);
         let mut problem_copy = problem.clone();
 
-        let (s, _, rot_mat) = find_best_permutation(&mut reference, &mut problem_copy);
+        let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy);
 
         results.push(
-            MeasureResult {
+            CShMResult {
                 name: shape.name,
                 symbol: shape.symbol,
                 symm: shape.symm,
                 cshm: s,
-                rot_mat: rot_mat,
+                perm: best_perm,
+                xyz: reconstructed,
             }
         );
     }
 
     output_table(&results);
-    let main_time = main_start.elapsed();
-    println!("Calculations done in {:?}", main_time);
-    if args.crab {print_crab()}
+
+    if args.table {
+        write_cshm_csv(&args.name, &results);
+    }
+
+    if args.full {
+        let mut labels: Vec<String> = Vec::new();
+        if !args.not_centered {
+            labels.push(structure.centre.unwrap().label);
+        }
+        for ligand in &structure.ligands {
+            labels.push(ligand.label.clone());
+        }
+
+        write_cshm_reconstructed_xyz(&args.name, &results, &labels);
+    }
+    if args.crab { print_crab(); }
 }
+

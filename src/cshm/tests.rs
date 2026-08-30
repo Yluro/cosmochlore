@@ -149,6 +149,15 @@ fn water_matches_result_from_shape21 () {
     assert!((s - 0.18).abs() < 1e-2);
 }
 
+fn noisy_square() -> Vec<Vector3<f64>> {
+    vec![
+        Vector3::new(-0.1, 0.05, 0.0),
+        Vector3::new(0.95, 0.0, 0.1),
+        Vector3::new(1.0, 0.90, 0.0),
+        Vector3::new(0.05, 1.05, 0.0),
+    ]
+}
+
 fn square() -> Vec<Vector3<f64>> {
     vec![
         Vector3::new(0.0, 0.0, 0.0),
@@ -157,6 +166,7 @@ fn square() -> Vec<Vector3<f64>> {
         Vector3::new(0.0, 1.0, 0.0),
     ]
 }
+
 
 #[test]
 fn identity_problem_gives_zero_score() {
@@ -267,7 +277,7 @@ fn branch_and_bound_matches_brute_force_results() {
     ]; // Noisy square.
 
     let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
-    let (s_bnb, _, _) = find_best_permutation(&mut reference, &mut problem);
+    let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem);
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.")
 }
@@ -289,7 +299,7 @@ fn bnb_matches_bf_matches_shape21_hard() {
     let shape21_result = 2.109;
 
     let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
-    let (s_bnb, _, _) = find_best_permutation(&mut reference, &mut problem);
+    let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem);
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
     assert!((s_bnb - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}.")
@@ -332,7 +342,7 @@ fn bnb_is_faster_than_bf() {
     let mut prob_bnb = problem.clone();
 
     let start_bnb = Instant::now();
-    let (s_bnb, _, _) = find_best_permutation(&mut ref_bnb, &mut prob_bnb);
+    let (s_bnb, _, _, _) = find_best_permutation(&mut ref_bnb, &mut prob_bnb);
     let time_bnb = start_bnb.elapsed();
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
@@ -375,11 +385,53 @@ fn strain_12_point_test() {
     ];
 
     let start = Instant::now();
-    let (s, _, _) = find_best_permutation(&mut reference, &mut problem);
+    let (s, _, _, _) = find_best_permutation(&mut reference, &mut problem);
     let time = start.elapsed();
     println!("Find Optimal Permutation Time: {:?}", time);
 
     let shape21_result = 7.288;
 
     assert!((s - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1. Expected: {shape21_result}, found {s}.");
+}
+
+#[test]
+fn can_reconstruct_original() {
+    let mut reference = noisy_square();
+
+    // Rotation of 90-deg in z-axis
+    let rotation = Matrix3::new(
+        0.0, -1.0, 0.0,
+        1.0,  0.0, 0.0,
+        0.0,  0.0, 1.0,
+    );
+
+    let translation = Vector3::new(2.0, 0.0, 0.0);
+
+    let mut problem: Vec<Vector3<f64>> = reference.iter()
+        .map(|p| rotation * p + translation)
+        .collect();
+
+
+    let (s, best_perm, reconstructed, rot_mat) = find_best_permutation(&mut reference, &mut problem);
+
+    println!("s = {s}");
+    println!("best_perm = {:?}", best_perm);
+    assert_eq!(best_perm, vec![0, 1, 2, 3]);
+    assert!(s.abs() < 1e-6, "expected low CShM, got {s}");
+
+    println!("known rotation:\n{}", rotation);
+    println!("best_rot_matrix:\n{:.2}", rot_mat);
+    println!("best_rot_matrix^T:\n{:.2}", rot_mat.transpose());
+
+    // reconstructed[i] should now match the ORIGINAL problem[i] (before
+    // find_best_permutation mutated it via center_and_normalise).
+    // Recompute the original problem here since `problem` was mutated in place:
+    let original_problem: Vec<Vector3<f64>> = noisy_square().iter() // see note below
+        .map(|p| rotation * p + translation)
+        .collect();
+
+    for (rec, orig) in reconstructed.iter().zip(original_problem.iter()) {
+        assert!((rec - orig).norm() < 1e-6, "mismatch: {:?} vs {:?}", rec, orig);
+    }
+
 }
