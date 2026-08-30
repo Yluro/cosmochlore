@@ -13,12 +13,12 @@ use crate::cshm::automorphism::*;
 pub fn find_best_permutation(
     reference: &mut [Vector3<f64>],
     problem: &mut [Vector3<f64>],
-) -> (f64, Vec<usize>, Matrix3<f64>) {
+) -> (f64, Vec<usize>, Vec<Vector3<f64>>, Matrix3<f64>) {
     let n = problem.len();
     debug_assert_eq!(n, reference.len());
 
     center_and_normalise(reference);
-    center_and_normalise(problem);
+    let (problem_centroid, normalisation_constant) = center_and_normalise(problem);
 
 
     let ref_automorphisms: Vec<Vec<usize>> = find_automorphisms(reference);
@@ -48,7 +48,12 @@ pub fn find_best_permutation(
         &mut best_perm,
         &mut best_rot_matrix,
     );
-    (best_s, best_perm, best_rot_matrix)
+
+    let reconstructed: Vec<Vector3<f64>> = reference.iter()
+        .map(|p| (best_rot_matrix.transpose() * p ) / normalisation_constant + problem_centroid)
+        .collect();
+
+    (best_s, best_perm, reconstructed, best_rot_matrix)
 }
 
 fn branch(
