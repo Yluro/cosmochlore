@@ -63,7 +63,7 @@ pub fn correlation_matrix(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) 
 pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>)  {
     let svd = h.svd(true, true); // computes U and V^T
     let u = svd.u.unwrap();
-    let mut v_t = svd.v_t.unwrap();
+    let v_t = svd.v_t.unwrap();
     let a_i = svd.singular_values;
 
     (v_t.transpose() * u.transpose(), a_i)
