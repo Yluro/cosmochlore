@@ -1,9 +1,23 @@
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 
 
 #[derive(Parser, Debug)]
-#[clap(name = "kosmochlor", about = "Continuous Shape and Symmetry Measurements in Rust.", author = "JSG (jose.serranog@ub.edu)", version = env!("CARGO_PKG_VERSION"))]
+#[clap(name = "cosmochlore", about = env!("CARGO_PKG_DESCRIPTION"), author = env!("CARGO_PKG_AUTHORS"), version = env!("CARGO_PKG_VERSION"))]
 pub struct Cli {
+    #[clap(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Continuous Shape Measure
+    Cshm(CshmArgs),
+    /// Continuous Symmetry Operation Measures
+    Csom(CsomArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct CshmArgs {
     /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
     pub name: String,
 
@@ -11,16 +25,35 @@ pub struct Cli {
     #[arg(short = 'n', long = "nc")]
     pub not_centered: bool,
 
-    /// Indices of the standard reference shapes to compare the problem shape to as found in the SHAPE 2.1 user manual.
+    /// Indices of the standard reference shapes to compare the problem shape to as found in the user manual.
     #[arg(short = 's', long = "sh", num_args = 1..)]
     pub shapes: Option<Vec<usize>>,
 
     /// Name or path of YAML files containing user-defined reference shapes to compare the problem shape to.
     #[arg(short = 'r', long ="ref", num_args = 1..)]
     pub user_shapes: Option<Vec<String>>,
-    
+
+    /// Write the output table to a .csv file.
+    #[arg(short = 't', long = "table")]
+    pub table: bool,
+
+    /// Write a reconstructed version of the idealised polyhedra to a .xyz file.
+    #[arg(short = 'f', long = "full")]
+    pub full: bool,
+
     /// Easter-egg
     #[arg(short = 'c', long = "crab", hide = true)]
     pub crab: bool,
     
+}
+
+#[derive(Args, Debug)]
+pub struct  CsomArgs {
+    /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
+    pub name: String,
+
+    /// Space groups to measure in Schoenflies notation.
+    #[arg(short = 'p', long = "pg", num_args = 1..)]
+    pub point_groups: Option<Vec<String>>,
+
 }
