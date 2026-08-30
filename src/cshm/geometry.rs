@@ -4,9 +4,9 @@ use nalgebra::{Matrix3, Vector3};
 
 /// Puts the shape centroid in the origin of coordinates and calculate the A
 /// normalisation factor for a cloud of points A²Σ|P_i|² = N
-pub fn center_and_normalise(points: &mut [Vector3<f64>]) {
+pub fn center_and_normalise(points: &mut [Vector3<f64>]) -> (Vector3<f64>, f64)  {
     let n = points.len() as f64;
-    let mut centroid = [0.0; 3];
+    let mut centroid: Vector3<f64> = Vector3::new(0.0, 0.0, 0.0);
 
     for point in points.iter() {
         centroid[0] += point[0];
@@ -40,6 +40,8 @@ pub fn center_and_normalise(points: &mut [Vector3<f64>]) {
         point[1] *= scale_factor;
         point[2] *= scale_factor;
     }
+    (centroid, scale_factor)
+
 }
 
 
@@ -66,10 +68,10 @@ pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>)  {
 
     // The SVD algorithm can produce the reflected shape instead of the actual one.
     // To convert back to the desired rotation, flip one of the rows of the v_t matrix.
-    if v_t.transpose().determinant() * u.transpose().determinant() < 0.0 {
-        // NOTE: Flip one the rows so Det becomes positive.
-        v_t.set_row(2, &(-v_t.row(2)));
-    };
+    //if v_t.transpose().determinant() * u.transpose().determinant() < 0.0 {
+    //    // NOTE: Flip one the rows so Det becomes positive.
+    //    v_t.set_row(2, &(-v_t.row(2)));
+    //};
     (v_t.transpose() * u.transpose(), a_i)
 }
 
