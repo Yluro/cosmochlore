@@ -66,13 +66,6 @@ pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>)  {
     let mut v_t = svd.v_t.unwrap();
     let a_i = svd.singular_values;
 
-    // THIS HERE IS DEAD CODE WE CAN DELETE IT T
-    // The SVD algorithm can produce the reflected shape instead of the actual one.
-    // To convert back to the desired rotation, flip one of the rows of the v_t matrix.
-    //if v_t.transpose().determinant() * u.transpose().determinant() < 0.0 {
-    //    // NOTE: Flip one the rows so Det becomes positive.
-    //    v_t.set_row(2, &(-v_t.row(2)));
-    //};
     (v_t.transpose() * u.transpose(), a_i)
 }
 
