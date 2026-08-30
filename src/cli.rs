@@ -10,7 +10,7 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Continuous Shape Measure
+    /// Continuous Shape Measures
     Cshm(CshmArgs),
     /// Continuous Symmetry Operation Measures
     Csom(CsomArgs),
@@ -38,7 +38,7 @@ pub struct CshmArgs {
     pub table: bool,
 
     /// Write a reconstructed version of the idealised polyhedra to a .xyz file.
-    #[arg(short = 'f', long = "full")]
+    #[arg(short = 'i', long = "ideal")]
     pub full: bool,
 
     /// Easter-egg
