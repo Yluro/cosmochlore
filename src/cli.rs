@@ -14,6 +14,8 @@ pub enum Command {
     Cshm(CshmArgs),
     /// Continuous Symmetry Operation Measures
     Csom(CsomArgs),
+    /// Octahedral Distortion Analysis
+    Odis(OdisArgs),
 }
 
 #[derive(Args, Debug)]
@@ -44,7 +46,6 @@ pub struct CshmArgs {
     /// Easter-egg
     #[arg(short = 'c', long = "crab", hide = true)]
     pub crab: bool,
-    
 }
 
 #[derive(Args, Debug)]
@@ -55,5 +56,18 @@ pub struct  CsomArgs {
     /// Space groups to measure in Schoenflies notation.
     #[arg(short = 'p', long = "pg", num_args = 1..)]
     pub point_groups: Option<Vec<String>>,
+}
 
+#[derive(Args, Debug)]
+pub struct OdisArgs {
+    /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
+    pub name: String,
+
+    /// Full analysis of the octahedron. Including CShM and CSoM values.
+    #[arg(short = 'f', long = "full")]
+    pub full: bool,
+
+    /// Write the output table to a .csv file.
+    #[arg(short = 't', long = "table")]
+    pub table: bool,
 }

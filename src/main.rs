@@ -4,6 +4,7 @@ mod yaml;
 mod shapes;
 mod data;
 mod cshm;
+mod ohd;
 mod coordinates;
 mod out;
 
@@ -22,8 +23,9 @@ fn main() {
 
 
     match args.command {
-        Command::Cshm(cshm_args) => { main_cshm(&cshm_args) }
-        Command::Csom(csom_args) => { unimplemented!() }
+        Command::Cshm(cshm_args) => { main_cshm(&cshm_args) },
+        Command::Csom(_csom_args) => { unimplemented!() },
+        Command::Odis(_odis_args) => { unimplemented!() },
     }
 
     let main_time = main_start.elapsed();
