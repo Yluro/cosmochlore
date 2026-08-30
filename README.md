@@ -56,7 +56,7 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 #### Optional arguments for `cshm`:
 
 | Flag | Value | Description |
-|---|---|---|---|
+|---|---|---|
 | `-n` <br> `--nc` | None | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.  |
 |`-s` <br> `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
 | `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.
