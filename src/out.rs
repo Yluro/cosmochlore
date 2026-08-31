@@ -49,22 +49,22 @@ pub fn output_table(results: &[CShMResult]) {
     if min_s > 10.0 {println!("Only extremely distorted geometries were found for this shape. Make sure the .xyz file is correct.")}
 }
 
-pub fn write_cshm_csv (file_name: &String, results: &[CShMResult]) {
+pub fn write_cshm_csv (file_name: &String, results: &[CShMResult]) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_table.csv";
-    let mut file = File::create(&out_name)
-        .expect("Unable to create file.");
+    let mut file = File::create(&out_name)?;
 
     println!("Writing output table to {}...", out_name);
 
     writeln!(file, "Symbol,Name,Symmetry,CShM")
         .expect("Unable to write to file.");
     for r in results {
-        writeln!(file, "{},{},{},{:.3}", r.symbol, r.name, r.symm, r.cshm)
-            .expect("Unable to write to file.");
+        writeln!(file, "{},{},{},{:.3}", r.symbol, r.name, r.symm, r.cshm)?;
     }
+
+    Ok(())
 }
 
-pub fn write_cshm_reconstructed_xyz (file_name: &String, results: &[CShMResult], labels: &[String]) {
+pub fn write_cshm_reconstructed_xyz (file_name: &String, results: &[CShMResult], labels: &[String]) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_ideal.xyz";
     let mut file = File::create(&out_name)
         .expect("Unable to create file.");
@@ -73,8 +73,8 @@ pub fn write_cshm_reconstructed_xyz (file_name: &String, results: &[CShMResult],
 
     for result in results {
         // Write the preamble to each xyz block.
-        writeln!(file, "{}", labels.len()).expect("Unable to write to file.");
-        writeln!(file, "{} {} CShM = {:.3}", result.symbol, result.symm, result.cshm).expect("Unable to write to file.");
+        writeln!(file, "{}", labels.len())?;
+        writeln!(file, "{} {} CShM = {:.3}", result.symbol, result.symm, result.cshm)?;
 
         let mut inverse_perm = vec![0usize; result.perm.len()];
         for (problem_idx, &ref_idx) in result.perm.iter().enumerate() {
@@ -88,10 +88,12 @@ pub fn write_cshm_reconstructed_xyz (file_name: &String, results: &[CShMResult],
                 file,
                 "{}  {:.6}  {:.6}  {:.6}",
                 labels[problem_idx], point.x, point.y, point.z
-            ).expect("Unable to write to file.");
+            )?;
         }
-        writeln!(file, "").expect("Unable to write to file.");
+        writeln!(file, "")?;
     };
+
+    Ok(())
 }
 
 pub fn print_crab() {
