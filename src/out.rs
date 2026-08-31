@@ -1,6 +1,9 @@
 use std::fs::File;
 use std::io::Write;
+use clap::builder::styling::Reset;
 use nalgebra::Vector3;
+use crate::ocd::calcod::ODResult;
+
 pub struct CShMResult {
     pub name: String,
     pub symbol: String,
@@ -29,7 +32,9 @@ pub fn welcome_msg() {
 
 
 
-pub fn output_table(results: &[CShMResult]) {
+pub fn print_cshm_table(results: &[CShMResult], file: &str) {
+
+    println!("\nInput file: {}", file);
 
     let name_width = results.iter().map(|r| {r.name.len()}).max().unwrap() + 2;
     let symbol_width = results.iter().map(|r| {r.symbol.len()}).max().unwrap() + 2;
@@ -107,4 +112,21 @@ pub fn print_crab() {
      / /-`---'-\ \
       /         \ "
     )
+}
+
+pub fn print_odis_table(result: &ODResult, file: &str) {
+    println!("\nInput file: {}", file);
+    println!("{}", "=".repeat(34));
+    println!(" Octahedral distortion parameters");
+    println!("{}", "-".repeat(34));
+    println!("{:<16}{:>12.4}  {:<12}", " Mean d(M-X)", result.d_mean, "Ang");
+    println!("{:<16}{:>12.4}  {:<12}", " Zeta", result.zeta, "Ang");
+    println!("{:<16}{:>12.6}  {:<12}", " Delta", result.delta, "");
+    println!("{:<16}{:>12.2}  {:<12}", " Sigma", result.sigma, "deg");
+    //println!("{:<16}{:>12.2}  {:<12}", " Theta", result.theta, "deg");
+    //println!("{:<16}{:>12.4}  {:<12}", " Volume", result.volume, "Ang^3");
+    println!("{}", "-".repeat(34));
+    println!("{:<16}{:>12.2}  {:<12}", " Tau", result.tau, "deg");
+    println!("{:<16}{:>12.2}  {:<12}", " Mu", result.mu, "Ang");
+    println!("{}", "=".repeat(34));
 }

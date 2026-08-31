@@ -10,10 +10,11 @@ mod out;
 
 use std::time::Instant;
 use clap::Parser;
-use crate::cli::{Cli, Command, CshmArgs};
-use crate::out::{welcome_msg, CShMResult, output_table, print_crab, write_cshm_csv, write_cshm_reconstructed_xyz};
+use crate::cli::{Cli, Command, CshmArgs, OdisArgs};
+use crate::out::{welcome_msg, CShMResult, print_cshm_table, print_crab, write_cshm_csv, write_cshm_reconstructed_xyz, print_odis_table};
 use crate::coordinates::{points_from_reference_shape, points_from_structure};
 use crate::cshm::find_best_permutation;
+use crate::ocd::calcod::calculate_od;
 use crate::shapes::{check_vertex_count, ReferenceShape};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let run = match args.command {
         Command::Cshm(cshm_args) => { main_cshm(&cshm_args) },
         Command::Csom(_csom_args) => { unimplemented!() },
-        Command::Odis(_odis_args) => { unimplemented!() },
+        Command::Odis(odis_args) => { main_odis(&odis_args) },
     };
 
     if let Err(err) = run {
@@ -89,7 +90,7 @@ fn main_cshm(args: &CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    output_table(&results);
+    print_cshm_table(&results, &args.name);
 
     if args.table {
         write_cshm_csv(&args.name, &results)?;
@@ -110,4 +111,24 @@ fn main_cshm(args: &CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+
+fn main_odis(args: &OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
+
+    // 1. Extract structure from .xyz
+    let structure = xyz::parse_xyz(&args.name, false)?; // Structure should be centered by default.
+
+    // 2. Calculate the common parameters
+    let result = calculate_od(&structure)?;
+
+
+    //3. Calculate extra things if arguments are passed.
+
+
+    // 4. Output results
+    print_odis_table(&result, &args.name);
+
+    Ok(())
+}
+
 
