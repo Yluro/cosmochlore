@@ -87,7 +87,7 @@ pub fn calculate_od(structure: &Structure) -> Result<ODResult, ODError> {
 
     let mut angles = Vec::new();
 
-    let a = for comb in vectors.iter().combinations(2) {
+    for comb in vectors.iter().combinations(2) {
         let vi = comb[0];
         let vj = comb[1];
         let angle = (vi.dot(&vj) / (vi.norm() * vj.norm()))
