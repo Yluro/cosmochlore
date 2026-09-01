@@ -1,4 +1,4 @@
-use crate::odis::ODResult;
+use crate::odis::OdisResult;
 use crate::xyz::Structure;
 use itertools::Itertools;
 use nalgebra::Vector3;
@@ -6,7 +6,7 @@ use nalgebra::Vector3;
 /// Calculate the octahedral distortion (OD) of a structure.
 ///
 /// The structure must contain a centre atom and exactly six ligand points.
-pub fn calculate_od(structure: &Structure) -> Result<ODResult, ODError> {
+pub fn calculate_od(structure: &Structure) -> Result<OdisResult, ODError> {
     const N: i32 = 7;
 
     // 0. Extract the centre and ligand coordinates from the structure parsed by xyz.rs
@@ -101,7 +101,7 @@ pub fn calculate_od(structure: &Structure) -> Result<ODResult, ODError> {
 
 
     Ok(
-        ODResult {
+        OdisResult {
             d_mean,
             zeta,
             delta,

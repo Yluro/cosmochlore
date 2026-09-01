@@ -1,5 +1,5 @@
 use crate::cshm::CShMResult;
-use crate::odis::ODResult;
+use crate::odis::OdisResult;
 use std::fs::File;
 use std::io::Write;
 
@@ -106,7 +106,7 @@ pub fn print_crab() {
     )
 }
 
-pub fn print_odis_table(result: &ODResult, file: &str) {
+pub fn print_odis_table(result: &OdisResult, file: &str) {
     println!("\nInput file: {}", file);
     println!("{}", "=".repeat(34));
     println!(" Octahedral distortion parameters");

@@ -3,7 +3,7 @@ pub mod odis;
 pub use odis::calculate_od;
 
 #[derive(Debug, Clone)]
-pub struct ODResult {
+pub struct OdisResult {
     pub d_mean: f64,
     pub zeta: f64,
     pub delta: f64,
