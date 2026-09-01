@@ -54,6 +54,7 @@ pub fn find_best_permutation(
         .collect();
 
     (best_s, best_perm, reconstructed, best_rot_matrix)
+
 }
 
 fn branch(
