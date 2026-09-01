@@ -106,7 +106,7 @@ fn main_cshm(args: &CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // If --ideal is passed
-    if args.full {
+    if args.ideal {
         let mut labels: Vec<String> = Vec::new();
         if !args.not_centered {
             labels.push(structure.centre.unwrap().label);
@@ -133,11 +133,37 @@ fn main_odis(args: &OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
     let result = calculate_od(&structure)?;
 
 
-    //3. Calculate extra things if arguments are passed.
-
-
-    // 4. Output results
+    // 3. Output results
     print_odis_table(&result, &args.name);
+
+    // 4. Calculate chsm against OC-6 and TRP-6 if --full is passed.
+    let n = 6; // Number of vertices
+    let indices = Some(Vec::from([2, 3])); // Indices of OC and TRP
+    let ref_shapes =  shapes::resolve_shapes(n, indices.as_deref())?;
+    let has_centre = true;
+    let problem = points_from_structure(&structure);
+    let mut cshm_results: Vec<CShMResult> = Vec::new();
+    for shape in ref_shapes {
+        let mut reference = points_from_reference_shape(&shape, has_centre);
+        let mut problem_copy = problem.clone();
+
+        let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy);
+
+        cshm_results.push(
+            CShMResult {
+                name: shape.name,
+                symbol: shape.symbol,
+                symm: shape.symm,
+                cshm: s,
+                perm: best_perm,
+                xyz: reconstructed,
+            });
+    }
+
+    print_cshm_table(&cshm_results, &args.name);
+    write_cshm_csv(&args.name, &cshm_results)?;
+
+
 
     Ok(())
 }
