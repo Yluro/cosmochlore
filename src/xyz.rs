@@ -1,7 +1,9 @@
+use nalgebra::Vector3;
+
 #[derive(Debug, Clone)]
 pub struct Atom {
     pub label: String,
-    pub coords:  [f64; 3],
+    pub coords:  Vector3<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -51,7 +53,7 @@ fn parse_xyz_contents(content: &str, not_centered: bool) -> Result<Structure, Xy
 
         // Main logic, asign labels and xyz coords.
         let label = parts[0];
-        let mut coords = [0.0; 3]; // Create array [0.0, 0.0, 0.0]
+        let mut coords: Vector3<f64> = Vector3::zeros(); // Create array [0.0, 0.0, 0.0]
         for (j, part) in parts[1..4].iter().enumerate() {
             coords[j] = match part.parse::<f64>() {
                 Ok(n) => n,
