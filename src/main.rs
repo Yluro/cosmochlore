@@ -18,7 +18,7 @@ use clap::Parser;
 use std::time::Instant;
 
 use crate::cshm::{find_best_permutation, CShMResult};
-use crate::odis::{calculate_od, ODResult};
+use crate::odis::{calculate_od};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_start = Instant::now();
@@ -130,11 +130,11 @@ fn main_odis(args: &OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
     let structure = xyz::parse_xyz(&args.name, false)?; // Structure should be centered by default.
 
     // 2. Calculate the common parameters
-    let result = calculate_od(&structure)?;
+    let odis_result = calculate_od(&structure)?;
 
 
     // 3. Output results
-    print_odis_table(&result, &args.name);
+    print_odis_table(&odis_result, &args.name);
 
     // 4. Calculate chsm against OC-6 and TRP-6 if --full is passed.
     let n = 6; // Number of vertices
