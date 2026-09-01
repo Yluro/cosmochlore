@@ -3,7 +3,10 @@ use nalgebra::{Matrix3, Vector3};
 
 
 /// Puts the shape centroid in the origin of coordinates and calculate the A
-/// normalisation factor for a cloud of points A²Σ|P_i|² = N
+/// normalization factor for a cloud of points A²Σ|P_i|² = N
+/// 
+/// Mutates the input so its normalized and its centroid sits at the origin.
+/// Returns the 
 pub fn center_and_normalise(points: &mut [Vector3<f64>]) -> (Vector3<f64>, f64)  {
     let n = points.len() as f64;
     let mut centroid: Vector3<f64> = Vector3::new(0.0, 0.0, 0.0);
@@ -48,7 +51,7 @@ pub fn center_and_normalise(points: &mut [Vector3<f64>]) -> (Vector3<f64>, f64) 
 /// Calculates the correlation matrix H of two given sets of points.
 /// Returns H = Sum (P^T x Q).
 pub fn correlation_matrix(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> Matrix3<f64> {
-    // Expects centered and normalised points.
+    // Expects centered and normalized points.
     let mut h = Matrix3::<f64>::zeros();
     for (p, q) in reference.iter().zip(problem.iter()) {
         h += p * q.transpose();

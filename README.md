@@ -1,8 +1,8 @@
 # Cosmochlore
 
-**COSM**ochlo**R**e (**Co**ntinuous **S**hape **M**easuremensts in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) Calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
+**COSM**ochlo**R**e (**Co**ntinuous **S**hape **M**easurements in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) Calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
 
-It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
+It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old Fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
 
 The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accessory mineral to various other chromium-containing pyroxenes.
 
@@ -12,7 +12,7 @@ Given a molecular structure (or any set of 3-dimensional points), Cosmochlore co
 
 ### Future Features
 I'm planning to support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future. More features are planned to be added:
- - Finishing the CShM toolkit: retrieval of the rotation matrix, generalised shape coordinate, _etc_.
+ - Finishing the CShM toolkit: retrieval of the rotation matrix, generalized shape coordinate, _etc_.
  - Might do some octahedral distortion parameters.
  - Might reimplement the continuous symmetry/symmetry operation measures.
 
@@ -112,7 +112,7 @@ Writing output table to .\tests\FeHS_table.csv...
 Writing idealised polyhedra coordinates to table to .\tests\FeHS_ideal.xyz...
 Program finished in 18.5727ms
 ````
-The output of the calculation was be saved in the file `FeHS_table.csv` by calling the `-t` or `--table` flag.
+The output of the calculation is saved in the file `FeHS_table.csv` by calling the `-t` or `--table` flag.
 
 ````csv
 Symbol,Name,Symmetry,CShM
@@ -310,14 +310,14 @@ fvCU-6:
 As per the example, a single .yaml file can contain multiple reference polyhedra. 
 Comments are also supported by the YAML parser, every line that starts with `#` will be ignored.
 
-## The algorithm
+## The `cshm` algorithm
 
 The Continuous Shape Measure of a problem shape $$Q$$ relative to a reference shape $$P$$ is defined as:
 
 ```math
 S_P(Q)= \mathrm{min} \left( \frac{\sum_i^n |q_i - p_i|^2}{ \sum_i^n |p_i - p_0|^2} \right) × 100
 ```
-where $$N$$ is the number of vertices in the structures we are comparing, $$q_i$$ and $$p_i$$ are the position vectors of the vertices of $$Q$$ and $$P$$, respectively, and $$p_0$$ the geometric center of the problem structure $$Q$$. 
+where $$N$$ is the number of vertices in the structures we are comparing, $$q_i$$ and $$p_i$$ are the position vectors of the vertices of $$Q$$ and $$P$$, respectively, and $$p_0$$ the geometric centre of the problem structure $$Q$$. 
 This minimization is carried out over all rotations, translations and scalings **and** over all $$N!$$ possible permutations of point pairs assignments.
 
 The rotation/translation/scaling part is solved via an SVD-based Kabsch-style alignment. The combinatorial problem: finding the best point pair matches between $$Q$$ and $$P$$ is done by:
@@ -325,19 +325,25 @@ The rotation/translation/scaling part is solved via an SVD-based Kabsch-style al
 - **Automorphism-aware deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (automorphisms of the reference shape's point group) are never evaluated twice.
 - **Branch-and-bound pruning**: partial assignments are bounded using the subadditivity property of the singular-value sum, allowing branches that provably cannot beat the current best score to be discarded early.
 
-This algorithm mirrors the pruning strategy used by `cosymlib`'s Fortran `shp.f90` engine. Cosmochlore's implementation is writen in fully safe Rust relying on [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) for the linear algebra computations.
-
 ## Acknowledgements
 
 This project reimplements the shape-measure methodology originally developed for the `SHAPE` program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch Rust implementation and is not affiliated with the original authors.
 
 ## License
 
-**The code, binaries and sample tests are provided as is with no warranty of any kind.** This program is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
+**The code, binaries and sample tests are provided as is, with no warranty of any kind.** This program is licensed under the GNU General Public Licence v3.0 (GPL-3.0). See the `LICENSE.md` file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
 
-Portions of this software are based on `cosymlib` (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT License.
+Parts of the `cshm` module are based on `cosymlib` (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT Licence.
+
+Parts of the `odis` module is are based on the [`OctaDist`](https://octadist.github.io/)<sup>3</sup> algorithm, Copyright (c) 2019-2026  Rangsiman Ketkaew et al., licensed under the GNU General Public Licence v3.0 (GPL-3.0).
+
+The program relies on the [`clap`](https://crates.io/crates/clap) crate for argument parsing. Dual-licensed under Apache 2.0 or MIT licences.
+
+The program relies on the [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) crate for the fast linear algebra computations. Licensed under the Apache 2.0 licence.
+
 
 ## References
 
-1. Cirera, J., Ruiz, E., & Alvarez, S. (2005). Continuous Shape Measures as a Stereochemical Tool in Organometallic Chemistry. Organometallics, 24(7), 1556–1562. https://doi.org/10.1021/om049150z
-2. Alvarez, S., Alemany, P., Casanova, D., Cirera, J., Llunell, M., & Avnir, D. (2005). Shape maps and polyhedral interconversion paths in transition metal chemistry. Coordination Chemistry Reviews, 249(17–18), 1693–1708. https://doi.org/10.1016/j.ccr.2005.03.031
+1. Cirera, J., Ruiz, E., & Alvarez, S. (2005). Continuous Shape Measures as a Stereochemical Tool in Organometallic Chemistry. _Organometallics_, 24(7), 1556–1562. https://doi.org/10.1021/om049150z
+2. Alvarez, S., Alemany, P., Casanova, D., Cirera, J., Llunell, M., & Avnir, D. (2005). Shape maps and polyhedral interconversion paths in transition metal chemistry. _Coordination Chemistry Reviews_, 249(17–18), 1693–1708. https://doi.org/10.1016/j.ccr.2005.03.031
+3. Ketkaew, R., Tantirungrotechai, Y., Harding, P., Chastanet, G., Guionneau, P., Marchivie, M., & Harding, D. J. (2021). OctaDist: a tool for calculating distortion parameters in spin crossover and coordination complexes. _Dalton Transactions_, 50(3), 1086–1096. https://doi.org/10.1039/d0dt03988h

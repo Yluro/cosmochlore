@@ -4,18 +4,20 @@ mod yaml;
 mod shapes;
 mod data;
 mod cshm;
-mod ocd;
+mod csom;
+mod odis;
 mod coordinates;
 mod out;
 
-use std::time::Instant;
-use clap::Parser;
-use crate::cli::{Cli, Command, CshmArgs, OdisArgs};
-use crate::out::{welcome_msg, CShMResult, print_cshm_table, print_crab, write_cshm_csv, write_cshm_reconstructed_xyz, print_odis_table};
+
+use crate::cli::{Cli, Command, CshmArgs};
 use crate::coordinates::{points_from_reference_shape, points_from_structure};
-use crate::cshm::find_best_permutation;
-use crate::ocd::calcod::calculate_od;
-use crate::shapes::{check_vertex_count, ReferenceShape};
+use crate::cshm::{find_best_permutation, CShMResult};
+use crate::out::{print_crab, print_cshm_table, welcome_msg, write_cshm_csv, write_cshm_reconstructed_xyz};
+use crate::shapes::{ReferenceShape, check_vertex_count};
+use clap::Parser;
+use std::time::Instant;
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_start = Instant::now();
@@ -90,12 +92,19 @@ fn main_cshm(args: &CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
+
+    // 6. Output results.
+    print_cshm_table(&results, &args.name);
+
+    // 7. If --table is passed
+
     print_cshm_table(&results, &args.name);
 
     if args.table {
         write_cshm_csv(&args.name, &results)?;
     }
 
+    // If --ideal is passed
     if args.full {
         let mut labels: Vec<String> = Vec::new();
         if !args.not_centered {
@@ -104,9 +113,10 @@ fn main_cshm(args: &CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
         for ligand in &structure.ligands {
             labels.push(ligand.label.clone());
         }
-
         write_cshm_reconstructed_xyz(&args.name, &results, &labels)?;
     }
+
+    // If --crab is passed.
     if args.crab { print_crab(); }
 
     Ok(())
