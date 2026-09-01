@@ -1,16 +1,7 @@
+use crate::cshm::CShMResult;
+use crate::odis::odis::ODResult;
 use std::fs::File;
 use std::io::Write;
-use nalgebra::Vector3;
-use crate::odis::odis::ODResult;
-
-pub struct CShMResult {
-    pub name: String,
-    pub symbol: String,
-    pub symm: String,
-    pub cshm: f64,
-    pub perm: Vec<usize>,
-    pub xyz: Vec<Vector3<f64>>
-}
 
 pub fn welcome_msg() {
     let msg: &str = {r"
