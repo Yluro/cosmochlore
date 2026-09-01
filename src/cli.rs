@@ -41,7 +41,7 @@ pub struct CshmArgs {
 
     /// Write a reconstructed version of the idealised polyhedra to a .xyz file.
     #[arg(short = 'i', long = "ideal")]
-    pub full: bool,
+    pub ideal: bool,
 
     /// Easter-egg
     #[arg(short = 'c', long = "crab", hide = true)]
