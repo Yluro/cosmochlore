@@ -10,14 +10,15 @@ mod coordinates;
 mod out;
 
 
-use crate::cli::{Cli, Command, CshmArgs};
+use crate::cli::{Cli, Command, CshmArgs, OdisArgs};
 use crate::coordinates::{points_from_reference_shape, points_from_structure};
-use crate::cshm::{find_best_permutation, CShMResult};
-use crate::out::{print_crab, print_cshm_table, welcome_msg, write_cshm_csv, write_cshm_reconstructed_xyz};
+use crate::out::{print_odis_table, print_cshm_table, welcome_msg, write_cshm_csv, write_cshm_reconstructed_xyz, print_crab};
 use crate::shapes::{ReferenceShape, check_vertex_count};
 use clap::Parser;
 use std::time::Instant;
 
+use crate::cshm::{find_best_permutation, CShMResult};
+use crate::odis::{calculate_od, ODResult};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_start = Instant::now();

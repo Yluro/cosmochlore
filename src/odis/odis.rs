@@ -1,18 +1,7 @@
+use crate::odis::ODResult;
 use crate::xyz::Structure;
-use nalgebra::Vector3;
 use itertools::Itertools;
-
-#[derive(Debug, Clone)]
-pub struct ODResult {
-    pub d_mean: f64,
-    pub zeta: f64,
-    pub delta: f64,
-    pub sigma: f64,
-    //pub theta: f64,
-    //pub vol: f64,
-    pub tau: f64,
-    pub mu: f64,
-}
+use nalgebra::Vector3;
 
 /// Calculate the octahedral distortion (OD) of a structure.
 ///

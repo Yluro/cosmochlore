@@ -1,22 +1,12 @@
 use crate::cshm::CShMResult;
-use crate::odis::odis::ODResult;
+use crate::odis::ODResult;
 use std::fs::File;
 use std::io::Write;
-use clap::builder::styling::Reset;
-use nalgebra::Vector3;
-use crate::ocd::calcod::ODResult;
 
-pub struct CShMResult {
-    pub name: String,
-    pub symbol: String,
-    pub symm: String,
-    pub cshm: f64,
-    pub perm: Vec<usize>,
-    pub xyz: Vec<Vector3<f64>>
-}
 
 pub fn welcome_msg() {
-    let msg: &str = {r"
+    let msg: &str = {
+        r"
   _  ______   _____ __  __  ____   _____ _    _ _      ____  _____
  | |/ / __ \ / ____|  \/  |/ __ \ / ____| |  | | |    / __ \|  __ \
  | ' / |  | | (___ | \  / | |  | | |    | |__| | |   | |  | | |__) |
