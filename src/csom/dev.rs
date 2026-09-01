@@ -2,25 +2,22 @@ use nalgebra::{Normed, Vector3};
 
 
 
-/// Shape deviation for two given shapes. It returns the
+/// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)
 ///
 /// Assumes centered and normalized points.
-/// Assumes correct permutation of points.
-pub(crate) fn shape_deviation(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> f64 {
-
+/// Assumes correct point-to-point correspondence.
+pub(crate) fn sds_dev(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> f64 {
     let n = reference.len() as f64;
     let problem_centroid = problem.iter().sum::<Vector3<f64>>() / n;
 
-    let denominator = problem.iter()
+    let denominator: f64 = problem.iter()
         .map(|p| (p - problem_centroid).norm_squared())
-        .sum::<f64>();
+        .sum();
 
-    let numerator = problem.iter().zip(reference.iter())
+    let numerator: f64 = reference.iter().zip(problem)
         .map(
-            |(q , p)| (q - p).norm_squared()
-        ).sum::<f64>();
-
+            |(p , q)| (q - p).norm_squared()
+        ).sum();
 
     100.0 * numerator / denominator
-
 }
