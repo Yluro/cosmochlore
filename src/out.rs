@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 use nalgebra::Vector3;
-use crate::odis::calcod::ODResult;
+use crate::odis::odis::ODResult;
 
 pub struct CShMResult {
     pub name: String,
