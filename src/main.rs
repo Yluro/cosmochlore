@@ -4,17 +4,20 @@ mod yaml;
 mod shapes;
 mod data;
 mod cshm;
-mod ocd;
+mod csom;
+mod odis;
 mod coordinates;
 mod out;
+
 
 use std::time::Instant;
 use clap::Parser;
 use crate::cli::{Cli, Command, CshmArgs};
-use crate::out::{welcome_msg, CShMResult, output_table, print_crab, write_cshm_csv, write_cshm_reconstructed_xyz};
+use crate::out::{welcome_msg, CShMResult, print_cshm_table, print_crab, write_cshm_csv, write_cshm_reconstructed_xyz};
 use crate::coordinates::{points_from_reference_shape, points_from_structure};
 use crate::cshm::find_best_permutation;
 use crate::shapes::{check_vertex_count, ReferenceShape};
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_start = Instant::now();
@@ -89,7 +92,7 @@ fn main_cshm(args: &CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    output_table(&results);
+    print_cshm_table(&results, &args.name);
 
     if args.table {
         write_cshm_csv(&args.name, &results)?;
