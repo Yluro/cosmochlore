@@ -1,6 +1,5 @@
+use std::collections::HashMap;
 use nalgebra::{Vector3};
-
-
 
 /// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)
 ///
@@ -111,17 +110,84 @@ pub fn hungarian(cost: &[Vec<f64>]) -> Vec<usize> {
 
 /// Finds the best one-to-one matching between point sets A and B (equal length)
 /// that minimizes total squared distance, and reorders B accordingly.
+///
+/// Returns (B reordered to best match A, permutation indices into B)
 pub fn best_permutation(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> (Vec<Vector3<f64>>, Vec<usize>) {
-    // Since the matrix is square (bijection), the |a_i|^2 + |b_j|^2 terms
-    // of |a_i - b_j|^2 are constant over any assignment and can be dropped.
-    // Minimizing squared distance <=> maximizing dot product <=> minimizing -dot.
-    let cost: Vec<Vec<f64>> = a
-        .iter()
-        .map(|ai| b.iter().map(|bj| -ai.dot(bj)).collect())
-        .collect();
+    let cost = sq_dist_cost(a, b);
 
     let assignment = hungarian(&cost);
     let b_permuted: Vec<Vector3<f64>> = assignment.iter().map(|&j| b[j]).collect();
 
     (b_permuted, assignment)
+}
+
+fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
+    let mut result: HashMap<String, Vec<usize>> = HashMap::new();
+
+    for (i, label) in labels.iter().enumerate() {
+        result
+            .entry(label.clone())// Get the entry for the element
+            .or_default() // If element is not present, insert an empty Vec<>
+            .push(i); // Push the Vector3 to the first element.
+    }
+    result
+}
+
+/// Finds the best one-to-one matching between the subsets A and B by atom type. (equal length)
+/// that minimizes total squared distance, and reorders B accordingly.
+///
+/// Returns (A and B reordered to best match)
+pub fn best_permutation_multiple_atoms(
+    a: &[Vector3<f64>],
+    b: &[Vector3<f64>],
+    labels: &[String]) -> (Vec<Vector3<f64>>, Vec<Vector3<f64>>)
+{
+    debug_assert_eq!(labels.len(), b.len());
+    debug_assert_eq!(labels.len(), a.len());
+
+    let groups = split_by_atoms(labels);
+
+    let mut pairs: Vec<(Vector3<f64>, Vector3<f64>)> = Vec::new();
+
+    for (g, indices) in groups {
+        let a_subset: Vec<Vector3<f64>> = indices.iter().map(|&i| a[i]).collect();
+        let b_subset: Vec<Vector3<f64>> = indices.iter().map(|&i| b[i]).collect();
+
+        let (perm_b, _) = best_permutation(&a_subset, &b_subset);
+
+        pairs.extend(a_subset.into_iter().zip(perm_b));
+
+
+    }
+
+    debug_assert_eq!(pairs.len(), labels.len());
+
+    // Sort pairs by ascending order of z- y- x- values so output from hashmap is deterministic.
+
+    pairs.sort_by(
+        |(a1, _), (a2, _) | {
+            a1.z.total_cmp(&a2.z)
+                .then(a1.y.total_cmp(&a2.y))
+                .then(a1.x.total_cmp(&a2.x))
+        }
+    );
+
+
+    let (final_a, final_b): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
+    (final_a, final_b)
+}
+
+
+/// Returns the cost matrix for two given sets of points A and B.
+///
+/// Since the matrix is square (bijection), the |a_i|^2 + |b_j|^2 terms
+/// of |a_i - b_j|^2 are constant over any assignment and can be dropped.
+/// Minimizing squared distance <=> maximizing dot product <=> minimizing -dot.
+fn sq_dist_cost(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> Vec<Vec<f64>> {
+    let cost: Vec<Vec<f64>> = a
+        .iter()
+        .map(|ai| b.iter().map(|bj| -ai.dot(bj)).collect())
+        .collect();
+
+    cost
 }
