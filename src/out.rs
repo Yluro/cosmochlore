@@ -46,7 +46,7 @@ pub fn print_cshm_table(results: &[CShMResult], file: &str) {
     if min_s > 10.0 {println!("Only extremely distorted geometries were found for this shape. Make sure the .xyz file is correct.")}
 }
 
-pub fn write_cshm_csv (file_name: &String, results: &[CShMResult]) -> Result<(), std::io::Error> {
+pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_table.csv";
     let mut file = File::create(&out_name)?;
 
