@@ -1,4 +1,4 @@
-pub mod geometry;
+pub mod linalg;
 pub mod automorphism;
 pub mod permutations;
 pub mod bounds;

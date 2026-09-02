@@ -2,52 +2,6 @@
 use nalgebra::{Matrix3, Vector3};
 
 
-/// Puts the shape centroid in the origin of coordinates and calculate the A
-/// normalization factor for a cloud of points A²Σ|P_i|² = N
-/// 
-/// Mutates the input so its normalized and its centroid sits at the origin.
-/// Returns the 
-pub fn center_and_normalise(points: &mut [Vector3<f64>]) -> (Vector3<f64>, f64)  {
-    let n = points.len() as f64;
-    let mut centroid: Vector3<f64> = Vector3::new(0.0, 0.0, 0.0);
-
-    for point in points.iter() {
-        centroid[0] += point[0];
-        centroid[1] += point[1];
-        centroid[2] += point[2];
-    }
-
-    centroid[0] /= n;
-    centroid[1] /= n;
-    centroid[2] /= n;
-
-    for point in points.iter_mut() {
-        point[0] -= centroid[0];
-        point[1] -= centroid[1];
-        point[2] -= centroid[2];
-    }
-
-    let mut s2 = 0.0;
-    for point in points.iter_mut() {
-        s2 += point[0] * point[0] + point[1] * point[1] + point[2] * point[2]
-    }
-
-    // Normalization
-    // Σ A²·|P_i|² = N
-    // A = sqrt(N / Σ|P_i|²)
-
-    let scale_factor = (n / s2).sqrt();
-
-    for point in points.iter_mut() {
-        point[0] *= scale_factor;
-        point[1] *= scale_factor;
-        point[2] *= scale_factor;
-    }
-    (centroid, scale_factor)
-
-}
-
-
 /// Calculates the correlation matrix H of two given sets of points.
 /// Returns H = Sum (P^T x Q).
 pub fn correlation_matrix(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> Matrix3<f64> {
@@ -58,7 +12,6 @@ pub fn correlation_matrix(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) 
     }
     h
 }
-
 
 /// Finds the optimal rotation given a correlation matrix H using
 /// Kabsch's SVD algorithm.

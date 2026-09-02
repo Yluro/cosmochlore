@@ -1,6 +1,6 @@
-use nalgebra::Vector3;
-use crate::csom::center::*;
+use crate::geometry::{center_by_centroid, center_by_coordinate, center_by_first_point, normalise};
 use crate::xyz::Structure;
+use nalgebra::Vector3;
 
 pub struct CsomStructure {
     pub labels: Vec<String>,

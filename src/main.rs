@@ -8,7 +8,7 @@ mod csom;
 mod odis;
 mod coordinates;
 mod out;
-
+pub mod geometry;
 
 use crate::cli::{Cli, Command, CshmArgs, OdisArgs};
 use crate::out::{print_odis_table, print_cshm_table, welcome_msg, write_cshm_csv, write_cshm_reconstructed_xyz, print_crab};

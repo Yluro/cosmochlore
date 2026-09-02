@@ -7,7 +7,7 @@ use nalgebra::Vector3;
 ///
 /// The structure must contain a centre atom and exactly six ligand points.
 pub fn calculate_od(structure: &Structure) -> Result<OdisResult, ODError> {
-    const N: i32 = 7;
+    // const N: i32 = 7;
 
     // 0. Extract the centre and ligand coordinates from the structure parsed by xyz.rs
     let centre= structure.centre.as_ref().ok_or(ODError::NoCentre)?;
