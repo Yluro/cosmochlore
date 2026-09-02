@@ -149,7 +149,7 @@ pub fn best_permutation_multiple_atoms(
 
     let mut pairs: Vec<(Vector3<f64>, Vector3<f64>)> = Vec::new();
 
-    for (g, indices) in groups {
+    for (_, indices) in groups {
         let a_subset: Vec<Vector3<f64>> = indices.iter().map(|&i| a[i]).collect();
         let b_subset: Vec<Vector3<f64>> = indices.iter().map(|&i| b[i]).collect();
 
