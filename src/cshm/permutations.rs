@@ -11,7 +11,7 @@ use crate::geometry::center_and_normalise;
 /// Recursively finds the best permutation of a given reference shape so that its points align
 /// to the problem shape. Will prune non-optimal permutations using the partial sum of the singular
 /// values.
-pub fn find_best_permutation(
+pub(crate) fn find_best_permutation(
     reference: &mut [Vector3<f64>],
     problem: &mut [Vector3<f64>],
 ) -> (f64, Vec<usize>, Vec<Vector3<f64>>, Matrix3<f64>) {

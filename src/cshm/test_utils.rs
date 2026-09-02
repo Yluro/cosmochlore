@@ -30,7 +30,7 @@ pub(crate) fn naive_find_automorphism(points: &[Vector3<f64>]) -> Vec<Vec<usize>
 
 /// Finds the best permutation by iterating all over the n! permutation list
 /// but prunes by automorphisms using naive_find_automorphism.
-pub fn best_permutation_brute_force(
+pub(crate) fn best_permutation_brute_force(
     reference: &mut [Vector3<f64>],
     problem: &mut [Vector3<f64>],
 ) -> (f64, Vec<usize>) {
