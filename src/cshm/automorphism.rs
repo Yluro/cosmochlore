@@ -2,7 +2,7 @@
 
 use nalgebra::{Matrix3, Vector3};
 
-use crate::cshm::geometry::*;
+use crate::cshm::linalg::*;
 use crate::cshm::bounds::*;
 
 

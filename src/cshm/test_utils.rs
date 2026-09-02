@@ -1,10 +1,10 @@
 #![cfg(test)]
+use crate::cshm::linalg::*;
+use crate::geometry::center_and_normalise;
+use itertools::Itertools;
+use nalgebra::Vector3;
 /// BRUTE FORCE FUNCTIONS USED FOR SANITY-CHECKS AND TESTING. NOT USING THEM IN FINAL BUILDS.
 use std::time::Instant;
-use nalgebra::Vector3;
-use itertools::Itertools;
-use crate::cshm::geometry::*;
-
 
 /// Brute-force search all n! automorphisms of a Reference Shape. Expects centered and normalised coordinates to work.
 pub(crate) fn naive_find_automorphism(points: &[Vector3<f64>]) -> Vec<Vec<usize>> {

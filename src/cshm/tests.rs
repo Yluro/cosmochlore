@@ -1,9 +1,10 @@
 /// TESTS FOR CSHM MODULE
 use itertools::Itertools;
-use nalgebra::{Vector3, Matrix3};
+use nalgebra::{Matrix3, Vector3};
 use std::time::Instant;
 
-use crate::cshm::{geometry::*, automorphism::*, permutations::*, test_utils::*};
+use crate::cshm::{automorphism::*, linalg::*, permutations::*, test_utils::*};
+use crate::geometry::center_and_normalise;
 
 #[test]
 fn centre_and_normalises_correctly() {

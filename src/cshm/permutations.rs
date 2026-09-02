@@ -1,11 +1,12 @@
+use nalgebra::{Matrix3, Vector3};
 /// MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
 
 use std::collections::HashSet;
-use nalgebra::{Matrix3, Vector3};
 
-use crate::cshm::geometry::*;
-use crate::cshm::bounds::*;
 use crate::cshm::automorphism::*;
+use crate::cshm::bounds::*;
+use crate::cshm::linalg::*;
+use crate::geometry::center_and_normalise;
 
 /// Recursively finds the best permutation of a given reference shape so that its points align
 /// to the problem shape. Will prune non-optimal permutations using the partial sum of the singular
