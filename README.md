@@ -27,9 +27,11 @@ cargo build --release
 ````
 `cargo` will compile the source code taking into account your system's architecture. The easiest way to get `cargo` is to install the latest stable release of [Rust](https://rust-lang.org/) using [`rustup`](https://rustup.rs/).
 
-The compiled binary will be at `target/release/cosmochlore`.
+The compiled binary will be at `target/release/cosmochlore`. By cloning the current main branch of the repository you will get access to experimental versions of Cosmochlore.
 
-**Alternatively, precompiled binaries for the most common operating systems are available in this repository's [releases](https://github.com/Yluro/cosmochlore/releases).**
+### Precompiled binary downloads:
+
+Precompiled binaries for the most common operating systems are available in this repository's [releases](https://github.com/Yluro/cosmochlore/releases).
 
 _Note: It is strongly recommended to place the cosmochlore executable in the systems `PATH`._
 
