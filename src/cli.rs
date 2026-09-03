@@ -52,6 +52,10 @@ pub struct CshmArgs {
 pub struct  CsomArgs {
     /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
     pub name: String,
+    
+    /// Treat the structure as non-centered
+    #[arg(short = 'n', long = "nc")]
+    pub not_centered: bool,
 
     /// Space groups to measure in Schoenflies notation.
     #[arg(short = 'p', long = "pg", num_args = 1..)]
