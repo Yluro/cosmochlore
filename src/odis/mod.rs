@@ -1,6 +1,6 @@
-pub mod odis;
+pub mod calc;
 
-pub use odis::calculate_od;
+pub use calc::calculate_od;
 
 #[derive(Debug, Clone)]
 pub struct OdisResult {
@@ -13,3 +13,20 @@ pub struct OdisResult {
     pub tau: f64,
     pub mu: f64,
 }
+
+#[derive(Debug)]
+pub enum OdisError {
+    NoCentre,
+    IncorrectNumberOfPoints{ n: usize },
+}
+
+impl std::fmt::Display for OdisError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            OdisError::NoCentre => {write!(f, "structure has no central atom")}
+            OdisError::IncorrectNumberOfPoints{ n} => { write!(f, "wrong number of points, expected: 7, found: {}", n) },
+        }
+    }
+}
+
+impl std::error::Error for OdisError {}
