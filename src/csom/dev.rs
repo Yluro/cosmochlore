@@ -204,21 +204,21 @@ pub fn best_permutation_multiple_atoms(
 pub fn point_group_dev(points: &[Vector3<f64>], labels: &[String], pg: String) -> Result<f64, CsomError> {
     let map = get_pointgroup_map(&pg)
         .ok_or(CsomError::WrongSpaceGroup { pg })?;
-    
+
     let stripped = strip_all_labels(labels);
-    
+
     let mut devs: Vec<f64> = Vec::new();
 
-    for (key, sym_ops) in map.iter() {
+    for (_key, sym_ops) in map.iter() {
         for sym_op in sym_ops {
             let operated_structure: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
-            
+
             let (a, b) = best_permutation_multiple_atoms(points, &operated_structure, &stripped);
             let dev = sds_dev(&a, &b);
             devs.push(dev);
         }
     }
-    
+
     Ok(devs.iter().sum::<f64>() / devs.len() as f64) // Return the average of all of the deviations.
 }
 
