@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use nalgebra::{Vector3};
+use nalgebra::{Vector, Vector3};
+use crate::csom::CsomError;
+use crate::csom::io::{strip_all_labels, strip_label};
+use crate::data::pgs::get_pointgroup_map;
 
 /// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)
 ///
@@ -20,6 +23,20 @@ pub(crate) fn sds_dev(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> f
 
     100.0 * numerator / denominator
 }
+
+/// Returns the cost matrix for two given sets of points A and B.
+///
+/// Since the matrix is square (bijection), the |a_i|^2 + |b_j|^2 terms
+/// of |a_i - b_j|^2 are constant over any assignment and can be dropped.
+/// Minimizing squared distance <=> maximizing dot product <=> minimizing -dot.
+fn sq_dist_cost(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> Vec<Vec<f64>> {
+    let cost: Vec<Vec<f64>> = a
+        .iter()
+        .map(|ai| b.iter().map(|bj| -ai.dot(bj)).collect())
+        .collect();
+    cost
+}
+
 
 /// Solves the min-cost assignment problem via the Jonker-Volgenant / Kuhn-Munkres
 /// algorithm with dual potentials. O(n^3). Assumes a square cost matrix.
@@ -121,6 +138,10 @@ pub fn best_permutation(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> (Vec<Vector3<
     (b_permuted, assignment)
 }
 
+
+/// Splits an array of points A and labels L given the different labels of L
+///
+/// ["Cl", "Cl2", "O"] -> ["Cl", "Cl"], ["O"]
 fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
     let mut result: HashMap<String, Vec<usize>> = HashMap::new();
 
@@ -132,6 +153,8 @@ fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
     }
     result
 }
+
+
 
 /// Finds the best one-to-one matching between the subsets A and B by atom type. (equal length)
 /// that minimizes total squared distance, and reorders B accordingly.
@@ -178,16 +201,24 @@ pub fn best_permutation_multiple_atoms(
 }
 
 
-/// Returns the cost matrix for two given sets of points A and B.
-///
-/// Since the matrix is square (bijection), the |a_i|^2 + |b_j|^2 terms
-/// of |a_i - b_j|^2 are constant over any assignment and can be dropped.
-/// Minimizing squared distance <=> maximizing dot product <=> minimizing -dot.
-fn sq_dist_cost(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> Vec<Vec<f64>> {
-    let cost: Vec<Vec<f64>> = a
-        .iter()
-        .map(|ai| b.iter().map(|bj| -ai.dot(bj)).collect())
-        .collect();
+pub fn point_group_dev(points: &[Vector3<f64>], labels: &[String], pg: String) -> Result<f64, CsomError> {
+    let map = get_pointgroup_map(&pg)
+        .ok_or(CsomError::WrongSpaceGroup { pg })?;
+    
+    let stripped = strip_all_labels(labels);
+    
+    let mut devs: Vec<f64> = Vec::new();
 
-    cost
+    for (key, sym_ops) in map.iter() {
+        for sym_op in sym_ops {
+            let operated_structure: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
+            
+            let (a, b) = best_permutation_multiple_atoms(points, &operated_structure, &stripped);
+            let dev = sds_dev(&a, &b);
+            devs.push(dev);
+        }
+    }
+    
+    Ok(devs.iter().sum::<f64>() / devs.len() as f64) // Return the average of all of the deviations.
 }
+
