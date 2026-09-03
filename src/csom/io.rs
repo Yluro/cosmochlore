@@ -57,18 +57,26 @@ pub(crate) fn prepare_csom_structure(
     }, scaling_factor, original_centroid)
 }
 
-pub(crate) fn strip_label(label: &str ) -> &str{
+pub(crate) fn strip_label(label: &String) -> String {
     let end = label
-        .char_indices() // Iterate over elements of str
+        .char_indices()
         .nth(
-            if label.chars().nth(1).is_some_and(|c| c.is_ascii_lowercase()) {2}
-            else {1}
-            )
+            if label
+                .chars()
+                .nth(1)
+                .is_some_and(|c| c.is_ascii_lowercase())
+            {
+                2
+            } else {
+                1
+            },
+        )
         .map_or(label.len(), |(i, _)| i);
 
-    &label[..end]
+    label[..end].to_string()
 }
 
-
-
+pub(crate) fn strip_all_labels(labels: &[String]) -> Vec<String> {
+    labels.iter().map(|l| strip_label(l)).collect()
+}
 

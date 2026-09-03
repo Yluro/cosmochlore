@@ -1,4 +1,4 @@
-use crate::odis::OdisResult;
+use crate::odis::{OdisError, OdisResult};
 use crate::xyz::Structure;
 use itertools::Itertools;
 use nalgebra::Vector3;
@@ -6,11 +6,11 @@ use nalgebra::Vector3;
 /// Calculate the octahedral distortion (OD) of a structure.
 ///
 /// The structure must contain a centre atom and exactly six ligand points.
-pub fn calculate_od(structure: &Structure) -> Result<OdisResult, ODError> {
+pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
     // const N: i32 = 7;
 
     // 0. Extract the centre and ligand coordinates from the structure parsed by xyz.rs
-    let centre= structure.centre.as_ref().ok_or(ODError::NoCentre)?;
+    let centre= structure.centre.as_ref().ok_or(OdisError::NoCentre)?;
 
     let centre = Vector3::new(
         centre.coords[0],
@@ -23,7 +23,7 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, ODError> {
         .map(|ligand| Vector3::new(ligand.coords[0], ligand.coords[1], ligand.coords[2]))
         .collect();
 
-    if ligands.len() != 6 { return Err(ODError::IncorrectNumberOfPoints {n: ligands.len()}) };
+    if ligands.len() != 6 { return Err(OdisError::IncorrectNumberOfPoints {n: ligands.len()}) };
 
     // 1. Build an array of points and vectors of the octahedron for easy calculation later.
     let points = [
@@ -113,24 +113,6 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, ODError> {
         }
     )
 }
-
-#[derive(Debug)]
-pub enum ODError {
-    NoCentre,
-    IncorrectNumberOfPoints{ n: usize },
-}
-
-impl std::fmt::Display for ODError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            ODError::NoCentre => {write!(f, "structure has no central atom")}
-            ODError::IncorrectNumberOfPoints{ n} => { write!(f, "wrong number of points, expected: 7, found: {}", n) },
-        }
-    }
-}
-
-impl std::error::Error for ODError {}
-
 
 
 mod tests {

@@ -1,7 +1,8 @@
 use nalgebra::{Matrix3, Vector3};
 use crate::csom::dev::*;
 use crate::csom::io::strip_label;
-use crate::geometry::{center_by_centroid, normalise, rotation_matrix};
+use crate::data::pgs::{get_pointgroup, get_pointgroup_map};
+use crate::geometry::{center_by_centroid, center_by_first_point, normalise, rotation_matrix};
 
 
 fn octahedron() -> Vec<Vector3<f64>> {
@@ -43,13 +44,13 @@ fn mismatched_gives_nonzero_dev() {
     normalise(&mut shape);
 
     let labels = [
-        "Fe",
-        "N12",
-        "Cl00A",
-        "Cl3",
-        "ClA",
-        "OA2",
-        "N2'",
+        "Fe".to_string(),
+        "N12".to_string(),
+        "Cl00A".to_string(),
+        "Cl3".to_string(),
+        "ClA".to_string(),
+        "OA2".to_string(),
+        "N2'".to_string(),
     ];
 
     let stripped = labels.iter().map(|l| strip_label(l).to_string() ).collect::<Vec<String>>();
@@ -103,5 +104,30 @@ fn matches_expected_sds_after_permutation() {
     let (a, b) = best_permutation_multiple_atoms(&square, operated.as_slice(), &stripped);
     let sds = sds_dev(&a, &b);
     assert!((sds - 100.0).abs() < 1e-6, "expected sds = 100, got {sds}");
+}
+
+#[test]
+fn oc_for_oh_point_group() {
+
+    let mut shape: Vec<Vector3<f64>> = octahedron();
+    let labels = [
+        "Fe".to_string(),
+        "N".to_string(),
+        "N".to_string(),
+        "N".to_string(),
+        "N".to_string(),
+        "N".to_string(),
+        "N".to_string()
+    ];
+    let _ = center_by_first_point(&mut shape);
+    let _ = normalise(&mut shape);
+
+    let pg_name = "Oh".to_string();
+
+    let average_dev = point_group_dev(&shape, &labels, pg_name);
+    assert!(average_dev.is_ok());
+
+    let average_dev = average_dev.unwrap();
+    assert!(average_dev.abs() < 1e-3, "expected average_dev = 0.0, found {}",  average_dev);
 }
 
