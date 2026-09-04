@@ -121,7 +121,7 @@ fn oc_for_oh_point_group() {
     let _ = center_by_first_point(&mut shape);
     let _ = normalise(&mut shape);
 
-    let pg_name = "Oh".to_string();
+    let pg_name = "Oh";
 
     let average_dev = point_group_dev(&shape, &labels, pg_name);
     assert!(average_dev.is_ok());
