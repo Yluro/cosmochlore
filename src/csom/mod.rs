@@ -1,7 +1,7 @@
 use crate::cli::CsomArgs;
 use crate::xyz;
 use std::error::Error;
-use nalgebra::{Matrix3, Vector3};
+use nalgebra::{Matrix3};
 use crate::csom::io::prepare_csom_structure;
 use crate::csom::optimize::find_best_axis;
 use crate::geometry::rotation_matrix_from_vector;
