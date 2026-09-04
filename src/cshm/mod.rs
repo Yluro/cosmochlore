@@ -51,7 +51,7 @@ pub fn calc_cshm(reference_shapes: Vec<ReferenceShape>, problem_structure: &Stru
     results
 }
 
-pub fn cshm_main(args: &CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Parse input .xyz file and form structure.
     let structure = xyz::parse_xyz(&args.name, args.not_centered)?;
 

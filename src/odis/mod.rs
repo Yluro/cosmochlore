@@ -35,7 +35,7 @@ impl std::fmt::Display for OdisError {
 
 impl std::error::Error for OdisError {}
 
-pub fn main_odis(args: &OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Extract structure from .xyz
     let structure = xyz::parse_xyz(&args.name, false)?; // Structure should be centered by default.
