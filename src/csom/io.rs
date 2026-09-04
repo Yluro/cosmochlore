@@ -7,12 +7,13 @@ pub struct CsomStructure {
     pub points: Vec<Vector3<f64>>,
 }
 
+#[derive(Debug, Clone, clap::ValueEnum)]
 pub enum CenteringMode { Auto, First, Centroid, Manual }
 
 pub(crate) fn prepare_csom_structure(
     structure: Structure,
     centering_mode: CenteringMode,
-    centering_vector: Option<Vector3<f64>>) -> (CsomStructure, f64, Vector3<f64>)
+    centering_vector: Option<Vec<f64>>) -> (CsomStructure, f64, Vector3<f64>)
 {
     let mut labels: Vec<String> = Vec::new();
     let mut points: Vec<Vector3<f64>> = Vec::new();
@@ -44,7 +45,10 @@ pub(crate) fn prepare_csom_structure(
         CenteringMode::First => center_by_first_point(&mut points),
         CenteringMode::Centroid => center_by_centroid(&mut points),
         // No error handling here because data at this point should be trusted.
-        CenteringMode::Manual => center_by_coordinate(&mut points, centering_vector.unwrap()),
+        CenteringMode::Manual => {
+            //let centering_vector = centering_vector.unwrap();
+            let centering_vector = Vector3::from_column_slice(&centering_vector.unwrap());
+            center_by_coordinate(&mut points, centering_vector)},
     };
 
 
