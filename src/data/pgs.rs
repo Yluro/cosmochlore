@@ -7,6 +7,7 @@
 
 use nalgebra::Matrix3;
 use std::collections::HashMap;
+use std::f64::consts::FRAC_1_SQRT_2;
 
 /// Look up a point group's raw (operation name, matrix) list.
 pub fn get_pointgroup(name: &str) -> Option<&'static [(&'static str, [[f64; 3]; 3])]> {
@@ -498,10 +499,10 @@ pub static POINTGROUP_D8H: &[(&str, [[f64; 3]; 3])] = &[
     ("sigma_v", [[-0.0, -1.0, 0.0], [-1.0, -0.0, 0.0], [0.0, 0.0, 1.0]]),
     ("sigma_v", [[-1.0, -0.0, 0.0], [-0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
     ("sigma_v", [[-0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]),
-    ("sigma_d", [[0.7071, -0.7071, 0.0], [-0.7071, -0.7071, 0.0], [0.0, 0.0, 1.0]]),
-    ("sigma_d", [[-0.7071, -0.7071, 0.0], [-0.7071, 0.7071, 0.0], [0.0, 0.0, 1.0]]),
-    ("sigma_d", [[-0.7071, 0.7071, 0.0], [0.7071, 0.7071, 0.0], [0.0, 0.0, 1.0]]),
-    ("sigma_d", [[0.7071, 0.7071, 0.0], [0.7071, -0.7071, 0.0], [0.0, 0.0, 1.0]]),
+    ("sigma_d", [[FRAC_1_SQRT_2, -FRAC_1_SQRT_2, 0.0], [-FRAC_1_SQRT_2, -FRAC_1_SQRT_2, 0.0], [0.0, 0.0, 1.0]]),
+    ("sigma_d", [[-FRAC_1_SQRT_2, -FRAC_1_SQRT_2, 0.0], [-FRAC_1_SQRT_2, FRAC_1_SQRT_2, 0.0], [0.0, 0.0, 1.0]]),
+    ("sigma_d", [[-FRAC_1_SQRT_2, FRAC_1_SQRT_2, 0.0], [FRAC_1_SQRT_2, FRAC_1_SQRT_2, 0.0], [0.0, 0.0, 1.0]]),
+    ("sigma_d", [[FRAC_1_SQRT_2, FRAC_1_SQRT_2, 0.0], [FRAC_1_SQRT_2, -FRAC_1_SQRT_2, 0.0], [0.0, 0.0, 1.0]]),
 ];
 
 pub static POINTGROUP_E: &[(&str, [[f64; 3]; 3])] = &[
