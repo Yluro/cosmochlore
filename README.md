@@ -2,21 +2,20 @@
 
 **COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through three complementary analyses: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM) and OctaDist-style octahedral distortion parameters.
 
-It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust, alongside an original implementation of continuous symmetry operation measures and the octahedral distortion parameters popularized by [`OctaDist`](https://octadist.github.io/)<sup>3</sup>. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old Fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
+It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust, alongside an original implementation of continuous symmetry operation measures inspired by the works of T. J. Sørensen et al.<sup>3</sup> and the octahedral distortion parameters popularized by [`OctaDist`](https://octadist.github.io/)<sup>4</sup>. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old Fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
 
 The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accessory mineral to various other chromium-containing pyroxenes.
 
 ## Features
 
-Cosmochlore ships three subcommands, each covering a different way of measuring how distorted a structure is:
+Cosmochlore includes three measures covering a different ways of measuring how distorted a structure is:
 
 - **`cshm`** — computes the **Continuous Shape Measure (CShM)** between a structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 90 built-in reference polyhedra are included (see [Reference Polyhedra](#reference-polyhedra)), and user-defined ones can be supplied via YAML.
-- **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)).
+- **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)). A value of `CSoM = 0` means that the symmetry of a given point group is perfectly conserved in the structure.
 - **`odis`** — **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters (mean M–X distance, `zeta`, `delta`, `sigma`, `tau`, `mu`), combined with a CShM/CSoM breakdown against the most common octahedral distortions.
 
 ### Future Features
-I'm planning to support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future. More features are planned to be added:
- - Finishing the CShM toolkit: retrieval of the rotation matrix, generalized shape coordinate, _etc_.
+ - Include Cosmochlore into [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master).
  - Automatic point-group detection for `csom` (currently a target point group must always be given via `--pg`).
  - Face-twisting (theta) and volume octahedral distortion parameters for `odis`.
 
@@ -52,7 +51,7 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 |---|---|
 | `cshm` | Continuous shape measures calculation. |
 | `csom` | Continuous symmetry operation measures calculation. |
-| `odis` | Octahedral distortion analysis (bond-length, angular and centroid-displacement parameters à la `OctaDist`). |
+| `odis` | Octahedral distortion analysis. |
 | `help` | Print the help or the help of the given subcommand(s). |
 
 ### Arguments:
@@ -77,13 +76,13 @@ _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 | Flag | Value | Description |
 |---|---|---|
 | `-n` <br> `--nc` | None | Treat the structure as non-centered (see `cshm`'s `-n`). |
-| `-p` <br> `--pg` | `<POINT_GROUPS>...` | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`). Automatic point-group detection is not implemented yet — see [Supported point groups](#supported-point-groups) below for the full list. |
+| `-p` <br> `--pg` | `<POINT_GROUPS>...` | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list. |
 | `-c` <br> `--center` | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise. |
 | `-u` <br> `--vector` | `<X> <Y> <Z>` | Centering vector, required when `--center manual` is used. |
 | `-f` <br> `--full` | None | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation. |
 | `-t` <br> `--table` | None | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix). |
-| `-s` <br> `--samples` | `<N>` | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. |
-| `-i` <br> `--iterations` | `<N>` | Maximum number of Nelder-Mead iterations used to refine the symmetry axis. Defaults to `200`. |
+| `-s` <br> `--samples` | `<N>` | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. It is recomended not to change this parameter. |
+| `-i` <br> `--iterations` | `<N>` | Maximum number of iterations used to refine the symmetry axis. Defaults to `200`. |
 
 #### Optional arguments for `odis`:
 
@@ -372,11 +371,11 @@ symbol:
 Cosmochlore's YAML parser is somewhat flexible when specifying the key names. It accepts the following synonyms:
 | Key | Synonyms | Value type |
 | --- | --- | --- |
-| `symbol` | None | `string` |
-| `name` | None | `string` |
-| `symmetry` | `symm` | `string` |
-| `vertices` | `ligands` | `[float, float, float]` |
-| `centre` | `center`, `metal` | `[float, float, float]` |
+| `symbol` | None | `name` |
+| `name` | None | `name` |
+| `symmetry` | `symm` | `name` |
+| `vertices` | `ligands` | `[x, y, z]` |
+| `centre` | `center`, `metal` | `[x, y, z]` |
 
 **Example .yaml file:**
 ```yaml
@@ -408,7 +407,7 @@ fvCU-6:
   center:
     - [ 0.000000000000,  0.000000000000,  0.000000000000]
 ```
-As per the example, a single .yaml file can contain multiple reference polyhedra. 
+As per the example, a single `reference.yaml` file can contain multiple reference polyhedra. 
 Comments are also supported by the YAML parser, every line that starts with `#` will be ignored.
 
 ## Supported point groups
@@ -444,16 +443,19 @@ For a given target point group, `csom` searches for the orientation of the struc
 
 1. **Fibonacci-sphere seeding**: $$N$$ orientation vectors are spread evenly over the unit sphere and each is scored, giving a good starting point without an expensive exhaustive search.
 2. **Nelder-Mead refinement**: starting from the best seed, a derivative-free Nelder-Mead optimisation (up to `--iterations` steps) refines the rotation axis to (locally) minimize the deviation.
+3. The deviation is defined as the $$S_Q(\^OQ)$$ minimised over the best permutation of points using the Hungarian algorithm. This minimisation is atom-sensitive, that is, atoms are only matched with others of the same element.
 
-The reported deviation is the CShM  mismatch between the structure and every symmetry operation of the target point group at the best orientation found.
+The reported deviation is the CSoM between the structure and every symmetry operation of the target point group at the best orientation found.
 
 ## The `odis` algorithm
 
-`odis` reports the classic `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid). It then runs `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions, to give a fuller picture of how (and how much) the coordination sphere departs from an ideal octahedron.
+`odis` reports the classic `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid). 
+
+Aditionally, the odis module runs `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions, to give a fuller picture of the distortion of the coordination sphere.
 
 ## Acknowledgements
 
-This project reimplements the shape-measure methodology originally developed for the `SHAPE` program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch Rust implementation and is not affiliated with the original authors.
+This project reimplements the shape-measure methodology originally developed for the `SHAPE` program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch implementation and is not affiliated with the original authors.
 
 ## License
 
@@ -476,4 +478,6 @@ The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argm
 
 1. Cirera, J., Ruiz, E., & Alvarez, S. (2005). Continuous Shape Measures as a Stereochemical Tool in Organometallic Chemistry. _Organometallics_, 24(7), 1556–1562. https://doi.org/10.1021/om049150z
 2. Alvarez, S., Alemany, P., Casanova, D., Cirera, J., Llunell, M., & Avnir, D. (2005). Shape maps and polyhedral interconversion paths in transition metal chemistry. _Coordination Chemistry Reviews_, 249(17–18), 1693–1708. https://doi.org/10.1016/j.ccr.2005.03.031
-3. Ketkaew, R., Tantirungrotechai, Y., Harding, P., Chastanet, G., Guionneau, P., Marchivie, M., & Harding, D. J. (2021). OctaDist: a tool for calculating distortion parameters in spin crossover and coordination complexes. _Dalton Transactions_, 50(3), 1086–1096. https://doi.org/10.1039/d0dt03988h
+3. Nielsen, V. R. M., Le Guennic, B., & Sørensen, T. J. (2024). Evaluation of Point Group Symmetry in Lanthanide(III) Complexes: A New Implementation of a Continuous Symmetry Operation Measure with Autonomous Assignment of the Principal Axis. _The Journal of Physical Chemistry A_, 128(28), 5740–5751. https://doi.org/10.1021/acs.jpca.4c00801
+4. Ketkaew, R., Tantirungrotechai, Y., Harding, P., Chastanet, G., Guionneau, P., Marchivie, M., & Harding, D. J. (2021). OctaDist: a tool for calculating distortion parameters in spin crossover and coordination complexes. _Dalton Transactions_, 50(3), 1086–1096. https://doi.org/10.1039/d0dt03988h
+
