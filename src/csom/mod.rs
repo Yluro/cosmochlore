@@ -31,7 +31,7 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     // 1. Parse input .xyz file and form structure.
     let structure = xyz::parse_xyz(&args.name, !args.not_centered)?;
 
-    //
+    // TEST COMMIT.
 
 
 
