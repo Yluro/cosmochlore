@@ -115,6 +115,7 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
 }
 
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::xyz::parse_xyz;

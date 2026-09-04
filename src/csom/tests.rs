@@ -1,7 +1,6 @@
 use nalgebra::{Matrix3, Vector3};
 use crate::csom::dev::*;
 use crate::csom::io::strip_label;
-use crate::data::pgs::{get_pointgroup, get_pointgroup_map};
 use crate::geometry::{center_by_centroid, center_by_first_point, normalise, rotation_matrix};
 
 

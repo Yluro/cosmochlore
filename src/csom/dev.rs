@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use nalgebra::{Vector, Vector3};
+use nalgebra::Vector3;
 use crate::csom::CsomError;
-use crate::csom::io::{strip_all_labels, strip_label};
+use crate::csom::io::strip_all_labels;
 use crate::data::pgs::get_pointgroup_map;
 
 /// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)

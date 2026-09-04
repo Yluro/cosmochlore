@@ -127,7 +127,8 @@ pub fn rotation_matrix_from_vector(v: Vector3<f64>) -> Matrix3<f64> {
 }
 
 
-mod test {
+#[cfg(test)]
+mod tests {
     use std::f64::consts::PI;
     use super::*;
 

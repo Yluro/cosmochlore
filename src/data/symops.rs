@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 /// Look up the `operation` symmetry-operation set by name.
 pub fn get_operation(name: &str) -> Option<&'static [(&'static str, [[f64; 3]; 3])]> {
     match name {

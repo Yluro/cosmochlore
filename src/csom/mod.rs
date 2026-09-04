@@ -4,11 +4,13 @@ use std::error::Error;
 use nalgebra::{Matrix3};
 use crate::csom::io::prepare_csom_structure;
 use crate::csom::optimize::find_best_axis;
+use crate::data::pgs::POINTGROUP_NAMES;
 use crate::geometry::rotation_matrix_from_vector;
 use crate::out::print_csom_table;
 
 pub(crate) mod io;
 mod dev;
+#[cfg(test)]
 mod tests;
 mod optimize;
 
@@ -42,6 +44,8 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     }
 
     let point_groups = point_groups.unwrap();
+    for pg in &point_groups { if !POINTGROUP_NAMES.contains(&pg.as_str()) {return Err(CsomError::WrongSpaceGroup { pg: pg.clone() }.into())}}
+
     let samples = args.samples.unwrap_or(20);
 
     // 4. For each requested point group, search the Fibonacci sphere for the
