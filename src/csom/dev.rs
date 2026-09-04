@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use nalgebra::Vector3;
+use nalgebra::{Matrix3, Vector3};
 use crate::csom::CsomError;
 use crate::csom::io::strip_all_labels;
-use crate::data::pgs::get_pointgroup_map;
+use crate::data::pgs::{get_pointgroup, to_matrix3};
 
 /// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)
 ///
@@ -201,24 +201,30 @@ pub fn best_permutation_multiple_atoms(
 }
 
 
-pub fn point_group_dev(points: &[Vector3<f64>], labels: &[String], pg: String) -> Result<f64, CsomError> {
-    let map = get_pointgroup_map(&pg)
-        .ok_or(CsomError::WrongSpaceGroup { pg })?;
-
+/// Deviation of `points` from every individual symmetry operation of `pg` -- one entry per
+/// operation (not per class: e.g. Oh's "8C3" class yields 8 separate entries, each with its
+/// own matrix and deviation), in the point group's canonical (character-table) order.
+pub(crate) fn point_group_operation_deviations(
+    points: &[Vector3<f64>],
+    labels: &[String],
+    pg: &str,
+) -> Result<Vec<(&'static str, Matrix3<f64>, f64)>, CsomError> {
+    let ops = get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
     let stripped = strip_all_labels(labels);
 
-    let mut devs: Vec<f64> = Vec::new();
+    Ok(ops.iter().map(|(name, matrix)| {
+        let sym_op = to_matrix3(*matrix);
+        let operated_structure: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
 
-    for (_key, sym_ops) in map.iter() {
-        for sym_op in sym_ops {
-            let operated_structure: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
+        let (a, b) = best_permutation_multiple_atoms(points, &operated_structure, &stripped);
+        (*name, sym_op, sds_dev(&a, &b))
+    }).collect())
+}
 
-            let (a, b) = best_permutation_multiple_atoms(points, &operated_structure, &stripped);
-            let dev = sds_dev(&a, &b);
-            devs.push(dev);
-        }
-    }
+/// Average CSM deviation of `points` from every symmetry operation of point group `pg`.
+pub fn point_group_dev(points: &[Vector3<f64>], labels: &[String], pg: &str) -> Result<f64, CsomError> {
+    let devs = point_group_operation_deviations(points, labels, pg)?;
 
-    Ok(devs.iter().sum::<f64>() / devs.len() as f64) // Return the average of all of the deviations.
+    Ok(devs.iter().map(|(_, _, dev)| dev).sum::<f64>() / devs.len() as f64)
 }
 
