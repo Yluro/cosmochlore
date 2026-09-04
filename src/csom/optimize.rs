@@ -51,7 +51,7 @@ impl CostFunction for OrientationProblem<'_> {
 
     fn cost(&self, v: &Self::Param) -> Result<Self::Output, Error> {
         let mut deviation = |rotated: &[Vector3<f64>]| {
-            point_group_dev(rotated, &self.structure.labels, self.pg_name.to_string())
+            point_group_dev(rotated, &self.structure.labels, self.pg_name)
                 .expect("point group name was validated before optimisation started")
         };
         Ok(orientation_cost(v, &self.structure.points, &mut deviation))
