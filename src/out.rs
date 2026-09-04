@@ -1,5 +1,6 @@
 use crate::cshm::CShMResult;
 use crate::odis::OdisResult;
+use crate::csom::CsomResult;
 use std::fs::File;
 use std::io::Write;
 
@@ -121,4 +122,15 @@ pub fn print_odis_table(result: &OdisResult, file: &str) {
     println!("{:<16}{:>12.2}  {:<12}", " Tau", result.tau, "deg");
     println!("{:<16}{:>12.2}  {:<12}", " Mu", result.mu, "Ang");
     println!("{}", "=".repeat(34));
+}
+
+pub fn print_csom_table(results: &[CsomResult], file: &str) {
+    println!("\nInput file: {}", file);
+    println!("{}", "=".repeat(24));
+    println!(" {:<12} {:<10}", "Point group", "Deviation");
+    println!("{}", "-".repeat(24));
+    for result in results {
+        println!(" {:<12} {:<10.3}", result.point_group, result.deviation);
+    }
+    println!("{}", "-".repeat(24));
 }
