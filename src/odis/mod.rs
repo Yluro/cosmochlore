@@ -2,7 +2,9 @@ pub mod calc;
 
 use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
-use crate::out::{print_cshm_table, print_odis_table, write_cshm_csv};
+use crate::csom::io::CenteringMode;
+use crate::csom::calc_csom;
+use crate::out::{print_cshm_table, print_csom_table, print_odis_table, write_cshm_csv};
 use crate::{shapes, xyz};
 pub use calc::calculate_od;
 
@@ -58,8 +60,19 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
     print_cshm_table(&cshm_results, &args.name);
     write_cshm_csv(&cshm_results, &args.name)?;
 
-    // 5. Calculate csom against Oh, D4h, D3h
+    // 5. Calculate csom against relevant Oh and relevant octahedral distortions.
+    let csom_point_groups: Vec<String> = [
+        "Oh",  // Ideal octahedron.
+        "D4h", // Tetragonal distortion (axial elongation/compression, e.g. Jahn-Teller).
+        "D3d", // Trigonal distortion (trigonal antiprismatic twist).
+        "D2h", // Rhombic distortion.
+        "C4v", // One ligand distinct from the other five (square-pyramidal-like).
+        "C3v", // Facial substitution pattern (fac-MA3B3).
+        "C2v", // cis-disubstitution pattern (cis-MA4B2).
+    ].iter().map(|pg| pg.to_string()).collect();
 
+    let csom_results = calc_csom(structure, CenteringMode::First, None, &csom_point_groups, 20)?;
+    print_csom_table(&csom_results, &args.name);
 
 
     Ok(())

@@ -1,8 +1,9 @@
 use crate::cli::CsomArgs;
 use crate::xyz;
+use crate::xyz::Structure;
 use std::error::Error;
 use nalgebra::{Matrix3};
-use crate::csom::io::prepare_csom_structure;
+use crate::csom::io::{prepare_csom_structure, CenteringMode};
 use crate::csom::optimize::find_best_axis;
 use crate::data::pgs::POINTGROUP_NAMES;
 use crate::geometry::rotation_matrix_from_vector;
@@ -29,14 +30,9 @@ pub struct CsomResult {
 pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
 
     // 1. Parse input .xyz file and form structure.
-    let structure = xyz::parse_xyz(&args.name, !args.not_centered)?;
+    let structure = xyz::parse_xyz(&args.name, args.not_centered)?;
 
-    // 2. Prepare the structure depending on centering mode.
-    //    (prepare_csom_structure converts --vector's raw f64s into a Vector3 itself.)
-    let (csom_structure, _scale, _original_centroid) =
-        prepare_csom_structure(structure, args.centering_mode, args.vector);
-
-    // 3. Fetch the desired point groups.
+    // 2. Fetch the desired point groups.
     let point_groups = args.point_groups;
 
     if point_groups.is_none() {
@@ -44,28 +40,45 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     }
 
     let point_groups = point_groups.unwrap();
-    for pg in &point_groups { if !POINTGROUP_NAMES.contains(&pg.as_str()) {return Err(CsomError::WrongSpaceGroup { pg: pg.clone() }.into())}}
-
     let samples = args.samples.unwrap_or(20);
 
-    // 4. For each requested point group, search the Fibonacci sphere for the
-    //    best-fitting symmetry axis and record its deviation + rotation.
-    let mut results: Vec<CsomResult> = Vec::new();
-    for point_group in point_groups {
-        let (rotation_vector, deviation) = find_best_axis(samples, &csom_structure, &point_group)?;
+    // 3. Prepare the structure and measure it against each point group.
+    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, samples)?;
 
-        let result = CsomResult {
-            point_group,
-            deviation,
-            rotation: rotation_matrix_from_vector(rotation_vector),
-        };
-
-        // 5. Add the result of the point group to the report.
-        results.push(result);
-
-    }
     print_csom_table(&results, &args.name);
     Ok(())
+}
+
+/// Prepares `structure` for CSOM analysis and, for each of `point_groups`, searches the
+/// Fibonacci sphere for the best-fitting symmetry axis, returning one [`CsomResult`] per
+/// point group in the same order they were requested.
+pub fn calc_csom(
+    structure: Structure,
+    centering_mode: CenteringMode,
+    centering_vector: Option<Vec<f64>>,
+    point_groups: &[String],
+    samples: usize,
+) -> Result<Vec<CsomResult>, CsomError> {
+
+    for pg in point_groups { if !POINTGROUP_NAMES.contains(&pg.as_str()) {return Err(CsomError::WrongSpaceGroup { pg: pg.clone() })}}
+
+    // Prepare the structure depending on centering mode.
+    // (prepare_csom_structure converts --vector's raw f64s into a Vector3 itself.)
+    let (csom_structure, _scale, _original_centroid) =
+        prepare_csom_structure(structure, centering_mode, centering_vector);
+
+    let mut results: Vec<CsomResult> = Vec::new();
+    for point_group in point_groups {
+        let (rotation_vector, deviation) = find_best_axis(samples, &csom_structure, point_group)?;
+
+        results.push(CsomResult {
+            point_group: point_group.clone(),
+            deviation,
+            rotation: rotation_matrix_from_vector(rotation_vector),
+        });
+    }
+
+    Ok(results)
 }
 
 
