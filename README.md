@@ -1,20 +1,24 @@
 # Cosmochlore
 
-**COSM**ochlo**R**e (**Co**ntinuous **S**hape **M**easurements in **R**ust) is a fast, pure-Rust implementation of the Continuous Shape Measures (CShM) Calculation, used to quantify how closely a set of points matches an idealized reference polyhedron.
+**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through three complementary analyses: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM) and OctaDist-style octahedral distortion parameters.
 
-It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old Fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
+It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust, alongside an original implementation of continuous symmetry operation measures and the octahedral distortion parameters popularized by [`OctaDist`](https://octadist.github.io/)<sup>3</sup>. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. One of the advantages of Rust over the old Fortran code is that Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong. 
 
 The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accessory mineral to various other chromium-containing pyroxenes.
 
-## What it does
+## Features
 
-Given a molecular structure (or any set of 3-dimensional points), Cosmochlore computes the **Continuous Shape Measure (CShM)** between the structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry.
+Cosmochlore ships three subcommands, each covering a different way of measuring how distorted a structure is:
+
+- **`cshm`** — computes the **Continuous Shape Measure (CShM)** between a structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 90 built-in reference polyhedra are included (see [Reference Polyhedra](#reference-polyhedra)), and user-defined ones can be supplied via YAML.
+- **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)).
+- **`odis`** — **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters (mean M–X distance, `zeta`, `delta`, `sigma`, `tau`, `mu`), combined with a CShM/CSoM breakdown against the most common octahedral distortions.
 
 ### Future Features
 I'm planning to support Cosmochlore in [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master) in the very near future. More features are planned to be added:
  - Finishing the CShM toolkit: retrieval of the rotation matrix, generalized shape coordinate, _etc_.
- - Might do some octahedral distortion parameters.
- - Might reimplement the continuous symmetry/symmetry operation measures.
+ - Automatic point-group detection for `csom` (currently a target point group must always be given via `--pg`).
+ - Face-twisting (theta) and volume octahedral distortion parameters for `odis`.
 
 _[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
 
@@ -47,7 +51,8 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 | Command | Description |
 |---|---|
 | `cshm` | Continuous shape measures calculation. |
-| `csom` | Continuous symmetry operation measures calculation. _Unimplemented as of v0.2.0._ |
+| `csom` | Continuous symmetry operation measures calculation. |
+| `odis` | Octahedral distortion analysis (bond-length, angular and centroid-displacement parameters à la `OctaDist`). |
 | `help` | Print the help or the help of the given subcommand(s). |
 
 ### Arguments:
@@ -57,15 +62,39 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 
 #### Optional arguments for `cshm`:
 
-| Flag | Value | Description |
-|---|---|---|
-| `-n` <br> `--nc` | None | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.  |
-|`-s` <br> `--sh` | `<SHAPES>...` | Restrict the comparison to specific built-in reference shapes by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
-| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.
-|`-t` <br> `--table`| None | Write a `name_table.csv` file containing the output of the calculation. |
-|`-i` <br> `--ideal`| None | Write a `name_ideal.xyz` file containing the reconstructed idealised structures for **all** the selected reference shapes. |
+| Flag | Value | Description                                                                                                                                                                                                                              |
+|---|---|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-n` <br> `--nc` | None | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.       |
+|`-s` <br> `--sh` | `<SHAPES>...` | Restrict the comparison to specific [built-in reference shapes](#reference-polyhedra) by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
+| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.                                                                               
+|`-t` <br> `--table`| None | Write a `name_cshm_table.csv` file containing the output of the calculation.                                                                                                                                                              |
+|`-i` <br> `--ideal`| None | Write a `name_ideal.xyz` file containing the reconstructed idealised structures for **all** the selected reference shapes.                                                                                                               |
 
 _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
+
+#### Optional arguments for `csom`:
+
+| Flag | Value | Description |
+|---|---|---|
+| `-n` <br> `--nc` | None | Treat the structure as non-centered (see `cshm`'s `-n`). |
+| `-p` <br> `--pg` | `<POINT_GROUPS>...` | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`). Automatic point-group detection is not implemented yet — see [Supported point groups](#supported-point-groups) below for the full list. |
+| `-c` <br> `--center` | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise. |
+| `-u` <br> `--vector` | `<X> <Y> <Z>` | Centering vector, required when `--center manual` is used. |
+| `-f` <br> `--full` | None | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation. |
+| `-t` <br> `--table` | None | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix). |
+| `-s` <br> `--samples` | `<N>` | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. |
+| `-i` <br> `--iterations` | `<N>` | Maximum number of Nelder-Mead iterations used to refine the symmetry axis. Defaults to `200`. |
+
+#### Optional arguments for `odis`:
+
+| Flag | Value | Description |
+|---|---|---|
+| `-f` <br> `--full` | None | Full analysis of the octahedron, including CShM (against `OC-6`/`TPR-6`) and CSoM (against the common octahedral distortion point groups) values. |
+| `-t` <br> `--table` | None | Write the output table to a `.csv` file. |
+
+`odis` requires a centered structure with exactly one central atom and six ligands (7 atoms total in the `.xyz` file).
+
+_Note: in the current release `odis` always runs the full CShM/CSoM breakdown and writes the CShM `.csv` table; `-f`/`-t` are reserved for finer-grained control in a future release._
 
 ### Example usage of `cshm`
 Given the following `FeCl6.xyz` file:
@@ -97,7 +126,7 @@ Will output:
  |_|\_\____/|_____/|_|  |_|\____/ \_____|_|  |_|______\____/|_|  \_\
 
 Continuous Shape Measurements in Rust.
-Version: 0.2.0
+Version: 0.3.0
 Authors: José Serrano Guarinos <jose.serranog@ub.edu>
 Repository: https://github.com/Yluro/cosmochlore
 ============================================================
@@ -110,11 +139,11 @@ Repository: https://github.com/Yluro/cosmochlore
  JPPY-6   Johnson pentagonal pyramid J2   C5v        27.034 
  ebcT-6   Edge-bicapped tetrahedron       D2d        14.335 
 ------------------------------------------------------------
-Writing output table to .\tests\FeHS_table.csv...
+Writing output table to .\tests\FeHS_cshm_table.csv...
 Writing idealised polyhedra coordinates to table to .\tests\FeHS_ideal.xyz...
 Program finished in 18.5727ms
 ````
-The output of the calculation is saved in the file `FeHS_table.csv` by calling the `-t` or `--table` flag.
+The output of the calculation is saved in the file `FeHS_cshm_table.csv` by calling the `-t` or `--table` flag.
 
 ````csv
 Symbol,Name,Symmetry,CShM
@@ -131,6 +160,76 @@ The `FeHS_ideal.xyz` file was produced by calling the `-i` or `--ideal` flag. Th
 <img width="411" height="355" alt="ideal reference octahedron superimposed with the problem shape" src="https://github.com/user-attachments/assets/490458e7-a4a5-4c0b-b82d-3444ace939e6" />
 
 _Note that ebcT-6 is a non-standard reference shape included by passing the `--ref` flag. See more below._
+
+### Example usage of `csom`
+Running the same `FeHS.xyz` structure against the ideal octahedron and its most common tetragonal distortion:
+
+````cmd
+cosmochlore csom FeHS.xyz -p Oh D4h -t
+````
+
+Will output:
+
+````output
+Input file: FeHS.xyz
+========================
+ Point group  Deviation 
+------------------------
+ Oh           5.380     
+ D4h          5.611     
+------------------------
+Writing output table to FeHS_csom_table.csv...
+Program finished in 3.031317s
+````
+
+The `-t` flag writes the point group / deviation / rotation matrix summary to `FeHS_csom_table.csv`. Passing `-f`/`--full` additionally writes, for every point group requested, a `FeHS_<PG>_details.csv` file breaking the deviation down by individual symmetry operation (e.g. `FeHS_Oh_details.csv` lists every one of `Oh`'s 48 operations separately, so a class like `8C3` produces 8 rows, each with its own matrix and deviation).
+
+### Example usage of `odis`
+`odis` computes `OctaDist`-style octahedral distortion parameters and, since a `full` analysis is always run, also reports the CShM against the ideal octahedron/trigonal prism and the CSoM against the most common octahedral distortion point groups (`Oh`, `D4h`, `D3d`, `D2h`, `C4v`, `C3v`, `C2v`):
+
+````cmd
+cosmochlore odis FeHS.xyz -t
+````
+
+Will output:
+
+````output
+Input file: FeHS.xyz
+==================================
+ Octahedral distortion parameters
+----------------------------------
+ Mean d(M-X)          2.1623  Ang         
+ Zeta                 0.3622  Ang         
+ Delta              0.001007              
+ Sigma                 82.29  deg         
+----------------------------------
+ Tau                   54.42  deg         
+ Mu                     0.17  Ang         
+==================================
+
+Input file: FeHS.xyz
+============================================
+ Symbol  Shape            Symmetry   CShM   
+--------------------------------------------
+ OC-6    Octahedron       Oh         2.089  
+ TPR-6   Trigonal prism   D3h        11.079 
+--------------------------------------------
+Writing output table to FeHS_cshm_table.csv...
+
+Input file: FeHS.xyz
+========================
+ Point group  Deviation 
+------------------------
+ Oh           5.380     
+ D4h          5.611     
+ D3d          5.691     
+ D2h          5.948     
+ C4v          4.947     
+ C3v          5.335     
+ C2v          2.420     
+------------------------
+Program finished in 5.1892944s
+````
 
 ## Reference Polyhedra
 The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera _et at._<sup>2</sup>
@@ -312,6 +411,18 @@ fvCU-6:
 As per the example, a single .yaml file can contain multiple reference polyhedra. 
 Comments are also supported by the YAML parser, every line that starts with `#` will be ignored.
 
+## Supported point groups
+
+The `csom -p/--pg` flag accepts any of the following point groups, given in Schoenflies notation:
+
+```
+C2   C2h  C2v  C3   C3h  C3v  C4   C4h  C4v  C5   C5h  C5v
+C6   C6h  C6v  C7   C8   Ci   Cs   D2   D2d  D2h  D3   D3d
+D3h  D4   D4d  D4h  D5   D5d  D5h  D6   D6h  D7h  D8h  E
+I    Ih   O    Oh   S10  S4   S6   S8   T    Td   Th
+```
+
+Point-group names are case-sensitive and must match one of the symbols above exactly (_e.g._ `Oh`, not `oh` or `OH`).
 ## The `cshm` algorithm
 
 The Continuous Shape Measure of a problem shape $$Q$$ relative to a reference shape $$P$$ is defined as:
@@ -324,8 +435,21 @@ This minimization is carried out over all rotations, translations and scalings *
 
 The rotation/translation/scaling part is solved via an SVD-based Kabsch-style alignment. The combinatorial problem: finding the best point pair matches between $$Q$$ and $$P$$ is done by:
 
-- **Automorphism-aware deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (automorphisms of the reference shape's point group) are never evaluated twice.
+- **Automorphism deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (automorphisms of the reference shape's point group) are never evaluated twice.
 - **Branch-and-bound pruning**: partial assignments are bounded using the subadditivity property of the singular-value sum, allowing branches that provably cannot beat the current best score to be discarded early.
+
+## The `csom` algorithm
+
+For a given target point group, `csom` searches for the orientation of the structure that minimizes its deviation from that point group's ideal symmetry operations. This is done in two stages:
+
+1. **Fibonacci-sphere seeding**: $$N$$ orientation vectors are spread evenly over the unit sphere and each is scored, giving a good starting point without an expensive exhaustive search.
+2. **Nelder-Mead refinement**: starting from the best seed, a derivative-free Nelder-Mead optimisation (up to `--iterations` steps) refines the rotation axis to (locally) minimize the deviation.
+
+The reported deviation is the CShM  mismatch between the structure and every symmetry operation of the target point group at the best orientation found.
+
+## The `odis` algorithm
+
+`odis` reports the classic `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid). It then runs `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions, to give a fuller picture of how (and how much) the coordination sphere departs from an ideal octahedron.
 
 ## Acknowledgements
 
@@ -339,9 +463,13 @@ Parts of the `cshm` module are based on `cosymlib` (`shp.f90`), Copyright (c) 20
 
 Parts of the `odis` module is are based on the [`OctaDist`](https://octadist.github.io/)<sup>3</sup> algorithm, Copyright (c) 2019-2026  Rangsiman Ketkaew et al., licensed under the GNU General Public Licence v3.0 (GPL-3.0).
 
-The program relies on the [`clap`](https://crates.io/crates/clap) crate for argument parsing. Dual-licensed under Apache 2.0 or MIT licences.
+The program relies on the [`clap`](https://crates.io/crates/clap) crate for argument parsing. Dual-licensed under the Apache 2.0 or MIT licences.
 
 The program relies on the [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) crate for the fast linear algebra computations. Licensed under the Apache 2.0 licence.
+
+The program relies on the [`itertools`](https://crates.io/crates/itertools) crate for combinatorial iteration (used, among other things, to enumerate the vertex-pair angles in `odis`). Dual-licensed under the Apache 2.0 or MIT licences.
+
+The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argmin-math`](https://crates.io/crates/argmin-math) crates for the Nelder-Mead optimisation of the symmetry axis in `csom`. Dual-licensed under the Apache 2.0 or MIT licences.
 
 
 ## References

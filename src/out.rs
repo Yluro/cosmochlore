@@ -58,7 +58,7 @@ pub fn print_cshm_table(results: &[CShMResult], file: &str) {
 }
 
 pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(), std::io::Error> {
-    let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "cshm_table.csv";
+    let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_cshm_table.csv";
     let mut file = File::create(&out_name)?;
 
     println!("Writing output table to {}...", out_name);
