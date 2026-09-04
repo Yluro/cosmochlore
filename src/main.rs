@@ -23,9 +23,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     let run = match args.command {
-        Command::Cshm(cshm_args) => { cshm::cshm_main(&cshm_args) },
-        Command::Csom(_csom_args) => { unimplemented!() },
-        Command::Odis(odis_args) => { odis::main_odis(&odis_args) },
+        Command::Cshm(cshm_args) => { cshm::cshm_main(cshm_args) },
+        Command::Csom(csom_args) => { csom::csom_main(csom_args) },
+        Command::Odis(odis_args) => { odis::main_odis(odis_args) },
     };
 
     if let Err(err) = run {
