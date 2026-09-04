@@ -71,7 +71,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
         "C2v", // cis-disubstitution pattern (cis-MA4B2).
     ].iter().map(|pg| pg.to_string()).collect();
 
-    let csom_results = calc_csom(structure, CenteringMode::First, None, &csom_point_groups, 20)?;
+    let csom_results = calc_csom(structure, CenteringMode::First, None, &csom_point_groups, 20, false)?;
     print_csom_table(&csom_results, &args.name);
 
 
