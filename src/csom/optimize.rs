@@ -99,7 +99,7 @@ fn optimise_axis(
 /// Samples `n` candidate axes on a Fibonacci sphere and refines each one with
 /// [`optimise_axis`], returning the best-fitting rotation vector (and its deviation)
 /// found across all starting points.
-fn find_best_axis(
+pub(crate) fn find_best_axis(
     n: usize,
     structure: &CsomStructure,
     pg_name: &str,
