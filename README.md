@@ -187,7 +187,7 @@ The `-t` flag writes the point group / deviation / rotation matrix summary to `F
 `odis` computes `OctaDist`-style octahedral distortion parameters and, since a `full` analysis is always run, also reports the CShM against the ideal octahedron/trigonal prism and the CSoM against the most common octahedral distortion point groups (`Oh`, `D4h`, `D3d`, `D2h`, `C4v`, `C3v`, `C2v`):
 
 ````cmd
-cosmochlore odis FeHS.xyz -t
+cosmochlore odis FeHS.xyz -t --full
 ````
 
 Will output:
