@@ -1,8 +1,18 @@
 use crate::cshm::CShMResult;
 use crate::odis::OdisResult;
 use crate::csom::CsomResult;
+use nalgebra::Matrix3;
 use std::fs::File;
 use std::io::Write;
+
+fn format_matrix3(m: &Matrix3<f64>) -> String {
+    format!(
+        "[{:.4} {:.4} {:.4}; {:.4} {:.4} {:.4}; {:.4} {:.4} {:.4}]",
+        m[(0, 0)], m[(0, 1)], m[(0, 2)],
+        m[(1, 0)], m[(1, 1)], m[(1, 2)],
+        m[(2, 0)], m[(2, 1)], m[(2, 2)],
+    )
+}
 
 
 pub fn welcome_msg() {
@@ -48,7 +58,7 @@ pub fn print_cshm_table(results: &[CShMResult], file: &str) {
 }
 
 pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(), std::io::Error> {
-    let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_table.csv";
+    let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "cshm_table.csv";
     let mut file = File::create(&out_name)?;
 
     println!("Writing output table to {}...", out_name);
@@ -133,4 +143,41 @@ pub fn print_csom_table(results: &[CsomResult], file: &str) {
         println!(" {:<12} {:<10.3}", result.point_group, result.deviation);
     }
     println!("{}", "-".repeat(24));
+}
+
+/// Writes the csom summary table (point group, deviation, refined rotation matrix) to a
+/// single .csv file, one row per point group -- the csom equivalent of [`write_cshm_csv`].
+pub fn write_csom_csv(results: &[CsomResult], file_name: &str) -> Result<(), std::io::Error> {
+    let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_csom_table.csv";
+    let mut file = File::create(&out_name)?;
+
+    println!("Writing output table to {}...", out_name);
+
+    writeln!(file, "PointGroup,Dev,Rotation Matrix")?;
+    for r in results {
+        writeln!(file, "{},{:.3},{}", r.point_group, r.deviation, format_matrix3(&r.rotation))?;
+    }
+
+    Ok(())
+}
+
+/// Writes one .csv file per point group in `results` (named `<file>_<point group>_details.csv`),
+/// listing every individual symmetry operation's name, matrix and deviation -- not aggregated
+/// by class, so e.g. Oh's "8C3" class produces 8 separate rows, each with its own matrix.
+pub fn write_csom_details_csv(results: &[CsomResult], file_name: &str) -> Result<(), std::io::Error> {
+    let stem = file_name.strip_suffix(".xyz").unwrap_or(file_name);
+
+    for result in results {
+        let out_name = format!("{}_{}_details.csv", stem, result.point_group);
+        let mut file = File::create(&out_name)?;
+
+        println!("Writing operation details to {}...", out_name);
+
+        writeln!(file, "name,op_matrix,dev")?;
+        for (name, matrix, dev) in &result.operations {
+            writeln!(file, "{},{},{:.3}", name, format_matrix3(matrix), dev)?;
+        }
+    }
+
+    Ok(())
 }
