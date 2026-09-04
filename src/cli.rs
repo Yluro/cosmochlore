@@ -72,9 +72,18 @@ pub struct  CsomArgs {
     #[arg(short = 'u', long = "vector", num_args = 3, requires_if("manual", "centering_mode"))]
     pub vector: Option<Vec<f64>>,
 
-    /// Creates a full report for each point group analysed.
+    /// Creates a full report or per-operation details for each point group analysed.
     #[arg(short = 'f', long = "full")]
     pub full: bool,
+
+    /// Write per-operation deviation details (name, matrix, deviation) to a .csv file for
+    /// each point group analysed.
+    #[arg(short = 'd', long = "details")]
+    pub details: bool,
+
+    /// Write the output table to a .csv file.
+    #[arg(short = 't', long = "table")]
+    pub table: bool,
 
     /// Number of samples taken f the Fibonacci sphere.
     #[arg(short = 's', long = "samples", default_value = "20")]
