@@ -86,7 +86,7 @@ pub struct  CsomArgs {
     pub samples: Option<usize>,
 
     /// Maximum number of iterations for Nelder-Mead optimization of the z-axis.
-    #[arg(short = 'i', long = "iterations", default_value = "200")]
+    #[arg(short = 'i', long = "iterations", default_value = "1000")]
     pub iterations: Option<usize>,
     
 }

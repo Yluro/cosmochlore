@@ -44,9 +44,10 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
 
     let point_groups = point_groups.unwrap();
     let samples = args.samples.unwrap_or(20);
+    let iterations = args.iterations.unwrap_or(1000);
 
     // 3. Prepare the structure and measure it against each point group.
-    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, samples, args.full)?;
+    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, samples, iterations, args.full)?;
 
     print_csom_table(&results, &args.name);
 
@@ -77,6 +78,7 @@ pub fn calc_csom(
     centering_vector: Option<Vec<f64>>,
     point_groups: &[String],
     samples: usize,
+    iterations: usize,
     with_operations: bool,
 ) -> Result<Vec<CsomResult>, CsomError> {
 
@@ -89,7 +91,7 @@ pub fn calc_csom(
 
     let mut results: Vec<CsomResult> = Vec::new();
     for point_group in point_groups {
-        let (rotation_vector, deviation) = find_best_axis(samples, &csom_structure, point_group)?;
+        let (rotation_vector, deviation) = find_best_axis(samples, &csom_structure, point_group, iterations)?;
         let rotation = rotation_matrix_from_vector(rotation_vector);
 
         let operations = if with_operations {
