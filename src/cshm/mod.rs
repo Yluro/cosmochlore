@@ -77,8 +77,8 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
             ref_shapes.push(shape);
         }
     }
-    // 5. Compute the CShM for each reference shape against the selected problem structures.
 
+    // 5. Compute the CShM for each reference shape against the selected problem structures.
     let has_centre = !args.not_centered;
     let results = calc_cshm(ref_shapes, &structure, has_centre);
 
@@ -89,7 +89,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
     // 7. If --table is passed
     if args.table { write_cshm_csv(&results, &args.name)?; }
 
-    // If --ideal is passed
+    // 8. If --ideal is passed
     if args.ideal {
         let mut labels: Vec<String> = Vec::new();
         if !args.not_centered {
