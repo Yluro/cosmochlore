@@ -57,6 +57,8 @@ pub fn print_cshm_table(results: &[CShMResult], file: &str) {
     if min_s > 10.0 {println!("Only extremely distorted geometries were found for this shape. Make sure the .xyz file is correct.")}
 }
 
+/// Writes the cshm results table (symbol, name, symmetry, s-value)
+/// to a `<file>_cshm_table.csv` file.
 pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_cshm_table.csv";
     let mut file = File::create(&out_name)?;
@@ -72,6 +74,8 @@ pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(),
     Ok(())
 }
 
+/// Writes all ideal reference shapes scaled and rotated to align to the problem structure
+/// to a `<file>_ideal.xyz` file.
 pub fn write_cshm_reconstructed_xyz (file_name: &String, results: &[CShMResult], labels: &[String]) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_ideal.xyz";
     let mut file = File::create(&out_name)
@@ -145,8 +149,27 @@ pub fn print_csom_table(results: &[CsomResult], file: &str) {
     println!("{}", "-".repeat(24));
 }
 
+pub fn write_odis_csv(result: OdisResult, file_name: &str) -> Result<(), std::io::Error> {
+    let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_odis_table.csv";
+    let mut file = File::create(&out_name)?;
+
+    println!("Writing output table to {}...", out_name);
+
+    writeln!(file, "d_mean,zeta,delta,sigma,tau,mu")?;
+    writeln!(file, "{:.4},{:.4},{:.6},{:.2},{:.4},{:.4}",
+        result.d_mean,
+        result.zeta,
+        result.delta,
+        result.sigma,
+        result.tau,
+        result.mu
+    )?;
+
+    Ok(())
+}
+
 /// Writes the csom summary table (point group, deviation, refined rotation matrix) to a
-/// single .csv file, one row per point group -- the csom equivalent of [`write_cshm_csv`].
+///  `<file>_csom_table.csv` file.
 pub fn write_csom_csv(results: &[CsomResult], file_name: &str) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_csom_table.csv";
     let mut file = File::create(&out_name)?;
@@ -161,9 +184,8 @@ pub fn write_csom_csv(results: &[CsomResult], file_name: &str) -> Result<(), std
     Ok(())
 }
 
-/// Writes one .csv file per point group in `results` (named `<file>_<point group>_details.csv`),
-/// listing every individual symmetry operation's name, matrix and deviation -- not aggregated
-/// by class, so e.g. Oh's "8C3" class produces 8 separate rows, each with its own matrix.
+/// Writes the individual symmetry operation deviations (name, matrix, s-value) per point group analysed
+/// to a  `<file>_<point group>_details.csv` file.
 pub fn write_csom_details_csv(results: &[CsomResult], file_name: &str) -> Result<(), std::io::Error> {
     let stem = file_name.strip_suffix(".xyz").unwrap_or(file_name);
 
