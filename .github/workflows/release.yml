@@ -1,13 +1,71 @@
 name: Build and Release Cosmochlore
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
 
 jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      previous_tag: ${{ steps.changelog.outputs.previous_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build changelog from previous tag
+        id: changelog
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Most recent tag that is an ancestor of this one, if any.
+          PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+
+          if [ -n "${PREV_TAG}" ]; then
+            RANGE="${PREV_TAG}..${TAG}"
+            HEADER="Changes since [\`${PREV_TAG}\`](${REPO_URL}/releases/tag/${PREV_TAG})"
+            FOOTER="**Full changelog**: ${REPO_URL}/compare/${PREV_TAG}...${TAG}"
+          else
+            RANGE="${TAG}"
+            HEADER="Initial release"
+            FOOTER="**Full changelog**: ${REPO_URL}/commits/${TAG}"
+          fi
+
+          {
+            echo "## ${HEADER}"
+            echo
+            git log --no-merges --reverse \
+                    --format="- %s ([\`%h\`](${REPO_URL}/commit/%H))" \
+                    "${RANGE}"
+            echo
+            echo "${FOOTER}"
+          } > CHANGELOG.md
+
+          echo "previous_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+          cat CHANGELOG.md
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
   build:
-    permissions:
-      contents: write
+    name: Build ${{ matrix.target }}
+    needs: release
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +109,9 @@ jobs:
           else
             tar czf ../cosmochlore-${{ matrix.target }}.tar.gz cosmochlore${{ matrix.ext }}
           fi
+
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: dist/cosmochlore-${{ matrix.target }}.*
