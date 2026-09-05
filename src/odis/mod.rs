@@ -4,7 +4,7 @@ use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
 use crate::csom::io::CenteringMode;
 use crate::csom::calc_csom;
-use crate::out::{print_cshm_table, print_csom_table, print_odis_table, write_cshm_csv};
+use crate::out::*;
 use crate::{shapes, xyz};
 pub use calc::calculate_od;
 
@@ -45,9 +45,12 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
     // 2. Calculate the common parameters
     let odis_result = calculate_od(&structure)?;
 
-
     // 3. Output results
     print_odis_table(&odis_result, &args.name);
+    write_odis_csv(odis_result, &args.name)?;
+    
+    // End the program here if --full is not passed.
+    if !args.full {return Ok(())};
 
     // 4. Calculate cshm against OC-6 and TRP-6 if --full is passed.
     let n = 6; // Number of vertices
@@ -73,7 +76,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     let csom_results = calc_csom(structure, CenteringMode::First, None, &csom_point_groups, 20, 1000, false)?;
     print_csom_table(&csom_results, &args.name);
-
+    write_csom_csv(&csom_results, &args.name)?;
 
     Ok(())
 }
