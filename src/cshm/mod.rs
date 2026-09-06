@@ -36,7 +36,7 @@ pub fn calc_cshm(reference_shapes: Vec<ReferenceShape>, problem_structure: &Stru
         let mut reference = points_from_reference_shape(&shape, has_centre);
         let mut problem_copy = problem.clone();
 
-        let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy);
+        let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy, has_centre);
 
         results.push(
             CShMResult {

@@ -8,7 +8,10 @@ use crate::cshm::bounds::*;
 
 /// Finds a Reference Shape's Automorphisms.
 /// Expects centered and normalised Shapes.
-pub fn find_automorphisms(reference: &[Vector3<f64>]) -> Vec<Vec<usize>> {
+/// `has_centre` marks whether `reference[0]` is the shape's centre point (as opposed
+/// to a vertex): the centre can only ever map to itself, so it is fixed up front
+/// instead of being explored as a branch.
+pub fn find_automorphisms(reference: &[Vector3<f64>], has_centre: bool) -> Vec<Vec<usize>> {
     let n = reference.len();
     let mut automorphisms: Vec<Vec<usize>> = Vec::new();
     let hi = precompute_correlation_blocks(reference, reference);
@@ -19,6 +22,12 @@ pub fn find_automorphisms(reference: &[Vector3<f64>]) -> Vec<Vec<usize>> {
 
     let ref_norms = precompute_norms(reference);
     let ref_suffix = precompute_suffix_sums(&ref_norms);
+
+    if has_centre {
+        assigned[0] = true;
+        current_perm.push(0);
+        h_partial = hi[0][0];
+    }
 
     const EPS:f64 = 1e-6;
 
