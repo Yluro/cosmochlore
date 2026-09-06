@@ -424,8 +424,8 @@ This minimization is carried out over all rotations, translations and scalings *
 
 The rotation/translation/scaling part is solved via an SVD-based Kabsch-style alignment. The combinatorial problem: finding the best point pair matches between $$Q$$ and $$P$$ is done by:
 
-- **Automorphism deduplication**: the reference shape's own symmetry group is precomputed, so permutations that are guaranteed to produce identical scores (automorphisms of the reference shape's point group) are never evaluated twice.
-- **Branch-and-bound pruning**: partial assignments are bounded using the subadditivity property of the singular-value sum, allowing branches that provably cannot beat the current best score to be discarded early.
+- **Fixed centre**: for centered structures, the centre atom is paired with the reference shape's centre up front instead of being searched, since no other pairing is ever valid.
+- **Branch-and-bound pruning**: after a partial assignment of point pairs, a 'best-scenario-S-value' is calculated. Permutations that won't beat the best S-value found are discarded early.
 
 ## The `csom` algorithm
 
