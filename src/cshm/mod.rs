@@ -1,4 +1,7 @@
 pub mod linalg;
+// No longer used by the search itself (see permutations::find_best_permutation) --
+// kept only as a correctness oracle for bnb_automorphisms_matches_naive.
+#[cfg(test)]
 pub mod automorphism;
 pub mod permutations;
 pub mod bounds;

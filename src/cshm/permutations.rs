@@ -1,9 +1,6 @@
 use nalgebra::{Matrix3, Vector3};
 /// MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
 
-use std::collections::HashSet;
-
-use crate::cshm::automorphism::*;
 use crate::cshm::bounds::*;
 use crate::cshm::linalg::*;
 use crate::geometry::center_and_normalise;
@@ -22,10 +19,6 @@ pub(crate) fn find_best_permutation(
 
     center_and_normalise(reference);
     let (problem_centroid, normalisation_constant) = center_and_normalise(problem);
-
-
-    let ref_automorphisms: Vec<Vec<usize>> = find_automorphisms(reference, has_centre);
-    let mut visited: HashSet<Vec<usize>> = HashSet::new();
 
     // Initialise return values
     let mut best_s = f64::INFINITY;
@@ -55,8 +48,6 @@ pub(crate) fn find_best_permutation(
         &hi,
         &ref_norms,
         &prob_suffix,
-        &ref_automorphisms,
-        &mut visited,
         &mut assigned,
         &mut current_perm,
         &mut h_partial,
@@ -79,8 +70,6 @@ fn branch(
     hi: &Vec<Vec<Matrix3<f64>>>,
     ref_norms: &[f64],
     prob_suffix: &[f64],
-    ref_automorphisms: &Vec<Vec<usize>>,
-    visited: &mut HashSet<Vec<usize>>,
     assigned: &mut [bool],
     current_perm: &mut Vec<usize>,
     h_partial: &mut Matrix3<f64>,
@@ -94,19 +83,10 @@ fn branch(
 
 
     if current_perm.len() == n { // If a permutation is complete then:
-        if visited.contains(current_perm) {
-            return;
-        }
-
         let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference[p]).collect();
         let h = correlation_matrix(problem, &reordered);
         let (rot_matrix, a_i) = optimal_rotation(h);
         let s = shape_measure(&a_i, n).max(0.0); // max 0.0 makes sure the s value doesn't go below 0 because floating point errors.
-
-        for a in ref_automorphisms {
-            let equiv: Vec<usize> = (0..n).map(|i| a[current_perm[i]]).collect();
-            visited.insert(equiv);
-        }
 
         if s < *best_s {
             *best_s = s;
@@ -138,7 +118,7 @@ fn branch(
             current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
             // Recursively call the branch function again.
             branch(
-                reference, problem, hi, ref_norms, prob_suffix, ref_automorphisms, visited,
+                reference, problem, hi, ref_norms, prob_suffix,
                 assigned, current_perm, h_partial, best_s, best_perm, best_rot_matrix
             );
             current_perm.pop();
