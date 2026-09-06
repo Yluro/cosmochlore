@@ -35,11 +35,15 @@ pub(crate) fn find_best_permutation(
     let mut h_partial = Matrix3::zeros();
 
     let hi = precompute_correlation_blocks(&reference, &problem);
+    let ref_norms = precompute_norms(reference);
+    let prob_suffix = precompute_suffix_sums(&precompute_norms(problem));
 
     branch(
         &reference,
         &problem,
         &hi,
+        &ref_norms,
+        &prob_suffix,
         &ref_automorphisms,
         &mut visited,
         &mut assigned,
@@ -62,6 +66,8 @@ fn branch(
     reference: &[Vector3<f64>],
     problem: &[Vector3<f64>],
     hi: &Vec<Vec<Matrix3<f64>>>,
+    ref_norms: &[f64],
+    prob_suffix: &[f64],
     ref_automorphisms: &Vec<Vec<usize>>,
     visited: &mut HashSet<Vec<usize>>,
     assigned: &mut [bool],
@@ -109,10 +115,10 @@ fn branch(
         *h_partial += hi[ref_idx][pos]; // Sum the corresponding point to the partial correlation matrix
         assigned[ref_idx] = true; // Mark the point as assigned.
 
-        let a_partial: f64 = singular_values(*h_partial).iter().sum(); // Calculate the partial SV sum,
+        let a_partial: f64 = nuclear_norm(*h_partial); // Calculate the partial SV sum,
         // Calculate the estimated remaining contributions
         // to the correlation matrix measure of the rest of points.
-        let remaining_bound = max_unassigned_norm(reference, assigned) * unassigned_norms_sum(&problem[pos + 1..]);
+        let remaining_bound = max_unassigned_norm(ref_norms, assigned) * prob_suffix[pos + 1];
         let a_bound = a_partial + remaining_bound;
         let s_bound = (1.0 - a_bound.powi(2)/((n as f64).powi(2))) * 100.0;
 
@@ -121,7 +127,7 @@ fn branch(
             current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
             // Recursively call the branch function again.
             branch(
-                reference, problem, hi, ref_automorphisms, visited,
+                reference, problem, hi, ref_norms, prob_suffix, ref_automorphisms, visited,
                 assigned, current_perm, h_partial, best_s, best_perm, best_rot_matrix
             );
             current_perm.pop();
