@@ -429,17 +429,17 @@ The rotation/translation/scaling part is solved via an SVD-based Kabsch-style al
 
 ## The `csom` algorithm
 
-For a given target point group, `csom` searches for the orientation of the structure that minimizes its deviation from that point group's ideal symmetry operations. This is done in two stages:
+The main problem to solve for `csom` is that symmetry element operations depend on a given's shape position in space. Once a centering criteria is stablished by the user, `csom` searches for the orientation of the structure that minimizes the average deviation from a given point group's symmetry operations. This is done by:
 
-1. **Fibonacci-sphere seeding**: $$N$$ orientation vectors are spread evenly over the unit sphere and each is scored, giving a good starting point without an expensive exhaustive search.
-2. **Nelder-Mead refinement**: starting from the best seed, a derivative-free Nelder-Mead optimisation (up to `--iterations` steps) refines the rotation axis to (locally) minimize the deviation.
-3. The deviation is defined as the $$S_Q(\^OQ)$$ minimised over the best permutation of points using the Hungarian algorithm. This minimisation is atom-sensitive, that is, atoms are only matched with others of the same element.
+1. **Fibonacci-sphere seeding**: `--samples` orientation vectors are spread evenly over the unit sphere and each is scored, giving a good starting point without an expensive exhaustive search.
+2. **Nelder-Mead refinement**: each seed is locally optimised using the derivative-free Nelder-Mead optimisation method (up to `--iterations` steps). Best axis is then defined for the 
+3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimised over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive, that is, atoms are only matched with others of the same element.
 
-The reported deviation is the CSoM between the structure and every symmetry operation of the target point group at the best orientation found.
+The reported CSoM score is the deviation averaged over all every symmetry operations of a given point group.
 
 ## The `odis` algorithm
 
-`odis` reports the classic `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid). 
+`odis` reports the `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid). 
 
 Aditionally, the odis module runs `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions, to give a fuller picture of the distortion of the coordination sphere.
 
