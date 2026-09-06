@@ -11,9 +11,11 @@ use crate::geometry::center_and_normalise;
 /// Recursively finds the best permutation of a given reference shape so that its points align
 /// to the problem shape. Will prune non-optimal permutations using the partial sum of the singular
 /// values.
+/// Fixes the permutation of the central atom for centered structures.
 pub(crate) fn find_best_permutation(
     reference: &mut [Vector3<f64>],
     problem: &mut [Vector3<f64>],
+    has_centre: bool,
 ) -> (f64, Vec<usize>, Vec<Vector3<f64>>, Matrix3<f64>) {
     let n = problem.len();
     debug_assert_eq!(n, reference.len());
@@ -22,21 +24,30 @@ pub(crate) fn find_best_permutation(
     let (problem_centroid, normalisation_constant) = center_and_normalise(problem);
 
 
-    let ref_automorphisms: Vec<Vec<usize>> = find_automorphisms(reference);
+    let ref_automorphisms: Vec<Vec<usize>> = find_automorphisms(reference, has_centre);
     let mut visited: HashSet<Vec<usize>> = HashSet::new();
 
+    // Initialise return values
     let mut best_s = f64::INFINITY;
     let mut best_perm: Vec<usize> = Vec::new();
     let mut best_rot_matrix = Matrix3::zeros();
 
+    // Initialise recursion visited and current permutation.
     let mut assigned = vec![false; n];
     let mut current_perm: Vec<usize> = Vec::with_capacity(n);
-
     let mut h_partial = Matrix3::zeros();
 
+    // Precompute the correlation matrices and norms for all points once.
     let hi = precompute_correlation_blocks(&reference, &problem);
     let ref_norms = precompute_norms(reference);
     let prob_suffix = precompute_suffix_sums(&precompute_norms(problem));
+
+    // Fixes permutation of the central atom if found.
+    if has_centre {
+        assigned[0] = true;
+        current_perm.push(0);
+        h_partial = hi[0][0];
+    }
 
     branch(
         &reference,
@@ -90,7 +101,7 @@ fn branch(
         let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference[p]).collect();
         let h = correlation_matrix(problem, &reordered);
         let (rot_matrix, a_i) = optimal_rotation(h);
-        let s = shape_measure(&a_i, n).max(0.0); // max 0.0 makes sure the s value doesnt go below 0 because floating point errors.
+        let s = shape_measure(&a_i, n).max(0.0); // max 0.0 makes sure the s value doesn't go below 0 because floating point errors.
 
         for a in ref_automorphisms {
             let equiv: Vec<usize> = (0..n).map(|i| a[current_perm[i]]).collect();
