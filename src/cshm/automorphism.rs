@@ -8,7 +8,10 @@ use crate::cshm::bounds::*;
 
 /// Finds a Reference Shape's Automorphisms.
 /// Expects centered and normalised Shapes.
-pub fn find_automorphisms(reference: &[Vector3<f64>]) -> Vec<Vec<usize>> {
+/// `has_centre` marks whether `reference[0]` is the shape's centre point (as opposed
+/// to a vertex): the centre can only ever map to itself, so it is fixed up front
+/// instead of being explored as a branch.
+pub fn find_automorphisms(reference: &[Vector3<f64>], has_centre: bool) -> Vec<Vec<usize>> {
     let n = reference.len();
     let mut automorphisms: Vec<Vec<usize>> = Vec::new();
     let hi = precompute_correlation_blocks(reference, reference);
@@ -17,11 +20,22 @@ pub fn find_automorphisms(reference: &[Vector3<f64>]) -> Vec<Vec<usize>> {
     let mut current_perm = Vec::with_capacity(n);
     let mut h_partial: Matrix3<f64> = Matrix3::zeros();
 
+    let ref_norms = precompute_norms(reference);
+    let ref_suffix = precompute_suffix_sums(&ref_norms);
+
+    if has_centre {
+        assigned[0] = true;
+        current_perm.push(0);
+        h_partial = hi[0][0];
+    }
+
     const EPS:f64 = 1e-6;
 
     automorphism_branch(
         reference,
         &hi,
+        &ref_norms,
+        &ref_suffix,
         &mut assigned,
         &mut current_perm,
         &mut h_partial,
@@ -34,6 +48,8 @@ pub fn find_automorphisms(reference: &[Vector3<f64>]) -> Vec<Vec<usize>> {
 fn automorphism_branch(
     reference: &[Vector3<f64>],
     hi: &Vec<Vec<Matrix3<f64>>>,
+    ref_norms: &[f64],
+    ref_suffix: &[f64],
     assigned: &mut [bool],
     current_perm: &mut Vec<usize>,
     h_partial: &mut Matrix3<f64>,
@@ -69,17 +85,15 @@ fn automorphism_branch(
         *h_partial += hi[ref_idx][pos];
         assigned[ref_idx] = true;
 
-        let a_partial: f64 = singular_values(*h_partial).iter().sum();
-        let remaining_bound =
-            max_unassigned_norm(reference, assigned) *
-                unassigned_norms_sum(&reference[pos + 1..]);
+        let a_partial: f64 = nuclear_norm(*h_partial);
+        let remaining_bound = max_unassigned_norm(ref_norms, assigned) * ref_suffix[pos + 1];
         let a_bound = a_partial + remaining_bound;
         let s_bound = (1.0 - a_bound.powi(2) / (n as f64).powi(2)) * 100.0;
 
         if s_bound < epsilon {
             current_perm.push(ref_idx);
             automorphism_branch(
-                reference, &hi, assigned, current_perm,
+                reference, &hi, ref_norms, ref_suffix, assigned, current_perm,
                 h_partial, epsilon, automorphisms,
             );
 

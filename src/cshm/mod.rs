@@ -36,7 +36,7 @@ pub fn calc_cshm(reference_shapes: Vec<ReferenceShape>, problem_structure: &Stru
         let mut reference = points_from_reference_shape(&shape, has_centre);
         let mut problem_copy = problem.clone();
 
-        let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy);
+        let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy, has_centre);
 
         results.push(
             CShMResult {
@@ -79,6 +79,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
             ref_shapes.push(shape);
         }
     }
+
     // 5. Compute the CShM for each reference shape against the selected problem structures.
 
     let has_centre = center.is_some();
@@ -91,7 +92,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
     // 7. If --table is passed
     if args.table { write_cshm_csv(&results, &args.name)?; }
 
-    // If --ideal is passed
+    // 8. If --ideal is passed
     if args.ideal {
         let mut labels: Vec<String> = Vec::new();
         if has_centre {

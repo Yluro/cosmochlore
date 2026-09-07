@@ -18,10 +18,9 @@ use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let main_start = Instant::now();
-    welcome_msg();
     let args = Cli::parse();
-
-
+    welcome_msg();
+    
     let run = match args.command {
         Command::Cshm(cshm_args) => { cshm::cshm_main(cshm_args) },
         Command::Csom(csom_args) => { csom::csom_main(csom_args) },

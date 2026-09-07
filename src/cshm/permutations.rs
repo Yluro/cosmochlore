@@ -1,9 +1,6 @@
 use nalgebra::{Matrix3, Vector3};
 /// MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
 
-use std::collections::HashSet;
-
-use crate::cshm::automorphism::*;
 use crate::cshm::bounds::*;
 use crate::cshm::linalg::*;
 use crate::geometry::center_and_normalise;
@@ -11,9 +8,11 @@ use crate::geometry::center_and_normalise;
 /// Recursively finds the best permutation of a given reference shape so that its points align
 /// to the problem shape. Will prune non-optimal permutations using the partial sum of the singular
 /// values.
+/// Fixes the permutation of the central atom for centered structures.
 pub(crate) fn find_best_permutation(
     reference: &mut [Vector3<f64>],
     problem: &mut [Vector3<f64>],
+    has_centre: bool,
 ) -> (f64, Vec<usize>, Vec<Vector3<f64>>, Matrix3<f64>) {
     let n = problem.len();
     debug_assert_eq!(n, reference.len());
@@ -21,27 +20,34 @@ pub(crate) fn find_best_permutation(
     center_and_normalise(reference);
     let (problem_centroid, normalisation_constant) = center_and_normalise(problem);
 
-
-    let ref_automorphisms: Vec<Vec<usize>> = find_automorphisms(reference);
-    let mut visited: HashSet<Vec<usize>> = HashSet::new();
-
+    // Initialise return values
     let mut best_s = f64::INFINITY;
     let mut best_perm: Vec<usize> = Vec::new();
     let mut best_rot_matrix = Matrix3::zeros();
 
+    // Initialise recursion visited and current permutation.
     let mut assigned = vec![false; n];
     let mut current_perm: Vec<usize> = Vec::with_capacity(n);
-
     let mut h_partial = Matrix3::zeros();
 
+    // Precompute the correlation matrices and norms for all points once.
     let hi = precompute_correlation_blocks(&reference, &problem);
+    let ref_norms = precompute_norms(reference);
+    let prob_suffix = precompute_suffix_sums(&precompute_norms(problem));
+
+    // Fixes permutation of the central atom if found.
+    if has_centre {
+        assigned[0] = true;
+        current_perm.push(0);
+        h_partial = hi[0][0];
+    }
 
     branch(
         &reference,
         &problem,
         &hi,
-        &ref_automorphisms,
-        &mut visited,
+        &ref_norms,
+        &prob_suffix,
         &mut assigned,
         &mut current_perm,
         &mut h_partial,
@@ -62,8 +68,8 @@ fn branch(
     reference: &[Vector3<f64>],
     problem: &[Vector3<f64>],
     hi: &Vec<Vec<Matrix3<f64>>>,
-    ref_automorphisms: &Vec<Vec<usize>>,
-    visited: &mut HashSet<Vec<usize>>,
+    ref_norms: &[f64],
+    prob_suffix: &[f64],
     assigned: &mut [bool],
     current_perm: &mut Vec<usize>,
     h_partial: &mut Matrix3<f64>,
@@ -77,19 +83,10 @@ fn branch(
 
 
     if current_perm.len() == n { // If a permutation is complete then:
-        if visited.contains(current_perm) {
-            return;
-        }
-
         let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference[p]).collect();
         let h = correlation_matrix(problem, &reordered);
         let (rot_matrix, a_i) = optimal_rotation(h);
-        let s = shape_measure(&a_i, n).max(0.0); // max 0.0 makes sure the s value doesnt go below 0 because floating point errors.
-
-        for a in ref_automorphisms {
-            let equiv: Vec<usize> = (0..n).map(|i| a[current_perm[i]]).collect();
-            visited.insert(equiv);
-        }
+        let s = shape_measure(&a_i, n).max(0.0); // max 0.0 makes sure the s value doesn't go below 0 because floating point errors.
 
         if s < *best_s {
             *best_s = s;
@@ -109,10 +106,10 @@ fn branch(
         *h_partial += hi[ref_idx][pos]; // Sum the corresponding point to the partial correlation matrix
         assigned[ref_idx] = true; // Mark the point as assigned.
 
-        let a_partial: f64 = singular_values(*h_partial).iter().sum(); // Calculate the partial SV sum,
+        let a_partial: f64 = nuclear_norm(*h_partial); // Calculate the partial SV sum,
         // Calculate the estimated remaining contributions
         // to the correlation matrix measure of the rest of points.
-        let remaining_bound = max_unassigned_norm(reference, assigned) * unassigned_norms_sum(&problem[pos + 1..]);
+        let remaining_bound = max_unassigned_norm(ref_norms, assigned) * prob_suffix[pos + 1];
         let a_bound = a_partial + remaining_bound;
         let s_bound = (1.0 - a_bound.powi(2)/((n as f64).powi(2))) * 100.0;
 
@@ -121,7 +118,7 @@ fn branch(
             current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
             // Recursively call the branch function again.
             branch(
-                reference, problem, hi, ref_automorphisms, visited,
+                reference, problem, hi, ref_norms, prob_suffix,
                 assigned, current_perm, h_partial, best_s, best_perm, best_rot_matrix
             );
             current_perm.pop();

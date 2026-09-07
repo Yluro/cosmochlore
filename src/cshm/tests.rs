@@ -105,7 +105,7 @@ fn bnb_automorphisms_matches_naive() {
     let mut reference = octahedron();
 
     center_and_normalise(&mut reference);
-    let mut bnb_automorphisms = find_automorphisms(&reference);
+    let mut bnb_automorphisms = find_automorphisms(&reference, true);
     let mut all_automorphisms = naive_find_automorphism(&reference);
     let perms = bnb_automorphisms.len();
     bnb_automorphisms.sort();
@@ -278,7 +278,7 @@ fn branch_and_bound_matches_brute_force_results() {
     ]; // Noisy square.
 
     let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
-    let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem);
+    let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem, false); // square() has no centre point
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.")
 }
@@ -300,7 +300,7 @@ fn bnb_matches_bf_matches_shape21_hard() {
     let shape21_result = 2.109;
 
     let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
-    let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem);
+    let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem, true); // octahedron() has centre first
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
     assert!((s_bnb - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}.")
@@ -343,7 +343,7 @@ fn bnb_is_faster_than_bf() {
     let mut prob_bnb = problem.clone();
 
     let start_bnb = Instant::now();
-    let (s_bnb, _, _, _) = find_best_permutation(&mut ref_bnb, &mut prob_bnb);
+    let (s_bnb, _, _, _) = find_best_permutation(&mut ref_bnb, &mut prob_bnb, true); // capped trigonal prism has centre first
     let time_bnb = start_bnb.elapsed();
 
     assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
@@ -386,7 +386,7 @@ fn strain_12_point_test() {
     ];
 
     let start = Instant::now();
-    let (s, _, _, _) = find_best_permutation(&mut reference, &mut problem);
+    let (s, _, _, _) = find_best_permutation(&mut reference, &mut problem, true); // metal centre first in both arrays
     let time = start.elapsed();
     println!("Find Optimal Permutation Time: {:?}", time);
 
@@ -413,7 +413,7 @@ fn can_reconstruct_original() {
         .collect();
 
 
-    let (s, best_perm, reconstructed, rot_mat) = find_best_permutation(&mut reference, &mut problem);
+    let (s, best_perm, reconstructed, rot_mat) = find_best_permutation(&mut reference, &mut problem, false); // noisy_square() has no centre point
 
     println!("s = {s}");
     println!("best_perm = {:?}", best_perm);
