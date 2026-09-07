@@ -14,8 +14,8 @@ pub struct OdisResult {
     pub zeta: f64,
     pub delta: f64,
     pub sigma: f64,
-    //pub theta: f64,
-    //pub vol: f64,
+    pub theta: f64,
+    pub vol: f64,
     pub tau: f64,
     pub mu: f64,
 }
@@ -75,7 +75,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
         "C2v", // cis-disubstitution pattern (cis-MA4B2).
     ].iter().map(|pg| pg.to_string()).collect();
 
-    let csom_results = calc_csom(structure, CenteringMode::First, None, &csom_point_groups, 20, 1000, false)?;
+    let csom_results = calc_csom(structure, CenteringMode::First, None, &csom_point_groups, 20, 1000, false, false)?;
     print_csom_table(&csom_results, &args.name);
     write_csom_csv(&csom_results, &args.name)?;
 
