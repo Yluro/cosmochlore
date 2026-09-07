@@ -26,8 +26,6 @@ pub(crate) fn sds_dev(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> f
 
 /// Returns the cost matrix for two given sets of points A and B.
 ///
-/// Since the matrix is square (bijection), the |a_i|^2 + |b_j|^2 terms
-/// of |a_i - b_j|^2 are constant over any assignment and can be dropped.
 /// Minimizing squared distance <=> maximizing dot product <=> minimizing -dot.
 fn sq_dist_cost(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> Vec<Vec<f64>> {
     let cost: Vec<Vec<f64>> = a
@@ -38,8 +36,7 @@ fn sq_dist_cost(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> Vec<Vec<f64>> {
 }
 
 
-/// Solves the min-cost assignment problem via the Jonker-Volgenant / Kuhn-Munkres
-/// algorithm with dual potentials. O(n^3). Assumes a square cost matrix.
+/// Jonker-Volgenant / Kuhn-Munkres algorithm with dual potentials. O(n^3). Assumes a square cost matrix.
 /// Returns, for each row i, the column it's assigned to (0-indexed).
 pub fn hungarian(cost: &[Vec<f64>]) -> Vec<usize> {
     let n = cost.len();
@@ -156,59 +153,109 @@ fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
 
 
 
+/// Finds the best permutation of b to a using the Hungarian algorithm.
+///
+/// When `has_centre` is true, index `0` is pulled out of the group and matched to
+/// itself directly.
+///
+/// Returns (orig_idx, a_point, b_point), where `orig_idx` is that atom's index into
+// /// the underlying `a`/`b`/`labels` arrays.
+fn assign_group(
+    indices: &[usize],
+    a: &[Vector3<f64>],
+    b: &[Vector3<f64>],
+    has_centre: bool,
+    pairs: &mut Vec<(usize, Vector3<f64>, Vector3<f64>)>,
+) {
+    let (pinned, rest): (Vec<usize>, Vec<usize>) = if has_centre {
+        indices.iter().copied().partition(|&i| i == 0)
+    } else {
+        (Vec::new(), indices.to_vec())
+    };
+
+    for i in pinned {
+        pairs.push((i, a[i], b[i]));
+    }
+
+    if rest.is_empty() {
+        return;
+    }
+
+    let a_subset: Vec<Vector3<f64>> = rest.iter().map(|&i| a[i]).collect();
+    let b_subset: Vec<Vector3<f64>> = rest.iter().map(|&i| b[i]).collect();
+
+    let (perm_b, _) = best_permutation(&a_subset, &b_subset);
+
+    pairs.extend(rest.iter().zip(a_subset).zip(perm_b).map(|((&i, pa), pb)| (i, pa, pb)));
+}
+
 /// Finds the best one-to-one matching between the subsets A and B by atom type. (equal length)
 /// that minimizes total squared distance, and reorders B accordingly.
 ///
-/// Returns (A and B reordered to best match)
+/// If `ignore_labels` is true, atom labels are not used to restrict the search. If `has_centre` is true, atom
+/// index `0` is pinned to itself instead of entering the Hungarian assignment.
+///
+/// Returns (A and B reordered to best match, each pair's original index into `a`/`b`/`labels`)
+/// so a caller can place the matched points back into the input's own atom order without
+/// re-running the assignment.
 pub fn best_permutation_multiple_atoms(
     a: &[Vector3<f64>],
     b: &[Vector3<f64>],
-    labels: &[String]) -> (Vec<Vector3<f64>>, Vec<Vector3<f64>>)
+    labels: &[String],
+    ignore_labels: bool,
+    has_centre: bool,
+) -> (Vec<Vector3<f64>>, Vec<Vector3<f64>>, Vec<usize>)
 {
     debug_assert_eq!(labels.len(), b.len());
     debug_assert_eq!(labels.len(), a.len());
 
-    let groups = split_by_atoms(labels);
+    let mut pairs: Vec<(usize, Vector3<f64>, Vector3<f64>)> = Vec::new();
 
-    let mut pairs: Vec<(Vector3<f64>, Vector3<f64>)> = Vec::new();
-
-    for (_, indices) in groups {
-        let a_subset: Vec<Vector3<f64>> = indices.iter().map(|&i| a[i]).collect();
-        let b_subset: Vec<Vector3<f64>> = indices.iter().map(|&i| b[i]).collect();
-
-        let (perm_b, _) = best_permutation(&a_subset, &b_subset);
-
-        pairs.extend(a_subset.into_iter().zip(perm_b));
-
-
+    if ignore_labels {
+        let all_indices: Vec<usize> = (0..labels.len()).collect();
+        assign_group(&all_indices, a, b, has_centre, &mut pairs);
+    } else {
+        for (_, indices) in split_by_atoms(labels) {
+            assign_group(&indices, a, b, has_centre, &mut pairs);
+        }
     }
 
     debug_assert_eq!(pairs.len(), labels.len());
 
     // Sort pairs by ascending order of z- y- x- values so output from hashmap is deterministic.
-
     pairs.sort_by(
-        |(a1, _), (a2, _) | {
+        |(_, a1, _), (_, a2, _)| {
             a1.z.total_cmp(&a2.z)
                 .then(a1.y.total_cmp(&a2.y))
                 .then(a1.x.total_cmp(&a2.x))
         }
     );
 
+    let mut orig_idx = Vec::with_capacity(pairs.len());
+    let mut final_a = Vec::with_capacity(pairs.len());
+    let mut final_b = Vec::with_capacity(pairs.len());
+    for (i, pa, pb) in pairs {
+        orig_idx.push(i);
+        final_a.push(pa);
+        final_b.push(pb);
+    }
 
-    let (final_a, final_b): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
-    (final_a, final_b)
+    (final_a, final_b, orig_idx)
 }
 
 
-/// Deviation of `points` from every individual symmetry operation of `pg` -- one entry per
-/// operation (not per class: e.g. Oh's "8C3" class yields 8 separate entries, each with its
-/// own matrix and deviation), in the point group's canonical (character-table) order.
+/// Deviation of `points` from every individual symmetry operation of `pg`.
+/// 
+/// The fourth element of each entry is that operation's image of `points` (`sym_op * points`),
+/// re-indexed back to `points`' own atom order so `xyz[i]` is the position matched to
+/// `points[i]` under that operation.
 pub(crate) fn point_group_operation_deviations(
     points: &[Vector3<f64>],
     labels: &[String],
     pg: &str,
-) -> Result<Vec<(&'static str, Matrix3<f64>, f64)>, CsomError> {
+    ignore_labels: bool,
+    has_centre: bool,
+) -> Result<Vec<(&'static str, Matrix3<f64>, f64, Vec<Vector3<f64>>)>, CsomError> {
     let ops = get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
     let stripped = strip_all_labels(labels);
 
@@ -216,15 +263,27 @@ pub(crate) fn point_group_operation_deviations(
         let sym_op = to_matrix3(*matrix);
         let operated_structure: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
 
-        let (a, b) = best_permutation_multiple_atoms(points, &operated_structure, &stripped);
-        (*name, sym_op, sds_dev(&a, &b))
+        let (a, b, orig_idx) = best_permutation_multiple_atoms(points, &operated_structure, &stripped, ignore_labels, has_centre);
+
+        let mut xyz = vec![Vector3::zeros(); points.len()];
+        for (&i, &point) in orig_idx.iter().zip(&b) {
+            xyz[i] = point;
+        }
+
+        (*name, sym_op, sds_dev(&a, &b), xyz)
     }).collect())
 }
 
 /// Average CSM deviation of `points` from every symmetry operation of point group `pg`.
-pub fn point_group_dev(points: &[Vector3<f64>], labels: &[String], pg: &str) -> Result<f64, CsomError> {
-    let devs = point_group_operation_deviations(points, labels, pg)?;
+pub fn point_group_dev(
+    points: &[Vector3<f64>],
+    labels: &[String],
+    pg: &str,
+    ignore_labels: bool,
+    has_centre: bool,
+) -> Result<f64, CsomError> {
+    let devs = point_group_operation_deviations(points, labels, pg, ignore_labels, has_centre)?;
 
-    Ok(devs.iter().map(|(_, _, dev)| dev).sum::<f64>() / devs.len() as f64)
+    Ok(devs.iter().map(|(_, _, dev, _)| dev).sum::<f64>() / devs.len() as f64)
 }
 
