@@ -1,7 +1,8 @@
 use crate::cshm::CShMResult;
 use crate::odis::OdisResult;
 use crate::csom::CsomResult;
-use nalgebra::Matrix3;
+use crate::csom::io::strip_all_labels;
+use nalgebra::{Matrix3, Vector3};
 use std::fs::File;
 use std::io::Write;
 
@@ -130,8 +131,8 @@ pub fn print_odis_table(result: &OdisResult, file: &str) {
     println!("{:<16}{:>12.4}  {:<12}", " Zeta", result.zeta, "Ang");
     println!("{:<16}{:>12.6}  {:<12}", " Delta", result.delta, "");
     println!("{:<16}{:>12.2}  {:<12}", " Sigma", result.sigma, "deg");
-    //println!("{:<16}{:>12.2}  {:<12}", " Theta", result.theta, "deg");
-    //println!("{:<16}{:>12.4}  {:<12}", " Volume", result.volume, "Ang^3");
+    println!("{:<16}{:>12.2}  {:<12}", " Theta", result.theta, "deg");
+    println!("{:<16}{:>12.4}  {:<12}", " Volume", result.vol, "Ang^3");
     println!("{}", "-".repeat(34));
     println!("{:<16}{:>12.2}  {:<12}", " Tau", result.tau, "deg");
     println!("{:<16}{:>12.2}  {:<12}", " Mu", result.mu, "Ang");
@@ -155,12 +156,14 @@ pub fn write_odis_csv(result: OdisResult, file_name: &str) -> Result<(), std::io
 
     println!("Writing output table to {}...", out_name);
 
-    writeln!(file, "d_mean,zeta,delta,sigma,tau,mu")?;
-    writeln!(file, "{:.4},{:.4},{:.6},{:.2},{:.4},{:.4}",
+    writeln!(file, "d_mean,zeta,delta,sigma,theta,vol,tau,mu")?;
+    writeln!(file, "{:.4},{:.4},{:.6},{:.2},{:.2},{:.4},{:.4},{:.4}",
         result.d_mean,
         result.zeta,
         result.delta,
         result.sigma,
+        result.theta,
+        result.vol,
         result.tau,
         result.mu
     )?;
@@ -196,8 +199,126 @@ pub fn write_csom_details_csv(results: &[CsomResult], file_name: &str) -> Result
         println!("Writing operation details to {}...", out_name);
 
         writeln!(file, "name,op_matrix,dev")?;
-        for (name, matrix, dev) in &result.operations {
+        for (name, matrix, dev, _) in &result.operations {
             writeln!(file, "{},{},{:.3}", name, format_matrix3(matrix), dev)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Writes, for each point group, a single `<file>_<point group>_operated.xyz` with all
+/// reconstructed operated structures by each symmetry element.
+pub fn write_csom_operated_xyz(
+    results: &[CsomResult],
+    file_name: &str,
+    labels: &[String],
+    original_coords: &[Vector3<f64>],
+) -> Result<(), std::io::Error> {
+    let stem = file_name.strip_suffix(".xyz").unwrap_or(file_name);
+
+    for result in results {
+        let out_name = format!("{}_{}_operated.xyz", stem, result.point_group);
+        let mut file = File::create(&out_name)?;
+
+        println!("Writing operated coordinates to {}...", out_name);
+
+        // The identity isn't stored among `result.operations` (the point-group tables in
+        // data/pgs.rs omit E -- it trivially gives zero deviation for any structure), so write
+        // the untouched original structure as its own "E" block first.
+        writeln!(file, "{}", labels.len())?;
+        writeln!(file, "{} E dev = 0.000", result.point_group)?;
+        for (label, point) in labels.iter().zip(original_coords) {
+            writeln!(file, "{}  {:.6}  {:.6}  {:.6}", label, point.x, point.y, point.z)?;
+        }
+        writeln!(file, "")?;
+
+        // `rotation` is orthogonal, so its transpose is its inverse -- undoes the
+        // CSOM-alignment rotation without an explicit matrix inversion.
+        let rotation_inv = result.rotation.transpose();
+
+        for (name, _, dev, xyz) in &result.operations {
+            writeln!(file, "{}", labels.len())?;
+            writeln!(file, "{} {} dev = {:.3}", result.point_group, name, dev)?;
+            for (label, point) in labels.iter().zip(xyz) {
+                let real_point = (rotation_inv * point) / result.scale + result.centroid;
+                writeln!(file, "{}  {:.6}  {:.6}  {:.6}", label, real_point.x, real_point.y, real_point.z)?;
+            }
+            writeln!(file, "")?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Writes, for each point group, a single `<file>_<point group>_merged.mol2` with all
+/// the reconstructed operated structures.
+pub fn write_csom_merged_mol2(
+    results: &[CsomResult],
+    file_name: &str,
+    labels: &[String],
+    original_coords: &[Vector3<f64>],
+    has_centre_atom: bool,
+) -> Result<(), std::io::Error> {
+    let stem = file_name.strip_suffix(".xyz").unwrap_or(file_name);
+    let elements = strip_all_labels(labels);
+    let n_per_block = labels.len();
+
+    for result in results {
+        let out_name = format!("{}_{}_merged.mol2", stem, result.point_group);
+        let mut file = File::create(&out_name)?;
+
+        println!("Writing merged mol2 to {}...", out_name);
+
+        // Each block (the original "E" structure, then one per symmetry operation) as
+        // (substructure name, that block's atom coordinates recovered to the original frame).
+        let rotation_inv = result.rotation.transpose();
+        let mut blocks: Vec<(&str, Vec<Vector3<f64>>)> = vec![("E", original_coords.to_vec())];
+        blocks.extend(result.operations.iter().map(|(name, _, _, xyz)| {
+            let real_points = xyz.iter()
+                .map(|p| (rotation_inv * p) / result.scale + result.centroid)
+                .collect();
+            (name.as_str(), real_points)
+        }));
+
+        let bonds_per_block = if has_centre_atom { n_per_block.saturating_sub(1) } else { 0 };
+
+        writeln!(file, "@<TRIPOS>MOLECULE")?;
+        writeln!(file, "{}_{}_merged", stem, result.point_group)?;
+        writeln!(file, "{} {} {} 0 0", n_per_block * blocks.len(), bonds_per_block * blocks.len(), blocks.len())?;
+        writeln!(file, "SMALL")?;
+        writeln!(file, "NO_CHARGES")?;
+        writeln!(file)?;
+
+        writeln!(file, "@<TRIPOS>ATOM")?;
+        let mut atom_id = 0usize;
+        for (block_idx, (name, points)) in blocks.iter().enumerate() {
+            let subst_id = block_idx + 1;
+            for ((label, element), point) in labels.iter().zip(&elements).zip(points) {
+                atom_id += 1;
+                writeln!(
+                    file,
+                    "{} {}.{} {:.6} {:.6} {:.6} {} {} {} 0.0000",
+                    atom_id, label, name, point.x, point.y, point.z, element, subst_id, name
+                )?;
+            }
+        }
+
+        if bonds_per_block > 0 {
+            writeln!(file, "@<TRIPOS>BOND")?;
+            let mut bond_id = 0usize;
+            for block in 0..blocks.len() {
+                let base = block * n_per_block;
+                for i in 1..n_per_block {
+                    bond_id += 1;
+                    writeln!(file, "{} {} {} 1", bond_id, base + 1, base + i + 1)?;
+                }
+            }
+        }
+
+        writeln!(file, "@<TRIPOS>SUBSTRUCTURE")?;
+        for (block, (name, _)) in blocks.iter().enumerate() {
+            writeln!(file, "{} {} {}", block + 1, name, block * n_per_block + 1)?;
         }
     }
 
