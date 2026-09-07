@@ -5,6 +5,7 @@ use nalgebra::Vector3;
 pub struct CsomStructure {
     pub labels: Vec<String>,
     pub points: Vec<Vector3<f64>>,
+    pub has_centre: bool,
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]
@@ -34,21 +35,21 @@ pub(crate) fn prepare_csom_structure(
     let striped_labels: Vec<String> = labels.iter().map(|l| strip_label(l).to_string()).collect();
 
 
-    let original_centroid: Vector3<f64> = match centering_mode {
+    let (original_centroid, has_centre): (Vector3<f64>, bool) = match centering_mode {
         CenteringMode::Auto => {
             if structure.centre.is_some() {
-                center_by_first_point(&mut points)
+                (center_by_first_point(&mut points), true)
             } else {
-                center_by_centroid(&mut points)
+                (center_by_centroid(&mut points), false)
             }
         },
-        CenteringMode::First => center_by_first_point(&mut points),
-        CenteringMode::Centroid => center_by_centroid(&mut points),
+        CenteringMode::First => (center_by_first_point(&mut points), true),
+        CenteringMode::Centroid => (center_by_centroid(&mut points), false),
         // No error handling here because data at this point should be trusted.
         CenteringMode::Manual => {
             //let centering_vector = centering_vector.unwrap();
             let centering_vector = Vector3::from_column_slice(&centering_vector.unwrap());
-            center_by_coordinate(&mut points, centering_vector)},
+            (center_by_coordinate(&mut points, centering_vector), false)},
     };
 
 
@@ -57,7 +58,8 @@ pub(crate) fn prepare_csom_structure(
 
     (CsomStructure {
         labels: striped_labels,
-        points
+        points,
+        has_centre,
     }, scaling_factor, original_centroid)
 }
 
