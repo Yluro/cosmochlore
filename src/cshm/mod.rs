@@ -53,7 +53,9 @@ pub fn calc_cshm(reference_shapes: Vec<ReferenceShape>, problem_structure: &Stru
 
 pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Parse input .xyz file and form structure.
-    let structure = xyz::parse_xyz(&args.name, args.not_centered)?;
+    // args.center is 1-based for the user; the parser wants a 0-based table index.
+    let center = xyz::resolve_center(args.not_centered, args.center.map(|c| c - 1));
+    let structure = xyz::parse_xyz(&args.name, center)?;
 
     // 2. Get vertex count.
     let n = structure.ligands.len() as u8;
@@ -79,7 +81,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
     }
     // 5. Compute the CShM for each reference shape against the selected problem structures.
 
-    let has_centre = !args.not_centered;
+    let has_centre = center.is_some();
     let results = calc_cshm(ref_shapes, &structure, has_centre);
 
 
@@ -92,7 +94,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
     // If --ideal is passed
     if args.ideal {
         let mut labels: Vec<String> = Vec::new();
-        if !args.not_centered {
+        if has_centre {
             labels.push(structure.centre.unwrap().label);
         }
         for ligand in &structure.ligands {

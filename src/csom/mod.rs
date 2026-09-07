@@ -1,5 +1,5 @@
 use crate::cli::CsomArgs;
-use crate::xyz::{parse_xyz, Structure};
+use crate::xyz::{parse_xyz, resolve_center, Structure};
 use std::error::Error;
 use nalgebra::{Matrix3, Vector3};
 use crate::csom::dev::point_group_operation_deviations;
@@ -33,7 +33,9 @@ pub struct CsomResult {
 pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
 
     // 1. Parse input .xyz file and form structure.
-    let structure = parse_xyz(&args.name, args.not_centered)?;
+    // args.center is 1-based for the user get mapped to 0 based for parser.
+    let center = resolve_center(args.not_centered, args.center.map(|c| c - 1));
+    let structure = parse_xyz(&args.name, center)?;
 
     // 2. Fetch the desired point groups.
     let point_groups = args.point_groups;

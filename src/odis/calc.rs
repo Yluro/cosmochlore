@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn matches_octadist_results() {
-        let structure = parse_xyz(r".\tests\FeHS.xyz", false).unwrap();
+        let structure = parse_xyz(r".\tests\FeHS.xyz", Some(0)).unwrap();
 
         let calc = calculate_od(&structure);
         assert!(calc.is_ok());

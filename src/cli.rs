@@ -1,6 +1,15 @@
 use clap::{Args, Parser, Subcommand};
 use crate::csom::io::CenteringMode;
 
+/// Parses the `--center` value as a 1-based atom position, rejecting 0.
+fn parse_center_position(s: &str) -> Result<usize, String> {
+    match s.parse::<usize>() {
+        Ok(0) => Err("center position must be 1 or greater".to_string()),
+        Ok(n) => Ok(n),
+        Err(_) => Err(format!("'{s}' is not a valid position")),
+    }
+}
+
 #[derive(Parser, Debug)]
 #[clap(name = "cosmochlore", about = env!("CARGO_PKG_DESCRIPTION"), author = env!("CARGO_PKG_AUTHORS"), version = env!("CARGO_PKG_VERSION"))]
 pub struct Cli {
@@ -27,12 +36,17 @@ pub struct CshmArgs {
     #[arg(short = 'n', long = "nc")]
     pub not_centered: bool,
 
+    /// Position (1-based) of the atom in the .xyz table that is the centre of the structure.
+    /// Cannot be used together with --nc. Defaults to the first atom (position 1) when omitted.
+    #[arg(short = 'c', long = "center", conflicts_with = "not_centered", value_parser = parse_center_position)]
+    pub center: Option<usize>,
+
     /// Indices of the standard reference shapes to compare the problem shape to as found in the user manual.
     #[arg(short = 's', long = "sh", num_args = 1..)]
     pub shapes: Option<Vec<usize>>,
 
     /// Name or path of YAML files containing user-defined reference shapes to compare the problem shape to.
-    #[arg(short = 'r', long ="ref", num_args = 1..)]
+    #[arg(short = 'r', long = "ref", num_args = 1..)]
     pub user_shapes: Option<Vec<String>>,
 
     /// Write the output table to a .csv file.
@@ -44,7 +58,7 @@ pub struct CshmArgs {
     pub ideal: bool,
 
     /// Easter-egg
-    #[arg(short = 'c', long = "crab", hide = true)]
+    #[arg(short = 'C', long = "crab", hide = true)]
     pub crab: bool,
 }
 
@@ -57,6 +71,11 @@ pub struct  CsomArgs {
     #[arg(short = 'n', long = "nc")]
     pub not_centered: bool,
 
+    /// Position (1-based) of the atom in the .xyz table that is the centre of the structure.
+    /// Cannot be used together with --nc. Defaults to the first atom (position 1) when omitted.
+    #[arg(short = 'c', long = "center", conflicts_with = "not_centered", value_parser = parse_center_position)]
+    pub center: Option<usize>,
+
     /// Space groups to measure in Schoenflies notation.
     #[arg(short = 'p', long = "pg", num_args = 1..)]
     pub point_groups: Option<Vec<String>>,
@@ -65,7 +84,7 @@ pub struct  CsomArgs {
     ///
     /// Auto mode centers by the first atom if the structure is centered and
     /// centers by the centroid if the structure is not centered.
-    #[arg(short = 'c', long = "center", value_enum, default_value = "auto")]
+    #[arg(short = 'm', long = "mode", value_enum, default_value = "auto")]
     pub centering_mode: CenteringMode,
 
     /// Centering vector for manual centering.
@@ -95,6 +114,11 @@ pub struct  CsomArgs {
 pub struct OdisArgs {
     /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
     pub name: String,
+
+    /// Position (1-based) of the atom in the .xyz table that is the centre of the structure.
+    /// Defaults to the first atom (position 1) when omitted.
+    #[arg(short = 'c', long = "center", value_parser = parse_center_position)]
+    pub center: Option<usize>,
 
     /// Full analysis of the octahedron. Including CShM and CSoM values.
     #[arg(short = 'f', long = "full")]

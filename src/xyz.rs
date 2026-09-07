@@ -16,12 +16,21 @@ fn read_file(path: &str) -> Result<String,XyzParseError> {
     std::fs::read_to_string(path).map_err(XyzParseError::Io)
 }
 
-pub fn parse_xyz(path: &str, not_centered: bool) -> Result<Structure, XyzParseError> {
-    let content = read_file(path)?;
-    parse_xyz_contents(&content, not_centered)
+/// Resolves the CLI's `--nc`/`--center` flags into the `center` argument expected by
+/// `None` when the structure is not centered (`--nc`),
+/// `Some(usize)` when index is specified.
+/// `Some(0)` when structure is centered but no index is specified.
+pub fn resolve_center(not_centered: bool, center: Option<usize>) -> Option<usize> {
+    if not_centered { None } else { Some(center.unwrap_or(0)) }
 }
 
-fn parse_xyz_contents(content: &str, not_centered: bool) -> Result<Structure, XyzParseError> {
+/// Parses the .xyz file at `path`.
+pub fn parse_xyz(path: &str, center: Option<usize>) -> Result<Structure, XyzParseError> {
+    let content = read_file(path)?;
+    parse_xyz_contents(&content, center)
+}
+
+fn parse_xyz_contents(content: &str, center: Option<usize>) -> Result<Structure, XyzParseError> {
     // Parses through a .xyz file and gets the header, the comment and the atom table.
     let mut lines = content.lines();
 
@@ -76,17 +85,21 @@ fn parse_xyz_contents(content: &str, not_centered: bool) -> Result<Structure, Xy
     }
 
 
-    let structure = if !not_centered {
-        let center_atom = atoms.remove(0);
-        Structure {
-            centre: Some(center_atom),
-            ligands: atoms,
+    let structure = match center {
+        Some(idx) => {
+            if idx >= atoms.len() {
+                return Err(XyzParseError::CenterIndexOutOfBounds { index: idx, count: atoms.len() });
             }
-    } else {
-        Structure {
+            let center_atom = atoms.remove(idx);
+            Structure {
+                centre: Some(center_atom),
+                ligands: atoms,
+            }
+        }
+        None => Structure {
             centre: None,
             ligands: atoms,
-        }
+        },
     };
     Ok(structure)
 }
@@ -100,6 +113,7 @@ pub enum XyzParseError {
     BadCoordinate { line_no: usize, source: std::num::ParseFloatError }, // Coordinates are not floats.
     TooFewAtoms(usize), // File contains two atoms or fewer.
     IncorrectAtomCount{ header: usize, count: usize}, // The xyz table has a different number of atoms than expected in the header.
+    CenterIndexOutOfBounds{ index: usize, count: usize}, // --center index is beyond the atom table.
 }
 
 impl std::fmt::Display for XyzParseError {
@@ -112,6 +126,7 @@ impl std::fmt::Display for XyzParseError {
             XyzParseError::BadCoordinate { line_no, source } => write!(f, "bad coordinates in line {}: {}", line_no, source),
             XyzParseError::TooFewAtoms(count) => write!(f, "too few atoms: expected at least 3, found {}", count),
             XyzParseError::IncorrectAtomCount { header, count} => write!(f, "incorrect number of atoms, expected {}, found {}", header, count),
+            XyzParseError::CenterIndexOutOfBounds { index, count } => write!(f, "--center index {} is out of bounds, structure has {} atoms", index, count),
         }
     }
 }
@@ -130,7 +145,7 @@ mod tests {
     #[test]
     fn parses_valid_file() {
         let input = "5\ncomment\nC 0.0 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
-        let result = parse_xyz_contents(input, false);
+        let result = parse_xyz_contents(input, Some(0));
 
         println!("{:?}", result);
         assert!(result.is_ok());
@@ -142,44 +157,61 @@ mod tests {
     }
 
     #[test]
+    fn parses_with_custom_center_index() {
+        let input = "5\ncomment\nC 0.0 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
+        let result = parse_xyz_contents(input, Some(2)).unwrap();
+
+        assert_eq!(result.centre.unwrap().label, "H2");
+        assert_eq!(result.ligands.len(), 4);
+        assert!(result.ligands.iter().all(|atom| atom.label != "H2"));
+    }
+
+    #[test]
+    fn center_index_out_of_bounds_error() {
+        let input = "5\ncomment\nC 0.0 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
+        let result = parse_xyz_contents(input, Some(10));
+        assert!(matches!(result, Err(XyzParseError::CenterIndexOutOfBounds {index: 10, count: 5})));
+    }
+
+    #[test]
     fn empty_file_error() {
         let contents = "";
-        let result = parse_xyz_contents(contents, false);
+        let result = parse_xyz_contents(contents, Some(0));
         assert!(matches!(result, Err(XyzParseError::Empty)));
     }
 
     #[test]
     fn bad_header_error() {
         let input = "banana\ncomment\nC 0.0 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
-        let result = parse_xyz_contents(input, true);
+        let result = parse_xyz_contents(input, None);
         assert!(matches!(result, Err(XyzParseError::BadHeader(_))));
     }
 
     #[test]
     fn bad_line_error() {
         let input = "5\ncomment\nC 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
-        let result = parse_xyz_contents(input, true);
+        let result = parse_xyz_contents(input, None);
         assert!(matches!(result, Err(XyzParseError::BadLine {line_no: 3, line: _})));
     }
 
     #[test]
     fn bad_coordinate_error() {
         let input = "5\ncomment\nC banana 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
-        let result = parse_xyz_contents(input, true);
+        let result = parse_xyz_contents(input, None);
         assert!(matches!(result, Err(XyzParseError::BadCoordinate {line_no: 3, source: _})));
     }
 
     #[test]
     fn too_few_error() {
         let input = "2\ncomment\nC 0.0 0.0 0.0\nH1 0.5 0.1 0.9\n";
-        let result = parse_xyz_contents(input, true);
+        let result = parse_xyz_contents(input, None);
         assert!(matches!(result, Err(XyzParseError::TooFewAtoms(2))));
     }
 
     #[test]
     fn invalid_count_error() {
         let input = "2\ncomment\nC 0.0 0.0 0.0\nH1 0.5 0.1 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 ";
-        let result = parse_xyz_contents(input, true);
+        let result = parse_xyz_contents(input, None);
         assert!(matches!(result, Err(XyzParseError::IncorrectAtomCount {header: 2, count: 5})))
     }
 }

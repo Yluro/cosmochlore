@@ -40,7 +40,8 @@ impl std::error::Error for OdisError {}
 pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Extract structure from .xyz
-    let structure = xyz::parse_xyz(&args.name, false)?; // Structure should be centered by default.
+    let center = xyz::resolve_center(false, args.center.map(|c| c - 1));
+    let structure = xyz::parse_xyz(&args.name, center)?;
 
     // 2. Calculate the common parameters
     let odis_result = calculate_od(&structure)?;
