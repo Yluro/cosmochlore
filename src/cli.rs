@@ -96,9 +96,13 @@ pub struct  CsomArgs {
     #[arg(short = 'f', long = "full")]
     pub full: bool,
 
-    /// Write the summary output table (point group, deviation, rotation) to a .csv file.
+    /// Write the summary output table (point group, deviation, rotation matrix) to a .csv file.
     #[arg(short = 't', long = "table")]
     pub table: bool,
+
+    /// Write the minimum deviation operated coordinates to .xyz file.
+    #[arg(short = 'o', long = "operated")]
+    pub operated: bool,
 
     /// Number of samples taken f the Fibonacci sphere.
     #[arg(short = 's', long = "samples", default_value = "20")]
@@ -107,7 +111,10 @@ pub struct  CsomArgs {
     /// Maximum number of iterations for Nelder-Mead optimization of the z-axis.
     #[arg(short = 'i', long = "iterations", default_value = "1000")]
     pub iterations: Option<usize>,
-    
+
+    /// Ignore atom labels when searching for the best atom-to-atom permutation.
+    #[arg(short = 'g', long = "ignore")]
+    pub ignore_labels: bool,
 }
 
 #[derive(Args, Debug)]
