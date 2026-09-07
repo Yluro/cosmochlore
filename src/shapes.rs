@@ -1,5 +1,7 @@
 use crate::data;
+use crate::xyz::{Atom, Structure};
 use data::standard_shapes::builtin_shapes;
+use nalgebra::Vector3;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReferenceShape {
@@ -15,6 +17,19 @@ pub struct ReferenceShape {
     pub centre: [f64; 3],
     /// Coordinates of the vertex positions the reference shape.
     pub vertices: Vec<[f64; 3]>,
+}
+
+
+/// Build a structure from a given reference shape vertices and index.
+
+pub fn structure_from_shape(vertices: u8, index: usize) -> Structure {
+    let shape = resolve_shapes(vertices, Some(&[index])).unwrap().remove(0);
+    Structure {
+        centre: Some(Atom { label: "M".to_string(), coords: Vector3::from(shape.centre) }),
+        ligands: shape.vertices.iter()
+            .map(|v| Atom { label: "L".to_string(), coords: Vector3::from(*v) })
+            .collect(),
+    }
 }
 
 
