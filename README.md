@@ -14,12 +14,11 @@ Cosmochlore includes three measures covering a different ways of measuring how d
 
 - **`cshm`** — computes the **Continuous Shape Measure (CShM)** between a structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 90 built-in reference polyhedra are included (see [Reference Polyhedra](#reference-polyhedra)), and user-defined ones can be supplied via YAML.
 - **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)). A value of `CSoM = 0` means that the symmetry of a given point group is perfectly conserved in the structure.
-- **`odis`** — **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters (mean M–X distance, `zeta`, `delta`, `sigma`, `tau`, `mu`), combined with a CShM/CSoM breakdown against the most common octahedral distortions.
+- **`odis`** — computes the **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters.
 
 ### Future Features
  - Include Cosmochlore into [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master).
  - Automatic point-group detection for `csom` (currently a target point group must always be given via `--pg`).
- - Face-twisting (theta) and volume octahedral distortion parameters for `odis`.
 
 _[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
 
@@ -66,6 +65,7 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 | Flag | Value | Description                                                                                                                                                                                                                              |
 |---|---|---|
 | `-n` <br> `--nc` | None | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.       |
+| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted. |
 |`-s` <br> `--sh` | `<SHAPES>...` | Restrict the comparison to specific [built-in reference shapes](#reference-polyhedra) by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
 | `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.                                                                               
 |`-t` <br> `--table`| None | Write a `name_cshm_table.csv` file containing the output of the calculation.                                                                                                                                                              |
@@ -75,21 +75,25 @@ _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 
 #### Optional arguments for `csom`:
 
-| Flag | Value | Description |
-|---|---|---|
-| `-n` `--nc` | None | Treat the structure as non-centered (see `cshm`'s `-n`). |
-| `-p` <br> `--pg` | `<POINT_GROUPS>...` | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list. |
-| `-c` <br> `--center` | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise. |
-| `-u` <br> `--vector` | `<X> <Y> <Z>` | Centering vector, required when `--center manual` is used. |
-| `-f` <br> `--full` | None | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation. |
-| `-t` <br> `--table` | None | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix). |
-| `-s` <br> `--samples` | `<N>` | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. It is recomended not to change this parameter. |
-| `-i` <br> `--iterations` | `<N>` | Maximum number of iterations used to refine the symmetry axis. Defaults to `200`. |
+| Flag | Value | Description                                                                                                                                                                                                                                                               |
+|---|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-n` `--nc` | None | Treat the structure as non-centered (see `cshm`'s `-n`).                                                                                                                                                                                                                  |
+| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted.                                                                                   |
+| `-p` <br> `--pg` | `<POINT_GROUPS>...` | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list.                                         |
+| `-m` <br> `--mode` | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise.                                                                                                                                         |
+| `-u` <br> `--vector` | `<X> <Y> <Z>` | Centering vector, required when `--mode manual` is used.                                                                                                                                                                                                                  |
+| `-t` <br> `--table` | None | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix).                                                                                                                                                                             |
+| `-f` <br> `--full` | None | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation.                                                                                                                                        |
+| `-o` <br> `--operated` | None | Write, per analysed point group, a `name_<PG>_operated.xyz` file with every symmetry-operated image of the structure at the minimum-deviation orientation, plus a `name_<PG>_merged.mol2` overlaying all of those images in one 3D structure for viewers such as Mercury. |
+| `-s` <br> `--samples` | `<N>` | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. _It is recomended not to change this parameter._                                                                                                                                |
+| `-i` <br> `--iterations` | `<N>` | Maximum number of iterations used to refine the symmetry axis. Defaults to `1000`. _It is recomended not to change this parameter._                                                                                                                                         |
+| `-g` <br> `--ignore` | None | Ignore atom labels when searching for the best atom-to-atom permutation: every atom is treated as interchangeable regardless of element/label, instead of only matching atoms that share a label.                                                                         |
 
 #### Optional arguments for `odis`:
 
 | Flag | Value | Description |
 |---|---|---|
+| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Defaults to the first atom (position 1) when omitted. |
 | `-f` <br> `--full` | None | Full analysis of the octahedron, including CShM (against `OC-6`/`TPR-6`) and CSoM (against the common octahedral distortion point groups) values. |
 | `-t` <br> `--table` | None | Write the output table to a `.csv` file. |
 
@@ -433,15 +437,15 @@ The main problem to solve for `csom` is that symmetry element operations depend 
 
 1. **Fibonacci-sphere seeding**: `--samples` orientation vectors are spread evenly over the unit sphere and each is scored, giving a good starting point without an expensive exhaustive search.
 2. **Nelder-Mead refinement**: each seed is locally optimised using the derivative-free Nelder-Mead optimisation method (up to `--iterations` steps). Best axis is then defined for the 
-3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimised over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive, that is, atoms are only matched with others of the same element.
+3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimised over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive by default, that is, atoms are only matched with others of the same element; pass `--ignore` to instead let the search match any atom to any other, regardless of label. When the structure is centered on its first atom, that atom is excluded from the Hungarian search and matched to itself directly, since it sits at the origin and is therefore invariant under every symmetry operation -- this reduces the assignment's dimensionality by one at no cost in accuracy.
 
 The reported CSoM score is the deviation averaged over all every symmetry operations of a given point group.
 
 ## The `odis` algorithm
 
-`odis` reports the `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid). 
+`odis` reports the `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion), `theta` (face-twisting distortion, 0° for a perfect octahedron up to 1170° for the ideal trigonal prism) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid), and `volume`, the coordination polyhedron's volume in Å³ (found by decomposing its eight triangular faces into tetrahedra with the ligand centroid as their common apex).
 
-Aditionally, the odis module runs `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions, to give a fuller picture of the distortion of the coordination sphere.
+Additionally, the `odis` module can run `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions.
 
 ## Acknowledgements
 
@@ -452,6 +456,8 @@ This project reimplements the shape-measure methodology originally developed for
 **The code, binaries and sample tests are provided as is, with no warranty of any kind.** This program is licensed under the GNU General Public Licence v3.0 (GPL-3.0). See the `LICENSE.md` file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
 
 Parts of the `cshm` module are based on `cosymlib` (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT Licence.
+
+Parts of the `csom` module are based on 
 
 Parts of the `odis` module is are based on the [`OctaDist`](https://octadist.github.io/)<sup>3</sup> algorithm, Copyright (c) 2019-2026  Rangsiman Ketkaew et al., licensed under the GNU General Public Licence v3.0 (GPL-3.0).
 
