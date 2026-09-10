@@ -187,9 +187,27 @@ pub fn write_csom_csv(results: &[CsomResult], file_name: &str) -> Result<(), std
     Ok(())
 }
 
-/// Writes the individual symmetry operation deviations (name, matrix, s-value) per point group analysed
-/// to a  `<file>_<point group>_details.csv` file.
-pub fn write_csom_details_csv(results: &[CsomResult], file_name: &str) -> Result<(), std::io::Error> {
+/// Formats an operation's atom pairing as `Source>Target` entries in the input's atom order:
+/// `A>B` means the operation carries atom `A` onto the site of atom `B`. `A>A` is an atom
+/// mapped onto itself. With `--ignore` the two labels can name different elements -- that
+/// cross-element pairing is exactly what lowers the measure, so it is reported explicitly.
+fn format_pairing(pairing: &[usize], labels: &[String]) -> String {
+    // `pairing[target] = source`, so invert it to walk the atoms in input order.
+    let mut target_of = vec![0usize; pairing.len()];
+    for (target, &source) in pairing.iter().enumerate() {
+        target_of[source] = target;
+    }
+
+    target_of.iter()
+        .enumerate()
+        .map(|(source, &target)| format!("{}>{}", labels[source], labels[target]))
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
+/// Writes the individual symmetry operation deviations (name, matrix, s-value, atom pairing)
+/// per point group analysed to a  `<file>_<point group>_details.csv` file.
+pub fn write_csom_details_csv(results: &[CsomResult], file_name: &str, labels: &[String]) -> Result<(), std::io::Error> {
     let stem = file_name.strip_suffix(".xyz").unwrap_or(file_name);
 
     for result in results {
@@ -198,9 +216,16 @@ pub fn write_csom_details_csv(results: &[CsomResult], file_name: &str) -> Result
 
         println!("Writing operation details to {}...", out_name);
 
-        writeln!(file, "name,op_matrix,dev")?;
-        for (name, matrix, dev, _) in &result.operations {
-            writeln!(file, "{},{},{:.3}", name, format_matrix3(matrix), dev)?;
+        writeln!(file, "name,op_matrix,dev,pairing")?;
+        for op in &result.operations {
+            writeln!(
+                file,
+                "{},{},{:.3},{}",
+                op.name,
+                format_matrix3(&op.matrix),
+                op.deviation,
+                format_pairing(&op.pairing, labels),
+            )?;
         }
     }
 
@@ -237,10 +262,12 @@ pub fn write_csom_operated_xyz(
         // CSOM-alignment rotation without an explicit matrix inversion.
         let rotation_inv = result.rotation.transpose();
 
-        for (name, _, dev, xyz) in &result.operations {
+        // `op.image[i]` is where the operation sends atom `i`, so every atom keeps its own
+        // label: an atom whose image lands on a *different* atom's site shows up as such.
+        for op in &result.operations {
             writeln!(file, "{}", labels.len())?;
-            writeln!(file, "{} {} dev = {:.3}", result.point_group, name, dev)?;
-            for (label, point) in labels.iter().zip(xyz) {
+            writeln!(file, "{} {} dev = {:.3}", result.point_group, op.name, op.deviation)?;
+            for (label, point) in labels.iter().zip(&op.image) {
                 let real_point = (rotation_inv * point) / result.scale + result.centroid;
                 writeln!(file, "{}  {:.6}  {:.6}  {:.6}", label, real_point.x, real_point.y, real_point.z)?;
             }
@@ -274,11 +301,11 @@ pub fn write_csom_merged_mol2(
         // (substructure name, that block's atom coordinates recovered to the original frame).
         let rotation_inv = result.rotation.transpose();
         let mut blocks: Vec<(&str, Vec<Vector3<f64>>)> = vec![("E", original_coords.to_vec())];
-        blocks.extend(result.operations.iter().map(|(name, _, _, xyz)| {
-            let real_points = xyz.iter()
+        blocks.extend(result.operations.iter().map(|op| {
+            let real_points = op.image.iter()
                 .map(|p| (rotation_inv * p) / result.scale + result.centroid)
                 .collect();
-            (name.as_str(), real_points)
+            (op.name.as_str(), real_points)
         }));
 
         let bonds_per_block = if has_centre_atom { n_per_block.saturating_sub(1) } else { 0 };

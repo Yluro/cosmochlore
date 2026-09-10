@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use nalgebra::{Matrix3, Vector3};
-use crate::csom::CsomError;
+use nalgebra::Vector3;
+use crate::csom::{CsomError, CsomOperation};
 use crate::csom::io::strip_all_labels;
 use crate::data::pgs::{get_pointgroup, to_matrix3};
 
@@ -158,14 +158,15 @@ fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
 /// When `has_centre` is true, index `0` is pulled out of the group and matched to
 /// itself directly.
 ///
-/// Returns (orig_idx, a_point, b_point), where `orig_idx` is that atom's index into
-// /// the underlying `a`/`b`/`labels` arrays.
+/// Returns (a_idx, b_idx, a_point, b_point), where each index is that point's own index
+/// into the underlying `a`/`b`/`labels` arrays. `b_idx` is the atom `b_point` belongs to,
+/// which is *not* `a_idx` whenever the assignment moved that atom somewhere else.
 fn assign_group(
     indices: &[usize],
     a: &[Vector3<f64>],
     b: &[Vector3<f64>],
     has_centre: bool,
-    pairs: &mut Vec<(usize, Vector3<f64>, Vector3<f64>)>,
+    pairs: &mut Vec<(usize, usize, Vector3<f64>, Vector3<f64>)>,
 ) {
     let (pinned, rest): (Vec<usize>, Vec<usize>) = if has_centre {
         indices.iter().copied().partition(|&i| i == 0)
@@ -174,7 +175,7 @@ fn assign_group(
     };
 
     for i in pinned {
-        pairs.push((i, a[i], b[i]));
+        pairs.push((i, i, a[i], b[i]));
     }
 
     if rest.is_empty() {
@@ -184,9 +185,17 @@ fn assign_group(
     let a_subset: Vec<Vector3<f64>> = rest.iter().map(|&i| a[i]).collect();
     let b_subset: Vec<Vector3<f64>> = rest.iter().map(|&i| b[i]).collect();
 
-    let (perm_b, _) = best_permutation(&a_subset, &b_subset);
+    // `assignment[k]` indexes into the subset, so `rest[assignment[k]]` is the atom whose
+    // b-point ended up paired with `rest[k]`.
+    let (perm_b, assignment) = best_permutation(&a_subset, &b_subset);
 
-    pairs.extend(rest.iter().zip(a_subset).zip(perm_b).map(|((&i, pa), pb)| (i, pa, pb)));
+    pairs.extend(
+        rest.iter()
+            .zip(a_subset)
+            .zip(perm_b)
+            .zip(&assignment)
+            .map(|(((&i, pa), pb), &k)| (i, rest[k], pa, pb)),
+    );
 }
 
 /// Finds the best one-to-one matching between the subsets A and B by atom type. (equal length)
@@ -195,9 +204,10 @@ fn assign_group(
 /// If `ignore_labels` is true, atom labels are not used to restrict the search. If `has_centre` is true, atom
 /// index `0` is pinned to itself instead of entering the Hungarian assignment.
 ///
-/// Returns (A and B reordered to best match, each pair's original index into `a`/`b`/`labels`)
-/// so a caller can place the matched points back into the input's own atom order without
-/// re-running the assignment.
+/// Returns (A and B reordered to best match, pairing), where `pairing[i]` is the atom whose
+/// B-point got matched to `a[i]`. With labels honoured that atom always shares atom `i`'s
+/// element; with `ignore_labels` it need not, so a caller reporting the matched points must
+/// take each one's identity from `pairing[i]` rather than from `i`.
 pub fn best_permutation_multiple_atoms(
     a: &[Vector3<f64>],
     b: &[Vector3<f64>],
@@ -209,7 +219,7 @@ pub fn best_permutation_multiple_atoms(
     debug_assert_eq!(labels.len(), b.len());
     debug_assert_eq!(labels.len(), a.len());
 
-    let mut pairs: Vec<(usize, Vector3<f64>, Vector3<f64>)> = Vec::new();
+    let mut pairs: Vec<(usize, usize, Vector3<f64>, Vector3<f64>)> = Vec::new();
 
     if ignore_labels {
         let all_indices: Vec<usize> = (0..labels.len()).collect();
@@ -222,55 +232,58 @@ pub fn best_permutation_multiple_atoms(
 
     debug_assert_eq!(pairs.len(), labels.len());
 
+    let mut pairing = vec![0usize; labels.len()];
+    for &(a_idx, b_idx, _, _) in &pairs {
+        pairing[a_idx] = b_idx;
+    }
+
     // Sort pairs by ascending order of z- y- x- values so output from hashmap is deterministic.
     pairs.sort_by(
-        |(_, a1, _), (_, a2, _)| {
+        |(_, _, a1, _), (_, _, a2, _)| {
             a1.z.total_cmp(&a2.z)
                 .then(a1.y.total_cmp(&a2.y))
                 .then(a1.x.total_cmp(&a2.x))
         }
     );
 
-    let mut orig_idx = Vec::with_capacity(pairs.len());
     let mut final_a = Vec::with_capacity(pairs.len());
     let mut final_b = Vec::with_capacity(pairs.len());
-    for (i, pa, pb) in pairs {
-        orig_idx.push(i);
+    for (_, _, pa, pb) in pairs {
         final_a.push(pa);
         final_b.push(pb);
     }
 
-    (final_a, final_b, orig_idx)
+    (final_a, final_b, pairing)
 }
 
 
 /// Deviation of `points` from every individual symmetry operation of `pg`.
-/// 
-/// The fourth element of each entry is that operation's image of `points` (`sym_op * points`),
-/// re-indexed back to `points`' own atom order so `xyz[i]` is the position matched to
-/// `points[i]` under that operation.
 pub(crate) fn point_group_operation_deviations(
     points: &[Vector3<f64>],
     labels: &[String],
     pg: &str,
     ignore_labels: bool,
     has_centre: bool,
-) -> Result<Vec<(&'static str, Matrix3<f64>, f64, Vec<Vector3<f64>>)>, CsomError> {
+) -> Result<Vec<CsomOperation>, CsomError> {
     let ops = get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
     let stripped = strip_all_labels(labels);
 
     Ok(ops.iter().map(|(name, matrix)| {
         let sym_op = to_matrix3(*matrix);
-        let operated_structure: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
+        let image: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
 
-        let (a, b, orig_idx) = best_permutation_multiple_atoms(points, &operated_structure, &stripped, ignore_labels, has_centre);
+        // The assignment only decides which image point each atom is *scored against*; it
+        // never changes whose image a point is, so `image` stays in the input's atom order
+        // and the pairing is reported separately.
+        let (a, b, pairing) = best_permutation_multiple_atoms(points, &image, &stripped, ignore_labels, has_centre);
 
-        let mut xyz = vec![Vector3::zeros(); points.len()];
-        for (&i, &point) in orig_idx.iter().zip(&b) {
-            xyz[i] = point;
+        CsomOperation {
+            name: name.to_string(),
+            matrix: sym_op,
+            deviation: sds_dev(&a, &b),
+            image,
+            pairing,
         }
-
-        (*name, sym_op, sds_dev(&a, &b), xyz)
     }).collect())
 }
 
@@ -284,6 +297,6 @@ pub fn point_group_dev(
 ) -> Result<f64, CsomError> {
     let devs = point_group_operation_deviations(points, labels, pg, ignore_labels, has_centre)?;
 
-    Ok(devs.iter().map(|(_, _, dev, _)| dev).sum::<f64>() / devs.len() as f64)
+    Ok(devs.iter().map(|op| op.deviation).sum::<f64>() / devs.len() as f64)
 }
 

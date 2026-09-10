@@ -186,3 +186,46 @@ fn oc_for_oh_point_group() {
     assert!(average_dev.abs() < 1e-3, "expected average_dev = 0.0, found {}",  average_dev);
 }
 
+#[test]
+fn operated_image_keeps_every_atom_with_its_own_label() {
+
+    let mut shape: Vec<Vector3<f64>> = octahedron();
+    let _ = center_by_first_point(&mut shape);
+    let _ = normalise(&mut shape);
+
+    // One ligand deliberately mislabelled, so ignoring labels lets it pair with the image of
+    // a nitrogen -- the case that used to make the reconstructed .xyz misleading, because the
+    // image was filed under the label of the atom it was *matched to* rather than its own.
+    let labels: Vec<String> = ["Fe", "N", "Cl", "N", "N", "N", "N"]
+        .iter()
+        .map(|l| l.to_string())
+        .collect();
+
+    let ops = point_group_operation_deviations(&shape, &labels, "Oh", true, true)
+        .expect("Oh is a valid point group");
+
+    for op in &ops {
+        for (i, point) in op.image.iter().enumerate() {
+            let expected = op.matrix * shape[i];
+            assert!(
+                (point - expected).norm() < 1e-12,
+                "{}: image[{i}] should be the operation applied to atom {i}, got {point}",
+                op.name
+            );
+        }
+
+        // The pairing has to stay a permutation of the atoms, one image per atom.
+        let mut seen = vec![false; labels.len()];
+        for &j in &op.pairing {
+            assert!(!seen[j], "{}: atom {j} was paired with twice", op.name);
+            seen[j] = true;
+        }
+    }
+
+    // The mislabelled ligand must really be paired across elements for some operation,
+    // otherwise the check above never sees the case that broke.
+    let crossed = ops.iter().any(|op| {
+        op.pairing.iter().enumerate().any(|(i, &j)| labels[i] != labels[j])
+    });
+    assert!(crossed, "expected ignoring labels to pair the Cl with a nitrogen image somewhere");
+}

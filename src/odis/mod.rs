@@ -68,6 +68,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
     let csom_point_groups: Vec<String> = [
         "Oh",  // Ideal octahedron.
         "D4h", // Tetragonal distortion (axial elongation/compression, e.g. Jahn-Teller).
+        "D3h", // Trigonal prism face twisting.
         "D3d", // Trigonal distortion (trigonal antiprismatic twist).
         "D2h", // Rhombic distortion.
         "C4v", // One ligand distinct from the other five (square-pyramidal-like).

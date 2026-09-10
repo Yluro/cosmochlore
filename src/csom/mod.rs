@@ -15,6 +15,27 @@ mod dev;
 mod tests;
 mod optimize;
 
+/// One symmetry operation of a point group, measured against the structure at the refined axis.
+pub struct CsomOperation {
+    /// Schoenflies name of the operation.
+    pub name: String,
+
+    /// The operation's matrix, in the refined (rotated) frame.
+    pub matrix: Matrix3<f64>,
+
+    /// Deviation of the structure from this single operation.
+    pub deviation: f64,
+
+    /// `image[i]` is where the operation sends atom `i`, so it is still atom `i`'s own
+    /// position and carries atom `i`'s label.
+    pub image: Vec<Vector3<f64>>,
+
+    /// `pairing[i]` is the atom whose image atom `i` was scored against. Honouring labels
+    /// that is always an atom of the same element; with `--ignore` an atom can be paired
+    /// with the image of a different element, which is what lowers the deviation.
+    pub pairing: Vec<usize>,
+}
+
 pub struct CsomResult {
     /// Point group analysed.
     pub point_group: String,
@@ -25,8 +46,8 @@ pub struct CsomResult {
     /// Rotation matrix that defines the refined axis.
     pub rotation: Matrix3<f64>,
 
-    /// Per-operation breakdown:  name,  matrix, deviation, reconstructed struc
-    pub operations: Vec<(String, Matrix3<f64>, f64, Vec<Vector3<f64>>)>,
+    /// Per-operation breakdown.
+    pub operations: Vec<CsomOperation>,
 
     /// Normalization scale factor for the structure
     pub scale: f64,
@@ -83,7 +104,7 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     // 5. If requested, write the per-operation breakdown (name, matrix, deviation) to a .csv
     //    file per point group.
     if args.full {
-        write_csom_details_csv(&results, &args.name)?;
+        write_csom_details_csv(&results, &args.name, &labels)?;
     }
 
     // 6. If requested, write the operated coordinates (recovered rotation + each symmetry
@@ -127,13 +148,10 @@ pub fn calc_csom(
         let (rotation_vector, deviation) = find_best_axis(samples, &csom_structure, point_group, iterations, ignore_labels)?;
         let rotation = rotation_matrix_from_vector(rotation_vector);
 
-        let operations = if with_operations {
+        let operations: Vec<CsomOperation> = if with_operations {
             // Re-measure at the refined axis to break the overall deviation down by operation.
             let rotated_points: Vec<Vector3<f64>> = csom_structure.points.iter().map(|p| rotation * p).collect();
             point_group_operation_deviations(&rotated_points, &csom_structure.labels, point_group, ignore_labels, csom_structure.has_centre)?
-                .into_iter()
-                .map(|(name, matrix, dev, xyz)| (name.to_string(), matrix, dev, xyz))
-                .collect()
         } else {
             Vec::new()
         };
