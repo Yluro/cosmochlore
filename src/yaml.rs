@@ -208,40 +208,24 @@ pub fn parse_custom_shapes(path: &str) -> Result<Vec<ReferenceShape>, YamlParseE
 
 
 // ERROR HANDLING
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum YamlParseError {
-    Io(std::io::Error),                                     // Can't read file
+    #[error("could not read file: {0}")]
+    Io(#[from] std::io::Error),                                     // Can't read file
+    #[error("could not read {file} file: empty file")]
     FileEmpty { file: String },                              // File is empty
+    #[error("bad entry in file {file} at line {}", line_no + 1)]
     BadSymbol { file: String, line_no: usize },                  // Entry appears but is in wrong format for example ":" meets criteria of starting with no ' ' and ending with ':'
+    #[error("entry for {symbol} is missing {field} in file {file}")]
     MissingField {file: String, symbol: String, field: &'static str }, // Some entry has missing fields
+    #[error("entry for {symbol} has no value for {field} in file {file} at line {}", line_no + 1)]
     NoValue {file: String, symbol: String, field: &'static str, line_no: usize },   // field appeared, but has no value
+    #[error("unexpected contents in file {file} at line {}", line_no + 1)]
     UnparsableLine {file: String, line_no: usize },         // Some entry has unexpected fields. It reaches the end of the "if chain" without getting parsed.
+    #[error("found unexpected coordinate block in file {file} at line {} ", line_no + 1)]
     UnexpectedCoordinate {file: String, line_no: usize },   // Coordinate appears when Section::Unset
+    #[error("bad coordinates in file {file} at line {} ", line_no + 1)]
     BadCoordinate {file: String, line_no: usize },          // wrong coordinate format
-}
-
-impl std::fmt::Display for YamlParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            YamlParseError::Io(err) => write!(f, "could not read file: {err}"),
-            YamlParseError::FileEmpty {file} => write!(f, "could not read {file} file: empty file"),
-            YamlParseError::BadSymbol {file, line_no} => write!(f, "bad entry in file {file} at line {}", line_no + 1),
-            YamlParseError::MissingField {file,  symbol , field  } => write!(f, "entry for {symbol} is missing {field} in file {file}"),
-            YamlParseError::NoValue {file, symbol , field, line_no } => write!(f, "entry for {symbol} has no value for {field} in file {file} at line {}", line_no + 1),
-            YamlParseError::UnparsableLine {file, line_no  } => write!(f, "unexpected contents in file {file} at line {}", line_no + 1),
-            YamlParseError::UnexpectedCoordinate {file, line_no  } => write!(f, "found unexpected coordinate block in file {file} at line {} ", line_no + 1),
-            YamlParseError::BadCoordinate {file,  line_no  } => write!(f, "bad coordinates in file {file} at line {} ", line_no + 1),
-         }
-    }
-}
-
-// Rust technicalities to handle errors with ? syntax.
-impl std::error::Error for YamlParseError {}
-
-impl From<std::io::Error> for YamlParseError {
-    fn from(err: std::io::Error) -> Self {
-        YamlParseError::Io(err)
-    }
 }
 
 

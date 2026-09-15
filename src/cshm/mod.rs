@@ -9,6 +9,7 @@ pub mod tests;
 
 use crate::cli::CshmArgs;
 use crate::coordinates::{points_from_reference_shape, points_from_structure};
+use crate::error::Error;
 use crate::out::{print_crab, print_cshm_table, write_cshm_csv, write_cshm_reconstructed_xyz};
 use crate::shapes::{ReferenceShape, check_vertex_count};
 use crate::xyz::Structure;
@@ -51,7 +52,7 @@ pub fn calc_cshm(reference_shapes: Vec<ReferenceShape>, problem_structure: &Stru
     results
 }
 
-pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user; the parser wants a 0-based table index.
     let center = xyz::resolve_center(args.not_centered, args.center.map(|c| c - 1));

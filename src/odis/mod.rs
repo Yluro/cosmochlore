@@ -4,6 +4,7 @@ use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
 use crate::csom::io::CenteringMode;
 use crate::csom::calc_csom;
+use crate::error::Error;
 use crate::out::*;
 use crate::{shapes, xyz};
 pub use calc::calculate_od;
@@ -20,24 +21,15 @@ pub struct OdisResult {
     pub mu: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum OdisError {
+    #[error("structure has no central atom")]
     NoCentre,
+    #[error("wrong number of points, expected: 7, found: {n}")]
     IncorrectNumberOfPoints{ n: usize },
 }
 
-impl std::fmt::Display for OdisError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            OdisError::NoCentre => {write!(f, "structure has no central atom")}
-            OdisError::IncorrectNumberOfPoints{ n} => { write!(f, "wrong number of points, expected: 7, found: {}", n) },
-        }
-    }
-}
-
-impl std::error::Error for OdisError {}
-
-pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
 
     // 1. Extract structure from .xyz
     let center = xyz::resolve_center(false, args.center.map(|c| c - 1));

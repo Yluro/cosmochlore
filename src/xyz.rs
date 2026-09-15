@@ -116,39 +116,24 @@ fn parse_xyz_contents(content: &str, center: Option<usize>) -> Result<Structure,
     Ok(structure)
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum XyzParseError {
-    Io(std::io::Error), // Can't read file
+    #[error("could not read file: {0}")]
+    Io(#[from] std::io::Error), // Can't read file
+    #[error("empty file")]
     Empty,              // File is empty
+    #[error("bad header: {0}")]
     BadHeader(String),  // File has wrong header
+    #[error("bad line in {line_no}: {line}")]
     BadLine { line_no: usize, line: String },  // File has a bad line (not enough whitespaces)
+    #[error("bad coordinates in line {line_no}: {source}")]
     BadCoordinate { line_no: usize, source: std::num::ParseFloatError }, // Coordinates are not floats.
+    #[error("too few atoms: expected at least 3, found {0}")]
     TooFewAtoms(usize), // File contains two atoms or fewer.
+    #[error("incorrect number of atoms, expected {header}, found {count}")]
     IncorrectAtomCount{ header: usize, count: usize}, // The xyz table has a different number of atoms than expected in the header.
+    #[error("--center index {index} is out of bounds, structure has {count} atoms")]
     CenterIndexOutOfBounds{ index: usize, count: usize}, // --center index is beyond the atom table.
-}
-
-impl std::fmt::Display for XyzParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            XyzParseError::Io(err) => write!(f, "could not read file: {}", err),
-            XyzParseError::Empty => write!(f, "empty file"),
-            XyzParseError::BadHeader(err) => write!(f, "bad header: {}", err),
-            XyzParseError::BadLine { line_no, line } => write!(f, "bad line in {}: {}", line_no, line),
-            XyzParseError::BadCoordinate { line_no, source } => write!(f, "bad coordinates in line {}: {}", line_no, source),
-            XyzParseError::TooFewAtoms(count) => write!(f, "too few atoms: expected at least 3, found {}", count),
-            XyzParseError::IncorrectAtomCount { header, count} => write!(f, "incorrect number of atoms, expected {}, found {}", header, count),
-            XyzParseError::CenterIndexOutOfBounds { index, count } => write!(f, "--center index {} is out of bounds, structure has {} atoms", index, count),
-        }
-    }
-}
-
-impl std::error::Error for XyzParseError {}
-
-impl From<std::io::Error> for XyzParseError {
-    fn from(err: std::io::Error) -> Self {
-        XyzParseError::Io(err)
-    }
 }
 
 #[cfg(test)]

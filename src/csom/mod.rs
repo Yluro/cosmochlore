@@ -1,6 +1,6 @@
 use crate::cli::CsomArgs;
 use crate::xyz::{parse_xyz, resolve_center, Structure};
-use std::error::Error;
+use crate::error::Error;
 use nalgebra::{Matrix3, Vector3};
 use crate::csom::dev::point_group_operation_deviations;
 use crate::csom::io::{prepare_csom_structure, CenteringMode};
@@ -57,7 +57,7 @@ pub struct CsomResult {
 }
 
 
-pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
+pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
 
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user get mapped to 0 based for parser.
@@ -163,20 +163,10 @@ pub fn calc_csom(
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum CsomError {
+    #[error("wrong point group name: {pg}")]
     WrongSpaceGroup { pg: String},
+    #[error("axis optimisation failed: {0}")]
     OptimizationFailed(String),
-
 }
-
-impl std::fmt::Display for CsomError  {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            CsomError::WrongSpaceGroup { pg } => {write!(f, "wrong point group name: {}", {pg})}
-            CsomError::OptimizationFailed(msg) => {write!(f, "axis optimisation failed: {}", msg)}
-        }
-    }
-}
-
-impl std::error::Error for CsomError {}

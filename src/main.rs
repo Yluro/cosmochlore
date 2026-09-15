@@ -8,15 +8,17 @@ mod csom;
 mod odis;
 mod coordinates;
 mod out;
+mod error;
 pub mod geometry;
 
 use crate::cli::{Cli, Command};
+use crate::error::Error;
 use crate::out::welcome_msg;
 use clap::Parser;
 use std::time::Instant;
 
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Error> {
     let main_start = Instant::now();
     let args = Cli::parse();
     welcome_msg();
