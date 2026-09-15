@@ -70,7 +70,7 @@ pub fn print_cshm_table(results: &[CShMResult], file: &str) {
 
 /// Writes the cshm results table (symbol, name, symmetry, s-value)
 /// to a `<file>_cshm_table.csv` file.
-pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(), std::io::Error> {
+pub fn write_cshm_csv (results: &[CShMResult], file_name: &str) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_cshm_table.csv";
     let mut file = File::create(&out_name)?;
 
@@ -87,7 +87,7 @@ pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(),
 
 /// Writes all ideal reference shapes scaled and rotated to align to the problem structure
 /// to a `<file>_ideal.xyz` file.
-pub fn write_cshm_reconstructed_xyz (file_name: &String, results: &[CShMResult], labels: &[String]) -> Result<(), std::io::Error> {
+pub fn write_cshm_reconstructed_xyz (file_name: &str, results: &[CShMResult], labels: &[String]) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_ideal.xyz";
     let mut file = File::create(&out_name)
         .expect("Unable to create file.");
