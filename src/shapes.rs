@@ -19,6 +19,18 @@ pub struct ReferenceShape {
     pub vertices: Vec<Vector3<f64>>,
 }
 
+impl ReferenceShape {
+    /// Centre and vertices as one ordered list, centre first when `use_centre` is true.
+    pub fn points(&self, use_centre: bool) -> Vec<Vector3<f64>> {
+        let mut points = Vec::with_capacity(self.vertices.len() + 1);
+        if use_centre {
+            points.push(self.centre);
+        }
+        points.extend(self.vertices.iter().copied());
+        points
+    }
+}
+
 
 /// Build a structure from a given reference shape vertices and index.
 
