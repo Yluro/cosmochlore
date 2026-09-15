@@ -177,6 +177,7 @@ dependencies = [
  "clap",
  "itertools",
  "nalgebra",
+ "thiserror",
 ]
 
 [[package]]
