@@ -23,7 +23,7 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
         .map(|ligand| Vector3::new(ligand.coords[0], ligand.coords[1], ligand.coords[2]))
         .collect();
 
-    if ligands.len() != 6 { return Err(OdisError::IncorrectNumberOfPoints {n: ligands.len()}) };
+    if ligands.len() + 1 != 7 { return Err(OdisError::IncorrectNumberOfPoints {n: ligands.len() + 1}) };
 
     // 1. Build an array of points and vectors of the octahedron for easy calculation later.
     let points = [
