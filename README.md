@@ -48,54 +48,54 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 ```
 ### Commands
 
-| Command | Description |
-|---|---|
-| `cshm` | Continuous shape measures calculation. |
-| `csom` | Continuous symmetry operation measures calculation. |
-| `odis` | Octahedral distortion analysis. |
-| `help` | Print the help or the help of the given subcommand(s). |
+| Command | Description                                            |
+|---------|--------------------------------------------------------|
+| `cshm`  | Continuous shape measures calculation.                 |
+| `csom`  | Continuous symmetry operation measures calculation.    |
+| `odis`  | Octahedral distortion analysis.                        |
+| `help`  | Print the help or the help of the given subcommand(s). |
 
 ### Arguments:
-| Flag | Description |
-|---|---|
+| Flag     | Description                                                                      |
+|----------|----------------------------------------------------------------------------------|
 | `<NAME>` | **Required**. Path to the input `.xyz` file containing the structure to analyze. |
 
 #### Optional arguments for `cshm`:
 
-| Flag | Value | Description                                                                                                                                                                                                                              |
-|---|---|---|
-| `-n` <br> `--nc` | None | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.       |
-| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted. |
-|`-s` <br> `--sh` | `<SHAPES>...` | Restrict the comparison to specific [built-in reference shapes](#reference-polyhedra) by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
-| `-r` <br> `--ref` | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.                                                                               
-|`-t` <br> `--table`| None | Write a `name_cshm_table.csv` file containing the output of the calculation.                                                                                                                                                              |
-|`-i` <br> `--ideal`| None | Write a `name_ideal.xyz` file containing the reconstructed idealised structures for **all** the selected reference shapes.                                                                                                               |
+| Flag                 | Value              | Description                                                                                                                                                                                                                              |
+|----------------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-n` <br> `--nc`     | None               | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.       |
+| `-c` <br> `--center` | `<POSITION>`       | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted.                                                  |
+| `-s` <br> `--sh`     | `<SHAPES>...`      | Restrict the comparison to specific [built-in reference shapes](#reference-polyhedra) by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
+| `-r` <br> `--ref`    | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.                                                                               |
+| `-t` <br> `--table`  | None               | Write a `name_cshm_table.csv` file containing the output of the calculation.                                                                                                                                                             |
+| `-i` <br> `--ideal`  | None               | Write a `name_ideal.xyz` file containing the reconstructed idealised structures for **all** the selected reference shapes.                                                                                                               |
 
 _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 
 #### Optional arguments for `csom`:
 
-| Flag | Value | Description                                                                                                                                                                                                                                                               |
-|---|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `-n` `--nc` | None | Treat the structure as non-centered (see `cshm`'s `-n`).                                                                                                                                                                                                                  |
-| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted.                                                                                   |
-| `-p` <br> `--pg` | `<POINT_GROUPS>...` | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list.                                         |
-| `-m` <br> `--mode` | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise.                                                                                                                                         |
-| `-u` <br> `--vector` | `<X> <Y> <Z>` | Centering vector, required when `--mode manual` is used.                                                                                                                                                                                                                  |
-| `-t` <br> `--table` | None | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix).                                                                                                                                                                             |
-| `-f` <br> `--full` | None | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation.                                                                                                                                        |
-| `-o` <br> `--operated` | None | Write, per analysed point group, a `name_<PG>_operated.xyz` file with every symmetry-operated image of the structure at the minimum-deviation orientation, plus a `name_<PG>_merged.mol2` overlaying all of those images in one 3D structure for viewers such as Mercury. |
-| `-s` <br> `--seeds` | `<N>` | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. _It is recomended not to change this parameter._                                                                                                                                |
-| `-i` <br> `--iterations` | `<N>` | Maximum number of iterations used to refine the symmetry axis. Defaults to `1000`. _It is recomended not to change this parameter._                                                                                                                                         |
-| `-g` <br> `--ignore` | None | Ignore atom labels when searching for the best atom-to-atom permutation: every atom is treated as interchangeable regardless of element/label, instead of only matching atoms that share a label.                                                                         |
+| Flag                     | Value                                       | Description                                                                                                                                                                                                                                                               |
+|--------------------------|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-n` `--nc`              | None                                        | Treat the structure as non-centered (see `cshm`'s `-n`).                                                                                                                                                                                                                  |
+| `-c` <br> `--center`     | `<POSITION>`                                | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted.                                                                                   |
+| `-p` <br> `--pg`         | `<POINT_GROUPS>...`                         | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list.                                         |
+| `-m` <br> `--mode`       | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise.                                                                                                                                         |
+| `-u` <br> `--vector`     | `<X> <Y> <Z>`                               | Centering vector, required when `--mode manual` is used.                                                                                                                                                                                                                  |
+| `-t` <br> `--table`      | None                                        | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix).                                                                                                                                                                             |
+| `-f` <br> `--full`       | None                                        | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation.                                                                                                                                        |
+| `-o` <br> `--operated`   | None                                        | Write, per analysed point group, a `name_<PG>_operated.xyz` file with every symmetry-operated image of the structure at the minimum-deviation orientation, plus a `name_<PG>_merged.mol2` overlaying all of those images in one 3D structure for viewers such as Mercury. |
+| `-s` <br> `--seeds`      | `<N>`                                       | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. _It is recomended not to change this parameter._                                                                                                                              |
+| `-i` <br> `--iterations` | `<N>`                                       | Maximum number of iterations used to refine the symmetry axis. Defaults to `1000`. _It is recomended not to change this parameter._                                                                                                                                       |
+| `-g` <br> `--ignore`     | None                                        | Ignore atom labels when searching for the best atom-to-atom permutation: every atom is treated as interchangeable regardless of element/label, instead of only matching atoms that share a label.                                                                         |
 
 #### Optional arguments for `odis`:
 
-| Flag | Value | Description |
-|---|---|---|
-| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Defaults to the first atom (position 1) when omitted. |
-| `-f` <br> `--full` | None | Full analysis of the octahedron, including CShM (against `OC-6`/`TPR-6`) and CSoM (against the common octahedral distortion point groups) values. |
-| `-t` <br> `--table` | None | Write the output table to a `.csv` file. |
+| Flag                 | Value        | Description                                                                                                                                       |
+|----------------------|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Defaults to the first atom (position 1) when omitted.     |
+| `-f` <br> `--full`   | None         | Full analysis of the octahedron, including CShM (against `OC-6`/`TPR-6`) and CSoM (against the common octahedral distortion point groups) values. |
+| `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                          |
 
 _Note`odis` requires a centered structure with exactly one central atom and six ligands (7 atoms total in the `.xyz` file)._
 
@@ -436,8 +436,8 @@ The rotation/translation/scaling part is solved via an SVD-based Kabsch-style al
 The main problem to solve for `csom` is that symmetry element operations depend on a given's shape position in space. Once a centering criteria is stablished by the user, `csom` searches for the orientation of the structure that minimizes the average deviation from a given point group's symmetry operations. This is done by:
 
 1. **Fibonacci-sphere seeding**: `--seeds` orientation vectors are spread evenly over the unit sphere and each is scored, giving a good starting point without an expensive exhaustive search.
-2. **Nelder-Mead refinement**: each seed is locally optimised using the derivative-free Nelder-Mead optimisation method (up to `--iterations` steps). Best axis is then defined for the 
-3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimised over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive by default, that is, atoms are only matched with others of the same element; pass `--ignore` to instead let the search match any atom to any other, regardless of label. When the structure is centered on its first atom, that atom is excluded from the Hungarian search and matched to itself directly, since it sits at the origin and is therefore invariant under every symmetry operation -- this reduces the assignment's dimensionality by one at no cost in accuracy.
+2. **Nelder-Mead refinement**: each seed is locally optimized using the derivative-free Nelder-Mead optimization method (up to `--iterations` steps). Best axis is then defined for the 
+3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimized over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive by default, that is, atoms are only matched with others of the same element; pass `--ignore` to instead let the search match any atom to any other, regardless of label. When the structure is centered on its first atom, that atom is excluded from the Hungarian search and matched to itself directly, since it sits at the origin and is therefore invariant under every symmetry operation -- this reduces the assignment's dimensionality by one at no cost in accuracy.
 
 The reported CSoM score is the deviation averaged over all every symmetry operations of a given point group.
 
@@ -467,7 +467,7 @@ The program relies on the [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/
 
 The program relies on the [`itertools`](https://crates.io/crates/itertools) crate for combinatorial iteration (used, among other things, to enumerate the vertex-pair angles in `odis`). Dual-licensed under the Apache 2.0 or MIT licences.
 
-The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argmin-math`](https://crates.io/crates/argmin-math) crates for the Nelder-Mead optimisation of the symmetry axis in `csom`. Dual-licensed under the Apache 2.0 or MIT licences.
+The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argmin-math`](https://crates.io/crates/argmin-math) crates for the Nelder-Mead optimization of the symmetry axis in `csom`. Dual-licensed under the Apache 2.0 or MIT licences.
 
 
 ## References
