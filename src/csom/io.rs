@@ -48,7 +48,7 @@ pub(crate) fn prepare_csom_structure(
     }, scaling_factor, original_centroid)
 }
 
-pub(crate) fn strip_label(label: &String) -> String {
+pub(crate) fn strip_label(label: &str) -> String {
     let end = label
         .char_indices()
         .nth(
