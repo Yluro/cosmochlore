@@ -16,24 +16,9 @@ pub(crate) fn prepare_csom_structure(
     centering_mode: CenteringMode,
     centering_vector: Option<Vec<f64>>) -> (CsomStructure, f64, Vector3<f64>)
 {
-    let mut labels: Vec<String> = Vec::new();
-    let mut points: Vec<Vector3<f64>> = Vec::new();
-
-    match structure.centre {
-        Some(ref centre) => {
-            labels.push(centre.label.clone());
-            points.push(centre.coords)
-        } ,
-        None => () ,
-    };
-
-    structure.ligands.iter().for_each(|ligand| {
-        labels.push(ligand.label.clone());
-        points.push(ligand.coords.clone());
-    });
-
-    let striped_labels: Vec<String> = labels.iter().map(|l| strip_label(l).to_string()).collect();
-
+    let atoms = structure.atoms();
+    let striped_labels: Vec<String> = atoms.iter().map(|a| strip_label(&a.label)).collect();
+    let mut points: Vec<Vector3<f64>> = atoms.iter().map(|a| a.coords).collect();
 
     let (original_centroid, has_centre): (Vector3<f64>, bool) = match centering_mode {
         CenteringMode::Auto => {

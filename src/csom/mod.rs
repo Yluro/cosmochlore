@@ -76,16 +76,11 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     let iterations = args.iterations.unwrap_or(1000);
 
     // Capture the atom labels and original coordinates, in file order, before `structure` is
-    // consumed by `calc_csom
+    // consumed by `calc_csom`.
     let has_centre_atom = structure.centre.is_some();
-    let mut labels: Vec<String> = Vec::new();
-    let mut original_coords: Vec<Vector3<f64>> = Vec::new();
-    if let Some(ref centre) = structure.centre {
-        labels.push(centre.label.clone());
-        original_coords.push(centre.coords);
-    }
-    labels.extend(structure.ligands.iter().map(|l| l.label.clone()));
-    original_coords.extend(structure.ligands.iter().map(|l| l.coords));
+    let atoms = structure.atoms();
+    let labels: Vec<String> = atoms.iter().map(|a| a.label.clone()).collect();
+    let original_coords: Vec<Vector3<f64>> = atoms.iter().map(|a| a.coords).collect();
 
     // The per-operation breakdown (and the operated coordinates it now carries) is only
     // computed when either --full or --operated actually needs it.

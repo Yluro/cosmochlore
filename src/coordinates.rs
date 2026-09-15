@@ -5,14 +5,7 @@ use crate::xyz::Structure;
 use crate::shapes::ReferenceShape;
 
 pub fn points_from_structure(structure: &Structure) -> Vec<Vector3<f64>> {
-    let mut points: Vec<Vector3<f64>> = Vec::new();
-    if let Some(centre) = &structure.centre {
-        points.push(centre.coords);
-    }
-    for ligand in &structure.ligands {
-        points.push(ligand.coords);
-    }
-    points
+    structure.atoms().iter().map(|atom| atom.coords).collect()
 }
 
 pub fn points_from_reference_shape(shape: &ReferenceShape, use_centre: bool) -> Vec<Vector3<f64>> {

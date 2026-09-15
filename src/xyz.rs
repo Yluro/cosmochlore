@@ -12,6 +12,18 @@ pub struct Structure {
     pub ligands: Vec<Atom>,
 }
 
+impl Structure {
+    /// Centre and ligands as one ordered list, centre first when present.
+    pub fn atoms(&self) -> Vec<Atom> {
+        let mut atoms = Vec::with_capacity(self.ligands.len() + 1);
+        if let Some(centre) = &self.centre {
+            atoms.push(centre.clone());
+        }
+        atoms.extend(self.ligands.iter().cloned());
+        atoms
+    }
+}
+
 fn read_file(path: &str) -> Result<String,XyzParseError> {
     std::fs::read_to_string(path).map_err(XyzParseError::Io)
 }

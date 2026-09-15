@@ -94,13 +94,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     // 8. If --ideal is passed
     if args.ideal {
-        let mut labels: Vec<String> = Vec::new();
-        if has_centre {
-            labels.push(structure.centre.unwrap().label);
-        }
-        for ligand in &structure.ligands {
-            labels.push(ligand.label.clone());
-        }
+        let labels: Vec<String> = structure.atoms().into_iter().map(|a| a.label).collect();
         write_cshm_reconstructed_xyz(&args.name, &results, &labels)?;
     }
 
