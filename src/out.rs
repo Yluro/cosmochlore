@@ -198,9 +198,7 @@ pub fn write_csom_csv(results: &[CsomResult], file_name: &str) -> Result<(), std
 }
 
 /// Formats an operation's atom pairing as `Source>Target` entries in the input's atom order:
-/// `A>B` means the operation carries atom `A` onto the site of atom `B`. `A>A` is an atom
-/// mapped onto itself. With `--ignore` the two labels can name different elements -- that
-/// cross-element pairing is exactly what lowers the measure, so it is reported explicitly.
+/// `A>B` means the operation carries atom `A` onto the site of atom `B`.
 fn format_pairing(pairing: &[usize], labels: &[String]) -> String {
     // `pairing[target] = source`, so invert it to walk the atoms in input order.
     let mut target_of = vec![0usize; pairing.len()];
