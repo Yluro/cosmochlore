@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     fn matches_octadist_results() {
-        let structure = parse_xyz(r".\tests\FeHS.xyz", Some(0)).unwrap();
+        let structure = parse_xyz(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/FeHS.xyz"), Some(0)).unwrap();
 
         let calc = calculate_od(&structure);
         assert!(calc.is_ok());
@@ -300,7 +300,7 @@ mod tests {
         let calc = calc.unwrap();
         println!("{:?}", calc);
         assert!((calc.d_mean - 2.1623).abs() < 1e-3 );
-        assert!((calc.zeta - 0.3621) < 1e-3 );
+        assert!((calc.zeta - 0.3621).abs() < 1e-3 );
         assert!((calc.delta - 0.001006).abs() < 1e-3 );
         assert!((calc.sigma - 82.29).abs() < 1e-2 );
         assert!((calc.theta - 306.81).abs() < 1e-2 );
