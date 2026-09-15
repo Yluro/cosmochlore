@@ -72,8 +72,6 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     }
 
     let point_groups = point_groups.unwrap();
-    let samples = args.samples.unwrap_or(20);
-    let iterations = args.iterations.unwrap_or(1000);
 
     // Capture the atom labels and original coordinates, in file order, before `structure` is
     // consumed by `calc_csom`.
@@ -87,7 +85,7 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     let with_operations = args.full || args.operated;
 
     // 3. Prepare the structure and measure it against each point group.
-    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, samples, iterations, with_operations, args.ignore_labels)?;
+    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, args.samples, args.iterations, with_operations, args.ignore_labels)?;
 
     print_csom_table(&results, &args.name);
 

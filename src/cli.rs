@@ -106,11 +106,11 @@ pub struct  CsomArgs {
 
     /// Number of samples taken f the Fibonacci sphere.
     #[arg(short = 's', long = "samples", default_value = "20")]
-    pub samples: Option<usize>,
+    pub samples: usize,
 
     /// Maximum number of iterations for Nelder-Mead optimization of the z-axis.
     #[arg(short = 'i', long = "iterations", default_value = "1000")]
-    pub iterations: Option<usize>,
+    pub iterations: usize,
 
     /// Ignore atom labels when searching for the best atom-to-atom permutation.
     #[arg(short = 'g', long = "ignore")]
