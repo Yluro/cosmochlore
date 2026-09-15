@@ -6,7 +6,6 @@ mod data;
 mod cshm;
 mod csom;
 mod odis;
-mod coordinates;
 mod out;
 mod error;
 pub mod geometry;

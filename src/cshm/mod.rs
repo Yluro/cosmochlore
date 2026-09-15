@@ -8,7 +8,6 @@ pub mod test_utils;
 pub mod tests;
 
 use crate::cli::CshmArgs;
-use crate::coordinates::{points_from_reference_shape, points_from_structure};
 use crate::error::Error;
 use crate::out::{print_crab, print_cshm_table, write_cshm_csv, write_cshm_reconstructed_xyz};
 use crate::shapes::{ReferenceShape, check_vertex_count};
@@ -29,12 +28,12 @@ pub struct CShMResult {
 
 pub fn calc_cshm(reference_shapes: Vec<ReferenceShape>, problem_structure: &Structure, has_centre: bool) -> Vec<CShMResult> {
 
-    let problem = points_from_structure(&problem_structure);
+    let problem: Vec<Vector3<f64>> = problem_structure.atoms().iter().map(|atom| atom.coords).collect();
     let mut results: Vec<CShMResult> = Vec::new();
 
 
     for shape in reference_shapes {
-        let mut reference = points_from_reference_shape(&shape, has_centre);
+        let mut reference = shape.points(has_centre);
         let mut problem_copy = problem.clone();
 
         let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy, has_centre);
