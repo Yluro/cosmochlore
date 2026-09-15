@@ -70,12 +70,12 @@ def parse_yaml_file(path: Path):
 
 def rust_coord(coord) -> str:
     x, y, z = coord
-    return f"[{x!r}, {y!r}, {z!r}]"
+    return f"Vector3::new({x!r}, {y!r}, {z!r})"
 
 
 def rust_shape_literal(entry) -> str:
     vertices = ", ".join(rust_coord(v) for v in entry["vertices"])
-    center = rust_coord(entry["center"][0]) if entry["center"] else "[0.0, 0.0, 0.0]"
+    center = rust_coord(entry["center"][0]) if entry["center"] else "Vector3::new(0.0, 0.0, 0.0)"
     return (
         "ReferenceShape {\n"
         f'            symbol: "{entry["symbol"]}".to_string(),\n'
@@ -111,6 +111,7 @@ def generate(shapes_dir: Path, out_path: Path):
     lines.append("// Regenerate from src/data/shapes/*.yaml if the shape library changes.")
     lines.append("")
     lines.append("use std::collections::HashMap;")
+    lines.append("use nalgebra::Vector3;")
     lines.append("use crate::yaml::ReferenceShape;")
     lines.append("")
     lines.append("pub fn builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>> {")

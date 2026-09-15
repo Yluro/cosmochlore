@@ -14,9 +14,9 @@ pub struct ReferenceShape {
     /// Point group symmetry of the shape. E.g. C2v
     pub symm: String,
     /// Coordinates of the centre of the reference shape. Usually [0.0, 0.0, 0.0]
-    pub centre: [f64; 3],
+    pub centre: Vector3<f64>,
     /// Coordinates of the vertex positions the reference shape.
-    pub vertices: Vec<[f64; 3]>,
+    pub vertices: Vec<Vector3<f64>>,
 }
 
 
@@ -25,9 +25,9 @@ pub struct ReferenceShape {
 pub fn structure_from_shape(vertices: u8, index: usize) -> Structure {
     let shape = resolve_shapes(vertices, Some(&[index])).unwrap().remove(0);
     Structure {
-        centre: Some(Atom { label: "M".to_string(), coords: Vector3::from(shape.centre) }),
+        centre: Some(Atom { label: "M".to_string(), coords: shape.centre }),
         ligands: shape.vertices.iter()
-            .map(|v| Atom { label: "L".to_string(), coords: Vector3::from(*v) })
+            .map(|v| Atom { label: "L".to_string(), coords: *v })
             .collect(),
     }
 }
