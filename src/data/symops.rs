@@ -26,7 +26,7 @@ pub static OPERATION_C3_2: &[(&str, [[f64; 3]; 3])] = &[
 ];
 
 pub static OPERATION_I: &[(&str, [[f64; 3]; 3])] = &[
-    ("sigma_h", [[-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]]),
+    ("i", [[-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]]),
 ];
 
 pub static OPERATION_S4: &[(&str, [[f64; 3]; 3])] = &[
@@ -34,7 +34,7 @@ pub static OPERATION_S4: &[(&str, [[f64; 3]; 3])] = &[
 ];
 
 pub static OPERATION_SIGMA_H: &[(&str, [[f64; 3]; 3])] = &[
-    ("sigma_v", [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]]),
+    ("sigma_h", [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]]),
 ];
 
 pub static OPERATION_SIGMA_V: &[(&str, [[f64; 3]; 3])] = &[
