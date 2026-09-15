@@ -1,3 +1,4 @@
+use nalgebra::Vector3;
 use crate::shapes::ReferenceShape;
 
 #[derive(Debug, PartialEq)]
@@ -190,8 +191,8 @@ fn finalise_entry(
         name,
         id: id.unwrap_or(0),
         symm,
-        centre: centre[0],
-        vertices: vertices.to_vec(),
+        centre: Vector3::from(centre[0]),
+        vertices: vertices.iter().map(|v| Vector3::from(*v)).collect(),
     })
 
 }
@@ -282,7 +283,7 @@ TEST-4:
         assert_eq!(shape1.id, 1);
         assert_eq!(shape2.id, 0);
         assert_eq!(shape1.symbol, "TEST-3");
-        assert_eq!(shape2.vertices[0], [1.0, 0.0, 0.0]);
+        assert_eq!(shape2.vertices[0], Vector3::new(1.0, 0.0, 0.0));
     }
 
     #[test]
