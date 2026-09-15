@@ -41,7 +41,7 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
         // If it's a new entry, finalise the previous entry and get the symbol of the next one.
         if is_new_entry {
             if symbol.is_some() {
-                let shape = finalise_entry(&file, &symbol, &id, &symm, &name, &vertices, &centre);
+                let shape = finalise_entry(file, &symbol, &id, &symm, &name, &vertices, &centre);
                 shapes.push(shape?);
             }
 
@@ -200,7 +200,7 @@ fn finalise_entry(
 
 pub fn parse_custom_shapes(path: &str) -> Result<Vec<ReferenceShape>, YamlParseError> {
     let content = read_yaml(path)?;
-    parse_yaml_str(&content, &path)
+    parse_yaml_str(&content, path)
 }
 
 

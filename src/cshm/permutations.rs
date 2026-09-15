@@ -1,6 +1,6 @@
-use nalgebra::{Matrix3, Vector3};
-/// MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
+//! MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
 
+use nalgebra::{Matrix3, Vector3};
 use crate::cshm::bounds::*;
 use crate::cshm::linalg::*;
 use crate::geometry::center_and_normalise;
@@ -31,7 +31,7 @@ pub(crate) fn find_best_permutation(
     let mut h_partial = Matrix3::zeros();
 
     // Precompute the correlation matrices and norms for all points once.
-    let hi = precompute_correlation_blocks(&reference, &problem);
+    let hi = precompute_correlation_blocks(reference, problem);
     let ref_norms = precompute_norms(reference);
     let prob_suffix = precompute_suffix_sums(&precompute_norms(problem));
 
@@ -43,8 +43,8 @@ pub(crate) fn find_best_permutation(
     }
 
     branch(
-        &reference,
-        &problem,
+        reference,
+        problem,
         &hi,
         &ref_norms,
         &prob_suffix,

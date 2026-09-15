@@ -33,7 +33,6 @@ impl ReferenceShape {
 
 
 /// Build a structure from a given reference shape vertices and index.
-
 pub fn structure_from_shape(vertices: u8, index: usize) -> Structure {
     let shape = resolve_shapes(vertices, Some(&[index])).unwrap().remove(0);
     Structure {

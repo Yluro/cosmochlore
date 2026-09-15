@@ -1,4 +1,4 @@
-/// General geometric tools.
+//! General geometric tools.
 
 use nalgebra::{Vector3, Matrix3};
 

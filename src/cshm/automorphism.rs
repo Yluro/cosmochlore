@@ -1,5 +1,4 @@
-/// AUTOMORPHISM FINDING FOR REFERENCE SHAPES
-
+//! AUTOMORPHISM FINDING FOR REFERENCE SHAPES
 use nalgebra::{Matrix3, Vector3};
 
 use crate::cshm::linalg::*;
@@ -93,7 +92,7 @@ fn automorphism_branch(
         if s_bound < epsilon {
             current_perm.push(ref_idx);
             automorphism_branch(
-                reference, &hi, ref_norms, ref_suffix, assigned, current_perm,
+                reference, hi, ref_norms, ref_suffix, assigned, current_perm,
                 h_partial, epsilon, automorphisms,
             );
 

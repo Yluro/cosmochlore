@@ -79,7 +79,7 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
     for comb in vectors.iter().combinations(2) {
         let vi = comb[0];
         let vj = comb[1];
-        let angle = (vi.dot(&vj) / (vi.norm() * vj.norm()))
+        let angle = (vi.dot(vj) / (vi.norm() * vj.norm()))
             .clamp(-1.0, 1.0)
             .acos()
             .abs()
