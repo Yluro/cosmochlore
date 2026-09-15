@@ -85,7 +85,7 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Box<dyn Error>> {
     let with_operations = args.full || args.operated;
 
     // 3. Prepare the structure and measure it against each point group.
-    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, args.samples, args.iterations, with_operations, args.ignore_labels)?;
+    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, args.seeds, args.iterations, with_operations, args.ignore_labels)?;
 
     print_csom_table(&results, &args.name);
 
