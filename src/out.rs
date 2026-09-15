@@ -6,6 +6,16 @@ use nalgebra::{Matrix3, Vector3};
 use std::fs::File;
 use std::io::Write;
 
+/// Escapes a CSV field per RFC 4180: wraps it in double quotes, doubling any embedded quotes,
+/// whenever it contains a comma, a quote or a newline.
+fn csv_field(s: &str) -> String {
+    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s.to_string()
+    }
+}
+
 fn format_matrix3(m: &Matrix3<f64>) -> String {
     format!(
         "[{:.4} {:.4} {:.4}; {:.4} {:.4} {:.4}; {:.4} {:.4} {:.4}]",
@@ -69,7 +79,7 @@ pub fn write_cshm_csv (results: &[CShMResult], file_name: &String) -> Result<(),
     writeln!(file, "Symbol,Name,Symmetry,CShM")
         .expect("Unable to write to file.");
     for r in results {
-        writeln!(file, "{},{},{},{:.3}", r.symbol, r.name, r.symm, r.cshm)?;
+        writeln!(file, "{},{},{},{:.3}", csv_field(&r.symbol), csv_field(&r.name), csv_field(&r.symm), r.cshm)?;
     }
 
     Ok(())
@@ -181,7 +191,7 @@ pub fn write_csom_csv(results: &[CsomResult], file_name: &str) -> Result<(), std
 
     writeln!(file, "PointGroup,Dev,Rotation Matrix")?;
     for r in results {
-        writeln!(file, "{},{:.3},{}", r.point_group, r.deviation, format_matrix3(&r.rotation))?;
+        writeln!(file, "{},{:.3},{}", csv_field(&r.point_group), r.deviation, format_matrix3(&r.rotation))?;
     }
 
     Ok(())
@@ -221,10 +231,10 @@ pub fn write_csom_details_csv(results: &[CsomResult], file_name: &str, labels: &
             writeln!(
                 file,
                 "{},{},{:.3},{}",
-                op.name,
+                csv_field(&op.name),
                 format_matrix3(&op.matrix),
                 op.deviation,
-                format_pairing(&op.pairing, labels),
+                csv_field(&format_pairing(&op.pairing, labels)),
             )?;
         }
     }
@@ -350,4 +360,24 @@ pub fn write_csom_merged_mol2(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn csv_field_leaves_plain_text_untouched() {
+        assert_eq!(csv_field("vOC-5"), "vOC-5");
+    }
+
+    #[test]
+    fn csv_field_quotes_a_comma() {
+        assert_eq!(csv_field("My Shape, Custom"), "\"My Shape, Custom\"");
+    }
+
+    #[test]
+    fn csv_field_doubles_embedded_quotes() {
+        assert_eq!(csv_field("6\" wide"), "\"6\"\" wide\"");
+    }
 }
