@@ -80,15 +80,13 @@ pub struct  CsomArgs {
     #[arg(short = 'p', long = "pg", num_args = 1..)]
     pub point_groups: Option<Vec<String>>,
 
-    /// Centering mode. Defaults to Auto. If manual is passed. A centering vector is required.
-    ///
-    /// Auto mode centers by the first atom if the structure is centered and
-    /// centers by the centroid if the structure is not centered.
+    /// Centering mode. A centering vector is required if manual is passed.
     #[arg(short = 'm', long = "mode", value_enum, default_value = "auto")]
     pub centering_mode: CenteringMode,
 
     /// Centering vector for manual centering.
-    #[arg(short = 'u', long = "vector", num_args = 3, requires_if("manual", "centering_mode"))]
+    #[arg(short = 'u', long = "vector", num_args = 3, requires_if("manual", "centering_mode"),
+    value_names = ["X", "Y", "Z"])]
     pub vector: Option<Vec<f64>>,
 
     /// Write per-operation deviation details (name, matrix, deviation) to a .csv file for
@@ -105,11 +103,11 @@ pub struct  CsomArgs {
     pub operated: bool,
 
     /// Number of samples taken f the Fibonacci sphere.
-    #[arg(short = 's', long = "samples", default_value = "20")]
-    pub samples: usize,
+    #[arg(short = 's', long = "seeds", default_value = "20", value_name = "N_seeds")]
+    pub seeds: usize,
 
     /// Maximum number of iterations for Nelder-Mead optimization of the z-axis.
-    #[arg(short = 'i', long = "iterations", default_value = "1000")]
+    #[arg(short = 'i', long = "iterations", default_value = "1000", value_name = "N_iter")]
     pub iterations: usize,
 
     /// Ignore atom labels when searching for the best atom-to-atom permutation.
