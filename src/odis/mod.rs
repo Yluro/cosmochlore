@@ -48,7 +48,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Output results
     print_odis_table(&odis_result, &args.name);
-    if args.table {write_odis_csv(odis_result, &args.name)?};
+    if args.table || args.full {write_odis_csv(odis_result, &args.name)?};
 
     // End the program here if --full is not passed.
     if !args.full {return Ok(())};
