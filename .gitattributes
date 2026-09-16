@@ -1,0 +1,6 @@
+generate_builtin_shapes_rs.py export-ignore
+src/data/shapes/*.yaml export-ignore
+PLAN.md export-ignore
+.gitattributes export-ignore
+.github export-ignore
+.claude export-ignore
