@@ -68,6 +68,7 @@ fn optimise_axis(
     structure: &CsomStructure,
     pg_name: &str,
     max_iters: usize,
+    tolerance: f64,
     ignore_labels: bool,
 ) -> Result<(Vector3<f64>, f64), CsomError> {
     // Fail fast on an unknown point group instead of on every cost evaluation.
@@ -81,7 +82,9 @@ fn optimise_axis(
     let s2 = vec![axis0.x + 0.001, axis0.y + 0.001, axis0.z];
     let s3 = vec![axis0.x + 0.001, axis0.y, axis0.z + 0.001];
 
-    let solver = NelderMead::new(vec![s0, s1, s2, s3]);
+    let solver = NelderMead::new(vec![s0, s1, s2, s3])
+        .with_sd_tolerance(tolerance)
+        .map_err(|e| CsomError::OptimizationFailed(e.to_string()))?;
 
     let problem = OrientationProblem { structure, pg_name, ignore_labels };
 
@@ -107,12 +110,13 @@ pub(crate) fn find_best_axis(
     structure: &CsomStructure,
     pg_name: &str,
     max_iters: usize,
+    tolerance: f64,
     ignore_labels: bool,
 ) -> Result<(Vector3<f64>, f64), CsomError> {
     let mut best: Option<(Vector3<f64>, f64)> = None;
 
     for axis0 in fibonacci_sphere_sampling(n) {
-        let candidate = optimise_axis(axis0, structure, pg_name, max_iters, ignore_labels)?;
+        let candidate = optimise_axis(axis0, structure, pg_name, max_iters, tolerance, ignore_labels)?;
 
         // First sample always wins since best is None.
         // Then only keep the ones that score lower S-value.
@@ -169,7 +173,7 @@ mod tests {
         // Start from a slightly off-identity guess so the simplex has real work to do.
         let axis0 = Vector3::new(0.01, 0.02, 0.03);
 
-        let (_, cost) = optimise_axis(axis0, &structure, "Oh", 1000, false).expect("Oh is a valid point group");
+        let (_, cost) = optimise_axis(axis0, &structure, "Oh", 1000,1e-8, false).expect("Oh is a valid point group");
 
         assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
     }
@@ -179,7 +183,7 @@ mod tests {
         let structure = octahedron();
         let axis0 = Vector3::zeros();
 
-        let result = optimise_axis(axis0, &structure, "NotAGroup", 1000, false);
+        let result = optimise_axis(axis0, &structure, "NotAGroup", 1000, 1e-8, false);
 
         assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
     }
@@ -193,7 +197,7 @@ mod tests {
         let rot_mat = rotation_matrix_from_vector(Vector3::new(1.0, 1.0, 1.0));
         structure.points = structure.points.iter().map(|p| rot_mat * p).collect();
 
-        let (_, cost) = find_best_axis(8, &structure, "Oh", 1000, false).expect("Oh is a valid point group");
+        let (_, cost) = find_best_axis(8, &structure, "Oh", 1000, 1e-8,false).expect("Oh is a valid point group");
 
         assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
     }
@@ -206,7 +210,7 @@ mod tests {
         let applied_rotation = rotation_matrix_from_vector(Vector3::new(0.4, -0.3, 0.9));
         structure.points = structure.points.iter().map(|p| applied_rotation * p).collect();
 
-        let (axis, cost) = find_best_axis(20, &structure, "C2v", 1000, false).expect("C2v is a valid point group");
+        let (axis, cost) = find_best_axis(20, &structure, "C2v", 1000,1e-8,false).expect("C2v is a valid point group");
         assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
 
         // The rotation the optimiser found should undo `applied_rotation` well enough
@@ -227,7 +231,7 @@ mod tests {
     fn find_best_axis_rejects_unknown_point_group() {
         let structure = octahedron();
 
-        let result = find_best_axis(8, &structure, "NotAGroup", 1000, false);
+        let result = find_best_axis(8, &structure, "NotAGroup", 1000,1e-8,false);
 
         assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
     }

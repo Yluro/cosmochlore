@@ -102,17 +102,24 @@ pub struct  CsomArgs {
     #[arg(short = 'o', long = "operated")]
     pub operated: bool,
 
+    /// Ignore atom types when searching for the best atom-to-atom permutation.
+    #[arg(short = 'g', long = "ignore")]
+    pub ignore_labels: bool,
+
     /// Number of samples taken f the Fibonacci sphere.
+    /// It is recommended not to change this parameter.
     #[arg(short = 's', long = "seeds", default_value = "20", value_name = "N_seeds")]
     pub seeds: usize,
 
     /// Maximum number of iterations for Nelder-Mead optimization of the z-axis.
+    /// It is recommended not to change this parameter.
     #[arg(short = 'i', long = "iterations", default_value = "1000", value_name = "N_iter")]
     pub iterations: usize,
 
-    /// Ignore atom labels when searching for the best atom-to-atom permutation.
-    #[arg(short = 'g', long = "ignore")]
-    pub ignore_labels: bool,
+    /// Tolerance of the Nelder-Mead optimization for finding optimal value.
+    /// It is recommended not to change this parameter.
+    #[arg(short = 'e', long = "tol", default_value = "1e-6", value_name = "TOLERANCE")]
+    pub tolerance: f64,
 }
 
 #[derive(Args, Debug)]
