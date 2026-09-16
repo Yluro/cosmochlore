@@ -89,8 +89,7 @@ pub fn write_cshm_csv (results: &[CShMResult], file_name: &str) -> Result<(), st
 /// to a `<file>_ideal.xyz` file.
 pub fn write_cshm_reconstructed_xyz (file_name: &str, results: &[CShMResult], labels: &[String]) -> Result<(), std::io::Error> {
     let out_name = file_name.strip_suffix(".xyz").unwrap_or(file_name).to_owned() + "_ideal.xyz";
-    let mut file = File::create(&out_name)
-        .expect("Unable to create file.");
+    let mut file = File::create(&out_name)?;
 
     println!("Writing idealised polyhedra coordinates to table to {}...", out_name);
 
