@@ -3,7 +3,7 @@
 Revision 3, reviewed at `4123ede`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 20/45 fixed, 3 partly, 2 moot, 2 non-issue, 18 open. All 56 tests pass.
+Totals: 21/45 fixed, 3 partly, 2 moot, 2 non-issue, 17 open. All 56 tests pass.
 Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 (`39dd1ee`, `a2bfb6f`, `2ec9784`, `0246b87` on top of `4123ede`).
 
@@ -34,7 +34,7 @@ Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 ## C · Performance (csom inner loop; ~10^6 calls/point-group search)
 
 - C1 `FIXED` — labels double-stripped per cost eval; now uses pre-stripped `CsomStructure::labels`. `src/csom/dev.rs:261`
-- C2 `OPEN` — element grouping (`HashMap`) rebuilt every op call. **Largest remaining win.** `src/csom/dev.rs:229`
+- C2 `FIXED` — element grouping now precomputed once in `CsomStructure::groups`, not rebuilt per op call. `src/csom/dev.rs`, `src/csom/io.rs`
 - C3 `OPEN` — sort exists only to make that HashMap iteration deterministic. `src/csom/dev.rs:243`
 - C4 `OPEN` — `sds_dev` denominator recomputed; it's always `n`. `src/csom/dev.rs:11`
 - C5 `OPEN` — all 20 seeds fully refined instead of scoring first, refining best 2-3. `src/csom/optimize.rs:110`
