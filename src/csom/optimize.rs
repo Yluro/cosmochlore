@@ -78,9 +78,9 @@ fn optimise_axis(
 
     // Initialize a small simplex around the sampled axis (n + 1 = 4 points for 3 parameters).
     let s0 = vec![axis0.x, axis0.y, axis0.z];
-    let s1 = vec![axis0.x + 0.001, axis0.y, axis0.z];
-    let s2 = vec![axis0.x + 0.001, axis0.y + 0.001, axis0.z];
-    let s3 = vec![axis0.x + 0.001, axis0.y, axis0.z + 0.001];
+    let s1 = vec![axis0.x + 0.1, axis0.y, axis0.z];
+    let s2 = vec![axis0.x, axis0.y + 0.1, axis0.z];
+    let s3 = vec![axis0.x, axis0.y, axis0.z + 0.1];
 
     let solver = NelderMead::new(vec![s0, s1, s2, s3])
         .with_sd_tolerance(tolerance)
