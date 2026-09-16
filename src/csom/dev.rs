@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use nalgebra::Vector3;
 use crate::csom::{CsomError, CsomOperation};
-use crate::csom::io::strip_all_labels;
 use crate::data::pgs::{get_pointgroup, to_matrix3};
 
 /// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)
@@ -266,7 +265,6 @@ pub(crate) fn point_group_operation_deviations(
     has_centre: bool,
 ) -> Result<Vec<CsomOperation>, CsomError> {
     let ops = get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
-    let stripped = strip_all_labels(labels);
 
     Ok(ops.iter().map(|(name, matrix)| {
         let sym_op = to_matrix3(*matrix);
@@ -275,7 +273,7 @@ pub(crate) fn point_group_operation_deviations(
         // The assignment only decides which image point each atom is *scored against*; it
         // never changes whose image a point is, so `image` stays in the input's atom order
         // and the pairing is reported separately.
-        let (a, b, pairing) = best_permutation_multiple_atoms(points, &image, &stripped, ignore_labels, has_centre);
+        let (a, b, pairing) = best_permutation_multiple_atoms(points, &image, labels, ignore_labels, has_centre);
 
         CsomOperation {
             name: name.to_string(),
