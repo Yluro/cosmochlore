@@ -264,12 +264,7 @@ fn tetrahedron_volume_x6(a: Vector3<f64>, b: Vector3<f64>, c: Vector3<f64>, d: V
 }
 
 /// Calculate the volume of the (possibly distorted) octahedron spanned by the six ligand points,
-/// in cubic Angstrom. Unlike `OctaDist`, which calls out to `scipy`'s `ConvexHull`, this walks
-/// the same eight triangular faces used by `calc_theta` and decomposes the octahedron into eight
-/// tetrahedra, each with its base on one face and its apex at the ligands' centroid. Since the
-/// centroid sits inside the (convex) coordination polyhedron, those eight tetrahedra exactly
-/// tile it, so their volumes simply sum to the polyhedron's volume — no averaging or halving
-/// needed here, unlike `calc_theta` (this is a straight decomposition, not a doubled count).
+/// in cubic Angstrom. Works by dividing the octahedron into 8 different tetrahedrons.
 fn calc_vol(centre: Vector3<f64>, ligands: &[Vector3<f64>; 6]) -> f64 {
     let centroid = ligands.iter().sum::<Vector3<f64>>() / 6.0;
     let mut coord_lig = determine_faces(centre, ligands);
@@ -304,7 +299,6 @@ mod tests {
         assert!((calc.delta - 0.001006).abs() < 1e-3 );
         assert!((calc.sigma - 82.29).abs() < 1e-2 );
         assert!((calc.theta - 306.81).abs() < 1e-2 );
-        // Cross-checked against `scipy.spatial.ConvexHull` on the same six ligand points.
         assert!((calc.vol - 12.9644).abs() < 1e-3 );
         assert!((calc.tau - 54.41).abs() < 1e-2 );
         assert!((calc.mu - 0.17).abs() < 1e-2 );
