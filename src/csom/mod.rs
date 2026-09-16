@@ -64,11 +64,9 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
     let center = resolve_center(args.not_centered, args.center.map(|c| c - 1));
     let structure = parse_xyz(&args.name, center)?;
 
-    // 2. Fetch the desired point groups.
-    let point_groups = match args.point_groups{
-        Some(groups) => groups,
-        None => todo!("Auto point-group analysis is not complete yet. Please specify the --pg option"),
-    };
+    // 2. Fetch the desired point groups. When none are given, analyse against every supported
+    //    point group.
+    let point_groups = args.point_groups.unwrap_or_else(|| POINTGROUP_NAMES.iter().map(|pg| pg.to_string()).collect());
 
     // Capture the atom labels and original coordinates, in file order, before `structure` is
     // consumed by `calc_csom`.

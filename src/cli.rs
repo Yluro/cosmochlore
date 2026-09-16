@@ -76,7 +76,8 @@ pub struct  CsomArgs {
     #[arg(short = 'c', long = "center", conflicts_with = "not_centered", value_parser = parse_center_position)]
     pub center: Option<usize>,
 
-    /// Space groups to measure in Schoenflies notation.
+    /// Point groups to measure in Schoenflies notation. If omitted, every supported point
+    /// group is analysed.
     #[arg(short = 'p', long = "pg", num_args = 1..)]
     pub point_groups: Option<Vec<String>>,
 
@@ -113,7 +114,7 @@ pub struct  CsomArgs {
 
     /// Maximum number of iterations for Nelder-Mead optimization of the z-axis.
     /// It is recommended not to change this parameter.
-    #[arg(short = 'i', long = "iterations", default_value = "1000", value_name = "N_iter")]
+    #[arg(short = 'i', long = "iterations", default_value = "200", value_name = "N_iter")]
     pub iterations: usize,
 
     /// Tolerance of the Nelder-Mead optimization for finding optimal value.
