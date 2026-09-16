@@ -52,7 +52,7 @@ impl CostFunction for OrientationProblem<'_> {
 
     fn cost(&self, v: &Self::Param) -> Result<Self::Output, Error> {
         let mut deviation = |rotated: &[Vector3<f64>]| {
-            point_group_dev(rotated, &self.structure.labels, self.pg_name, self.ignore_labels, self.structure.has_centre)
+            point_group_dev(rotated, &self.structure.groups, self.pg_name, self.ignore_labels, self.structure.has_centre)
                 .expect("point group name was validated in optimise_axis before this closure runs")
         };
         Ok(orientation_cost(v, &self.structure.points, &mut deviation))
@@ -129,6 +129,7 @@ pub(crate) fn find_best_axis(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::csom::dev::group_by_label;
     use crate::geometry::center_by_centroid;
 
     fn octahedron() -> CsomStructure {
@@ -141,7 +142,8 @@ mod tests {
             Vector3::new(0.0, 0.0, 1.0),
         ];
         let labels = vec!["N".to_string(); 6];
-        CsomStructure { labels, points, has_centre: false }
+        let groups = group_by_label(&labels);
+        CsomStructure { points, has_centre: false, groups }
     }
 
     /// A water molecule (C2v) with O–H = 0.9584 A, H–O–H = 104.45°
@@ -157,7 +159,8 @@ mod tests {
         center_by_centroid(&mut points);
 
         let labels = vec!["O".to_string(), "H".to_string(), "H".to_string()];
-        CsomStructure { labels, points, has_centre: false }
+        let groups = group_by_label(&labels);
+        CsomStructure { points, has_centre: false, groups }
     }
 
     #[test]

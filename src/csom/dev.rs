@@ -137,7 +137,7 @@ pub fn best_permutation(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> (Vec<Vector3<
 
 /// Splits an array of points A and labels L given the different labels of L
 ///
-/// ["Cl", "Cl2", "O"] -> ["Cl", "Cl"], ["O"]
+/// ["Cl", "Cl2", "O"] -> ["Cl", "Cl"], ["O",]
 fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
     let mut result: HashMap<String, Vec<usize>> = HashMap::new();
 
@@ -148,6 +148,11 @@ fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
             .push(i); // Push the Vector3 to the first element.
     }
     result
+}
+
+/// Precomputes the index groups `best_permutation_multiple_atoms` restricts its search to.
+pub(crate) fn group_by_label(labels: &[String]) -> Vec<Vec<usize>> {
+    split_by_atoms(labels).into_values().collect()
 }
 
 
@@ -197,11 +202,15 @@ fn assign_group(
     );
 }
 
-/// Finds the best one-to-one matching between the subsets A and B by atom type. (equal length)
+/// Finds the best one-to-one matching between the subsets A and B by atom type.
 /// that minimizes total squared distance, and reorders B accordingly.
 ///
-/// If `ignore_labels` is true, atom labels are not used to restrict the search. If `has_centre` is true, atom
-/// index `0` is pinned to itself instead of entering the Hungarian assignment.
+/// If `ignore_labels` is true, atom labels are not used to restrict the search (`groups` is
+/// ignored). If `has_centre` is true, atom index `0` is pinned to itself instead of entering
+/// the Hungarian assignment.
+///
+/// `groups` is the label->indices partition of `a`/`b`, precomputed once via
+/// [`group_by_label`] since it's invariant across the many calls a csom search makes.
 ///
 /// Returns (A and B reordered to best match, pairing), where `pairing[i]` is the atom whose
 /// B-point got matched to `a[i]`. With labels honoured that atom always shares atom `i`'s
@@ -210,28 +219,27 @@ fn assign_group(
 pub fn best_permutation_multiple_atoms(
     a: &[Vector3<f64>],
     b: &[Vector3<f64>],
-    labels: &[String],
+    groups: &[Vec<usize>],
     ignore_labels: bool,
     has_centre: bool,
 ) -> (Vec<Vector3<f64>>, Vec<Vector3<f64>>, Vec<usize>)
 {
-    debug_assert_eq!(labels.len(), b.len());
-    debug_assert_eq!(labels.len(), a.len());
+    debug_assert_eq!(a.len(), b.len());
 
     let mut pairs: Vec<(usize, usize, Vector3<f64>, Vector3<f64>)> = Vec::new();
 
     if ignore_labels {
-        let all_indices: Vec<usize> = (0..labels.len()).collect();
+        let all_indices: Vec<usize> = (0..a.len()).collect();
         assign_group(&all_indices, a, b, has_centre, &mut pairs);
     } else {
-        for (_, indices) in split_by_atoms(labels) {
-            assign_group(&indices, a, b, has_centre, &mut pairs);
+        for indices in groups {
+            assign_group(indices, a, b, has_centre, &mut pairs);
         }
     }
 
-    debug_assert_eq!(pairs.len(), labels.len());
+    debug_assert_eq!(pairs.len(), a.len());
 
-    let mut pairing = vec![0usize; labels.len()];
+    let mut pairing = vec![0usize; a.len()];
     for &(a_idx, b_idx, _, _) in &pairs {
         pairing[a_idx] = b_idx;
     }
@@ -259,7 +267,7 @@ pub fn best_permutation_multiple_atoms(
 /// Deviation of `points` from every individual symmetry operation of `pg`.
 pub(crate) fn point_group_operation_deviations(
     points: &[Vector3<f64>],
-    labels: &[String],
+    groups: &[Vec<usize>],
     pg: &str,
     ignore_labels: bool,
     has_centre: bool,
@@ -273,7 +281,7 @@ pub(crate) fn point_group_operation_deviations(
         // The assignment only decides which image point each atom is *scored against*; it
         // never changes whose image a point is, so `image` stays in the input's atom order
         // and the pairing is reported separately.
-        let (a, b, pairing) = best_permutation_multiple_atoms(points, &image, labels, ignore_labels, has_centre);
+        let (a, b, pairing) = best_permutation_multiple_atoms(points, &image, groups, ignore_labels, has_centre);
 
         CsomOperation {
             name: name.to_string(),
@@ -288,12 +296,12 @@ pub(crate) fn point_group_operation_deviations(
 /// Average CSM deviation of `points` from every symmetry operation of point group `pg`.
 pub fn point_group_dev(
     points: &[Vector3<f64>],
-    labels: &[String],
+    groups: &[Vec<usize>],
     pg: &str,
     ignore_labels: bool,
     has_centre: bool,
 ) -> Result<f64, CsomError> {
-    let devs = point_group_operation_deviations(points, labels, pg, ignore_labels, has_centre)?;
+    let devs = point_group_operation_deviations(points, groups, pg, ignore_labels, has_centre)?;
 
     Ok(devs.iter().map(|op| op.deviation).sum::<f64>() / devs.len() as f64)
 }

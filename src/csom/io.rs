@@ -1,11 +1,16 @@
+use crate::csom::dev::group_by_label;
 use crate::geometry::{center_by_centroid, center_by_coordinate, center_by_first_point, normalise};
 use crate::xyz::Structure;
 use nalgebra::Vector3;
 
 pub struct CsomStructure {
-    pub labels: Vec<String>,
     pub points: Vec<Vector3<f64>>,
     pub has_centre: bool,
+
+    /// Stripped element labels partitioned into same-element index groups, precomputed once
+    /// here since it's invariant across the many calls a csom search makes (see
+    /// `group_by_label`).
+    pub groups: Vec<Vec<usize>>,
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]
@@ -41,10 +46,12 @@ pub(crate) fn prepare_csom_structure(
 
     let scaling_factor = normalise(&mut points);
 
+    let groups = group_by_label(&striped_labels);
+
     (CsomStructure {
-        labels: striped_labels,
         points,
         has_centre,
+        groups,
     }, scaling_factor, original_centroid)
 }
 

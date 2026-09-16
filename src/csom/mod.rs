@@ -65,13 +65,10 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
     let structure = parse_xyz(&args.name, center)?;
 
     // 2. Fetch the desired point groups.
-    let point_groups = args.point_groups;
-
-    if point_groups.is_none() {
-        todo!("Auto point-group analysis is not complete yet. Please specify the --pg option")
-    }
-
-    let point_groups = point_groups.unwrap();
+    let point_groups = match args.point_groups{
+        Some(groups) => groups,
+        None => todo!("Auto point-group analysis is not complete yet. Please specify the --pg option"),
+    };
 
     // Capture the atom labels and original coordinates, in file order, before `structure` is
     // consumed by `calc_csom`.
@@ -144,7 +141,7 @@ pub fn calc_csom(
         let operations: Vec<CsomOperation> = if with_operations {
             // Re-measure at the refined axis to break the overall deviation down by operation.
             let rotated_points: Vec<Vector3<f64>> = csom_structure.points.iter().map(|p| rotation * p).collect();
-            point_group_operation_deviations(&rotated_points, &csom_structure.labels, point_group, ignore_labels, csom_structure.has_centre)?
+            point_group_operation_deviations(&rotated_points, &csom_structure.groups, point_group, ignore_labels, csom_structure.has_centre)?
         } else {
             Vec::new()
         };
