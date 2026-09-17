@@ -1,0 +1,6 @@
+# Commits to hide from git blame (whitespace-only reformats).
+# GitHub picks this file up automatically; locally run once:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# cargo fmt -- one-time rustfmt pass over the whole crate
+e16360301de4283089cfbac7ea1876358629e2ea
