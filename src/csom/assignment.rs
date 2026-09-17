@@ -17,7 +17,6 @@ fn sq_dist_cost(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> Vec<Vec<f64>> {
 /// Returns, for each row i, the column it's assigned to (0-indexed).
 pub fn hungarian(cost: &[Vec<f64>]) -> Vec<usize> {
     let n = cost.len();
-    const INF: f64 = f64::INFINITY;
 
     // Dual potentials for rows (u) and columns (v). Kept so that
     // reduced_cost = cost[i][j] - u[i] - v[j] is always >= 0.
@@ -34,13 +33,13 @@ pub fn hungarian(cost: &[Vec<f64>]) -> Vec<usize> {
     for i in 1..=n {
         p[0] = i; // temporarily "assign" row i to the dummy column
         let mut j0 = 0usize; // current column in the path search
-        let mut minv = vec![INF; n + 1]; // best reduced cost found so far to reach col j
+        let mut minv = vec![f64::INFINITY; n + 1]; // best reduced cost found so far to reach col j
         let mut used = vec![false; n + 1]; // columns already visited this round
 
         loop {
             used[j0] = true;
             let i0 = p[j0]; // row currently sitting at column j0
-            let mut delta = INF; // smallest reduced cost among unvisited columns
+            let mut delta = f64::INFINITY; // smallest reduced cost among unvisited columns
             let mut j1 = 0usize; // column achieving that smallest cost
 
             // Relax distances to every unvisited column via row i0
