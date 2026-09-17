@@ -6,7 +6,7 @@ authors = ["José Serrano Guarinos <jose.serranog@ub.edu>"]
 description = "Shape and Symmetry Measures in Rust."
 repository = "https://github.com/Yluro/cosmochlore"
 homepage = "https://github.com/Yluro/cosmochlore"
-license = "GPL-3"
+license = "GPL-3.0-only"
 
 [dependencies]
 clap = { version = "4.6.6", features = ["derive"] }
