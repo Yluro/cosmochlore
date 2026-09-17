@@ -3,7 +3,7 @@
 Revision 3, reviewed at `4123ede`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 21/45 fixed, 3 partly, 2 moot, 2 non-issue, 17 open. All 56 tests pass.
+Totals: 21/45 fixed, 3 partly, 2 moot, 3 non-issue, 16 open. All 56 tests pass.
 Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 (`39dd1ee`, `a2bfb6f`, `2ec9784`, `0246b87` on top of `4123ede`).
 
@@ -36,7 +36,7 @@ Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 - C1 `FIXED` — labels double-stripped per cost eval; now uses pre-stripped `CsomStructure::labels`. `src/csom/dev.rs:261`
 - C2 `FIXED` — element grouping now precomputed once in `CsomStructure::groups`, not rebuilt per op call. `src/csom/dev.rs`, `src/csom/io.rs`
 - C3 `OPEN` — sort exists only to make that HashMap iteration deterministic. `src/csom/dev.rs:243`
-- C4 `OPEN` — `sds_dev` denominator recomputed; it's always `n`. `src/csom/dev.rs:11`
+- C4 `NON-ISSUE` — denominator is only always `n` when centroid-centered; with `--center`/`--vector` (`has_centre`) the origin isn't the centroid, so it genuinely varies. Recomputing it is O(n) against the O(n³) Hungarian assignment in the same loop, so branching on `has_centre` to shortcut it isn't worth the complexity. `src/csom/dev.rs:10-24`
 - C5 `OPEN` — all 20 seeds fully refined instead of scoring first, refining best 2-3. `src/csom/optimize.rs:110`
 - C6 `OPEN` — no convergence tolerance; simplex near-degenerate (0.001 edges). `src/csom/optimize.rs:77-87`
 - C15 `NEW/REGRESSION` — cost fn builds full `CsomOperation` (3 allocs) just to read a scalar. `src/csom/dev.rs:276-283`
@@ -47,6 +47,7 @@ Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 - C12 `OPEN` — `builtin_shapes()` rebuilds full 90-shape HashMap on every lookup. `src/data/standard_shapes.rs:7`
 - C13 `MOOT` — superseded by C9
 - C14 `OPEN` — no `[profile.release]` tuning; `license = "GPL-3"` not valid SPDX (want `GPL-3.0-only`). `Cargo.toml`
+- C16 `NEW` — winning axis's per-operation deviations computed twice: once inside Nelder-Mead (`optimise_axis`'s `best_cost`, discarded down to a scalar per C15), once again explicitly via `point_group_operation_deviations` to build the `--full` breakdown. Not part of the O(10^6) inner loop (one extra full evaluation per point group), but pure duplicate work at the same rotation. `src/csom/optimize.rs:100`, `src/csom/mod.rs:141-143`
 
 ## D · Simplification
 
@@ -57,6 +58,20 @@ Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 - D5 `FIXED` — args parsed before banner prints. `src/main.rs:22-23`
 - D6 `PARTLY` — dead `print_crab()`; `find_best_permutation`'s 4th return unused in prod. `src/main.rs:38`
 - D7 `FIXED` — clippy 31→11 warnings (default target)
+- D8 `FIXED` — `csom` module layout doesn't match its own pipeline; names mislead. `io.rs` isn't
+  I/O (it's structure prep: centering/normalising/grouping). `dev.rs` fuses three unrelated
+  things: deviation math (`sds_dev`, `point_group_dev`), a generic Hungarian-matching algorithm
+  (`hungarian`, `best_permutation`) that isn't CSOM-specific, and the label-grouping assignment
+  glue (`assign_group`, `best_permutation_multiple_atoms`). `mod.rs` mixes CLI entry
+  (`csom_main`), orchestration (`calc_csom`), and domain types (`CsomOperation`, `CsomResult`,
+  `CsomError`) in one file. Split done (rename only, no logic change): `types.rs` (the three
+  structs/enum, out of `mod.rs`), `prepare.rs` (renamed `io.rs`), `assignment.rs` (split out of
+  `dev.rs`: `hungarian`/`best_permutation`/`best_permutation_multiple_atoms`/`group_by_label`),
+  `deviation.rs` (renamed/trimmed `dev.rs`: `sds_dev`/`point_group_dev`/
+  `point_group_operation_deviations`), `optimize.rs` unchanged, `mod.rs` left with just
+  `csom_main` + `calc_csom` + module wiring. Updated imports across `src/csom/*`, `src/out.rs`,
+  `src/cli.rs`, and `src/odis/mod.rs`. All 56 tests pass; no new clippy warnings.
+  `src/csom/mod.rs`, `src/csom/prepare.rs`, `src/csom/assignment.rs`, `src/csom/deviation.rs`
 
 ## E · Build, tests, CI
 
