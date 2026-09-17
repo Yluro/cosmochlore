@@ -54,17 +54,17 @@ impl CostFunction for OrientationProblem<'_> {
     fn cost(&self, v: &Self::Param) -> Result<Self::Output, Error> {
         let mut deviation = |rotated: &[Vector3<f64>]| {
             point_group_dev(rotated, &self.structure.groups, self.pg_name, self.ignore_labels, self.structure.has_centre)
-                .expect("point group name was validated in optimise_axis before this closure runs")
+                .expect("point group name was validated in refine_axis_from_seed before this closure runs")
         };
         Ok(orientation_cost(v, &self.structure.points, &mut deviation))
     }
 }
 
-/// Refines a candidate symmetry axis `axis0` with Nelder-Mead, minimizing the average CSM
+/// Refines a candidate symmetry axis `axis0` with Nelder-Mead, minimizing the average csom
 /// deviation of `structure` from the `pg_name` point group.
 ///
 /// Returns the optimised rotation vector (axis-angle, Rodrigues form) and its deviation.
-pub(crate) fn optimise_axis(
+pub(crate) fn refine_axis_from_seed(
     axis0: Vector3<f64>,
     structure: &CsomStructure,
     pg_name: &str,
@@ -104,9 +104,10 @@ pub(crate) fn optimise_axis(
 }
 
 /// Samples `n` candidate axes on a Fibonacci sphere and refines each one with
-/// [`optimise_axis`].
+/// [`refine_axis_from_seed`].
+///
 /// Returns the best rotation vector found and its deviation score.
-pub(crate) fn find_best_axis(
+pub(crate) fn search_best_axis(
     n: usize,
     structure: &CsomStructure,
     pg_name: &str,
@@ -117,7 +118,7 @@ pub(crate) fn find_best_axis(
     let mut best: Option<(Vector3<f64>, f64)> = None;
 
     for axis0 in fibonacci_sphere_sampling(n) {
-        let candidate = optimise_axis(axis0, structure, pg_name, max_iters, tolerance, ignore_labels)?;
+        let candidate = refine_axis_from_seed(axis0, structure, pg_name, max_iters, tolerance, ignore_labels)?;
 
         // First sample always wins since best is None.
         // Then only keep the ones that score lower S-value.
