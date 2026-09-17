@@ -42,10 +42,7 @@ pub(crate) fn prepare_csom_structure(
             (center_by_coordinate(&mut points, centering_vector), false)},
     };
 
-
-
     let scaling_factor = normalise(&mut points);
-
     let groups = group_by_label(&striped_labels);
 
     (CsomStructure {
