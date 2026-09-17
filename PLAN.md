@@ -3,7 +3,9 @@
 Revision 4, reviewed at `1ea345a`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 25/50 fixed, 4 partly, 3 moot, 3 non-issue, 15 open (3 of them new: B10, C17, E7).
+Totals: 27/50 fixed, 4 partly, 3 moot, 3 non-issue, 13 open (3 of them new: B10, C17, E7).
+Step 1 of the order of work landed after this review (E2, E6 — see those entries); the
+`cargo fmt` pass in `e163603` moved every line reference below, so grep before trusting one.
 All 56 tests pass. Working tree clean apart from untracked run output in `tests/` and `.idea/`
 (see E7). Since revision 3 (`4123ede`): C6, D4 fixed; C14 half done; E4 moot; E5 regressed;
 csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical results.
@@ -98,7 +100,12 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 ## E · Build, tests, CI
 
 - E1 `OPEN` — no `lib.rs`; no integration tests possible, all tests are `#[cfg(test)]` inline
-- E2 `OPEN` — CI only runs `cargo build` on tag push, no test/clippy/fmt job. **Highest leverage item.** `.github/workflows/release.yml`
+- E2 `FIXED` — `.github/workflows/ci.yml` (`f9cccad`, `ac5035d`): Test, Clippy and Rustfmt jobs on
+  push to master and on PRs, `RUSTFLAGS=-D warnings`, `--locked`. Clippy still allows
+  `too_many_arguments`/`type_complexity` for the four sites step 3 owns — drop the two `-A`
+  flags with that change. One-time `cargo fmt` in `e163603` (blame-ignored); generated tables
+  in `data/pgs.rs` and `data/standard_shapes.rs` carry `#[rustfmt::skip]`, and the shapes
+  generator emits it. `rustfmt.toml` pins `newline_style = "Native"` for the CRLF checkout.
 - E3 `OPEN` — `bnb_is_faster_than_bf` asserts on wall-clock time. `src/cshm/tests.rs:310`
 - E4 `MOOT` — `tests/FeCl6_table.csv` (and `FeCl6_ideal.xyz`) deleted in `7354442`. The SHAPE
   2.1 values are pinned inline in `src/cshm/tests.rs` (water 0.035/33.342, Eu7 2.109/2.630/7.288),
@@ -107,7 +114,9 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
   200), that `--pg` is "**Currently required.**" (it is optional; omitted = all 47), repeats that
   at line 21, and has no row for `-e`/`--tol`. Algorithm step 2 still ends mid-sentence
   ("Best axis is then defined for the"). `README.md:21,82,89,439`
-- E6 `OPEN` — 3 dead-code warnings in the binary: `find_automorphisms`, `automorphism_branch`
+- E6 `FIXED` in `f9cccad` — `automorphism.rs` and `structure_from_shape` are `#[cfg(test)]`,
+  `twist_top_face` deleted; `writeln!(file)` ×3 and four `.clone()`-on-Copy went with it.
+  Was: 3 dead-code warnings in the binary: `find_automorphisms`, `automorphism_branch`
   (only caller: `cshm/tests.rs:108`), `structure_from_shape` (only callers: `odis/calc.rs` tests).
   `twist_top_face` is inside `#[cfg(test)]` but called from nowhere — dead even for tests.
   Blocks `-D warnings` in CI. `src/cshm/automorphism.rs`, `src/shapes.rs:36`, `src/odis/calc.rs:321`
@@ -144,8 +153,7 @@ Tier 0:
 
 ## Order of work
 
-1. E6 dead-code cleanup (`#[cfg(test)]` on `automorphism.rs` + `structure_from_shape`, delete
-   `twist_top_face`) → wire up CI (E2): test/clippy `-D warnings`/fmt on push+PR
+1. ~~E6 dead-code cleanup → wire up CI (E2)~~ done (`f9cccad`…`ac5035d`)
 2. E5 README drift (4 edits) and E7 `.gitignore` — cheap, user-facing, no code risk
 3. B10 + rest of D7: one `SearchSettings` struct closes B10 and `calc_csom`'s arg-count
    warning; `writeln!(file)` ×3; name the `symops.rs` type
