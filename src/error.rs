@@ -1,4 +1,4 @@
-use crate::csom::CsomError;
+use crate::csom::types::CsomError;
 use crate::odis::OdisError;
 use crate::shapes::ShapeLookupError;
 use crate::xyz::XyzParseError;
