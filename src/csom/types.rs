@@ -19,7 +19,7 @@ pub struct CsomResult {
     pub rotation: Matrix3<f64>,
 
     /// Per-operation breakdown.
-    pub operations: Vec<CsomOperation>,
+    pub operations: Vec<CsomOperationResult>,
 
     /// Normalization scale factor for the structure
     pub scale: f64,
@@ -29,7 +29,7 @@ pub struct CsomResult {
 }
 
 /// One symmetry operation of a point group, measured against the structure at the refined axis.
-pub struct CsomOperation {
+pub struct CsomOperationResult {
     /// Schoenflies name of the operation.
     pub name: String,
 

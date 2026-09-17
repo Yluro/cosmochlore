@@ -8,7 +8,7 @@ use crate::geometry::rotation_matrix_from_vector;
 use crate::out::{print_csom_table, write_csom_csv, write_csom_details_csv, write_csom_merged_mol2, write_csom_operated_xyz};
 use crate::xyz::{Structure, parse_xyz, resolve_center};
 use nalgebra::Vector3;
-use types::{CsomError, CsomOperation, CsomResult};
+use types::{CsomError, CsomOperationResult, CsomResult};
 
 mod assignment;
 mod deviation;
@@ -99,7 +99,7 @@ pub fn calc_csom(
         let (rotation_vector, deviation) = search_best_axis(samples, &csom_structure, point_group, iterations, tolerance, ignore_labels)?;
         let rotation = rotation_matrix_from_vector(rotation_vector);
 
-        let operations: Vec<CsomOperation> = if with_operations {
+        let operations: Vec<CsomOperationResult> = if with_operations {
             // Re-measure at the refined axis to break the overall deviation down by operation.
             let rotated_points: Vec<Vector3<f64>> = csom_structure.points.iter().map(|p| rotation * p).collect();
             point_group_operation_deviations(&rotated_points, &csom_structure.groups, point_group, ignore_labels, csom_structure.has_centre)?

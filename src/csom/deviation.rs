@@ -1,6 +1,6 @@
 use crate::csom::assignment::best_permutation_multiple_atoms;
 use crate::csom::types::CsomError;
-use crate::csom::types::CsomOperation;
+use crate::csom::types::CsomOperationResult;
 use crate::data::pgs::{get_pointgroup, to_matrix3, SymmetryOperation};
 use nalgebra::Vector3;
 
@@ -31,7 +31,7 @@ pub(crate) fn point_group_operation_deviations(
     pg: &str,
     ignore_labels: bool,
     has_centre: bool,
-) -> Result<Vec<CsomOperation>, CsomError> {
+) -> Result<Vec<CsomOperationResult>, CsomError> {
     let ops = get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
 
     Ok(ops
@@ -41,13 +41,15 @@ pub(crate) fn point_group_operation_deviations(
 }
 
 /// Deviation of `points` from a single symmetry operation.
+/// 
+/// Returns the full CsomOperation result.
 fn operation_deviation(
     points: &[Vector3<f64>],
     groups: &[Vec<usize>],
     ignore_labels: bool,
     has_centre: bool,
     (name, matrix): &SymmetryOperation,
-) -> CsomOperation {
+) -> CsomOperationResult {
     let sym_op = to_matrix3(*matrix);
     let image: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
 
@@ -56,7 +58,7 @@ fn operation_deviation(
     // and the pairing is reported separately.
     let (a, b, pairing) = best_permutation_multiple_atoms(points, &image, groups, ignore_labels, has_centre);
 
-    CsomOperation {
+    CsomOperationResult {
         name: name.to_string(),
         matrix: sym_op,
         deviation: sds_dev(&a, &b),
@@ -66,6 +68,10 @@ fn operation_deviation(
 }
 
 /// Average CSM deviation of `points` from every symmetry operation of point group `pg`.
+///
+/// Returns only the average S-value for all operation in a point group. 
+/// It does not build a CsomResult
+/// This score is used by the refinement search. 
 pub fn point_group_dev(
     points: &[Vector3<f64>],
     groups: &[Vec<usize>],
@@ -73,7 +79,27 @@ pub fn point_group_dev(
     ignore_labels: bool,
     has_centre: bool,
 ) -> Result<f64, CsomError> {
-    let devs = point_group_operation_deviations(points, groups, pg, ignore_labels, has_centre)?;
+    let ops = get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
 
-    Ok(devs.iter().map(|op| op.deviation).sum::<f64>() / devs.len() as f64)
+    let sum: f64 = ops
+        .iter()
+        .map(|op| operation_deviation_scalar(points, groups, ignore_labels, has_centre, op))
+        .sum();
+
+    Ok(sum / ops.len() as f64)
+}
+
+/// Deviation of `points` from a single symmetry operation, without the [`CsomOperationResult`]
+/// report.
+fn operation_deviation_scalar(
+    points: &[Vector3<f64>],
+    groups: &[Vec<usize>],
+    ignore_labels: bool,
+    has_centre: bool,
+    (_, matrix): &SymmetryOperation,
+) -> f64 {
+    let sym_op = to_matrix3(*matrix);
+    let image: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
+    let (a, b, _) = best_permutation_multiple_atoms(points, &image, groups, ignore_labels, has_centre);
+    sds_dev(&a, &b)
 }
