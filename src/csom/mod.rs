@@ -1,7 +1,7 @@
 use crate::cli::CsomArgs;
 use crate::csom::deviation::point_group_operation_deviations;
 use crate::csom::prepare::{CenteringMode, prepare_csom_structure};
-use crate::csom::optimize::find_best_axis;
+use crate::csom::optimize::search_best_axis;
 use crate::data::pgs::POINTGROUP_NAMES;
 use crate::error::Error;
 use crate::geometry::rotation_matrix_from_vector;
@@ -96,7 +96,7 @@ pub fn calc_csom(
 
     let mut results: Vec<CsomResult> = Vec::new();
     for point_group in point_groups {
-        let (rotation_vector, deviation) = find_best_axis(samples, &csom_structure, point_group, iterations, tolerance, ignore_labels)?;
+        let (rotation_vector, deviation) = search_best_axis(samples, &csom_structure, point_group, iterations, tolerance, ignore_labels)?;
         let rotation = rotation_matrix_from_vector(rotation_vector);
 
         let operations: Vec<CsomOperation> = if with_operations {

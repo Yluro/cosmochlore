@@ -1,7 +1,7 @@
 use nalgebra::{Matrix3, Vector3};
 use crate::csom::assignment::*;
 use crate::csom::deviation::*;
-use crate::csom::optimize::{find_best_axis, optimise_axis};
+use crate::csom::optimize::{refine_axis_from_seed, search_best_axis};
 use crate::csom::prepare::{strip_label, CsomStructure};
 use crate::csom::types::CsomError;
 use crate::geometry::{center_by_centroid, center_by_first_point, normalise, rotation_matrix, rotation_matrix_from_vector};
@@ -271,28 +271,28 @@ fn water_structure() -> CsomStructure {
 }
 
 #[test]
-fn optimise_axis_converges_for_perfect_octahedron() {
+fn refine_axis_from_seed_converges_for_perfect_octahedron() {
     let structure = octahedron_structure();
     // Start from a slightly off-identity guess so the simplex has real work to do.
     let axis0 = Vector3::new(0.01, 0.02, 0.03);
 
-    let (_, cost) = optimise_axis(axis0, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
+    let (_, cost) = refine_axis_from_seed(axis0, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
 
     assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
 }
 
 #[test]
-fn optimise_axis_rejects_unknown_point_group() {
+fn refine_axis_from_seed_rejects_unknown_point_group() {
     let structure = octahedron_structure();
     let axis0 = Vector3::zeros();
 
-    let result = optimise_axis(axis0, &structure, "NotAGroup", 1000, 1e-8, false);
+    let result = refine_axis_from_seed(axis0, &structure, "NotAGroup", 1000, 1e-8, false);
 
     assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
 }
 
 #[test]
-fn find_best_axis_converges_for_rotated_octahedron() {
+fn search_best_axis_converges_for_rotated_octahedron() {
     let mut structure = octahedron_structure();
 
     // Rotate the octahedron off its canonical axes so the search has to find the
@@ -300,20 +300,20 @@ fn find_best_axis_converges_for_rotated_octahedron() {
     let rot_mat = rotation_matrix_from_vector(Vector3::new(1.0, 1.0, 1.0));
     structure.points = structure.points.iter().map(|p| rot_mat * p).collect();
 
-    let (_, cost) = find_best_axis(8, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
+    let (_, cost) = search_best_axis(8, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
 
     assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
 }
 
 #[test]
-fn find_best_axis_recovers_the_c2_axis_of_a_rotated_water_molecule() {
+fn search_best_axis_recovers_the_c2_axis_of_a_rotated_water_molecule() {
     let mut structure = water_structure();
 
     // An arbitrary rotation with no special relation to water's own C2 axis.
     let applied_rotation = rotation_matrix_from_vector(Vector3::new(0.4, -0.3, 0.9));
     structure.points = structure.points.iter().map(|p| applied_rotation * p).collect();
 
-    let (axis, cost) = find_best_axis(20, &structure, "C2v", 1000, 1e-8, false).expect("C2v is a valid point group");
+    let (axis, cost) = search_best_axis(20, &structure, "C2v", 1000, 1e-8, false).expect("C2v is a valid point group");
     assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
 
     // The rotation the optimiser found should undo `applied_rotation` well enough
@@ -329,10 +329,10 @@ fn find_best_axis_recovers_the_c2_axis_of_a_rotated_water_molecule() {
 }
 
 #[test]
-fn find_best_axis_rejects_unknown_point_group() {
+fn search_best_axis_rejects_unknown_point_group() {
     let structure = octahedron_structure();
 
-    let result = find_best_axis(8, &structure, "NotAGroup", 1000, 1e-8, false);
+    let result = search_best_axis(8, &structure, "NotAGroup", 1000, 1e-8, false);
 
     assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
 }
