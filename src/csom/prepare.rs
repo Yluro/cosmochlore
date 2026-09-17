@@ -1,4 +1,4 @@
-use crate::csom::dev::group_by_label;
+use crate::csom::assignment::group_by_label;
 use crate::geometry::{center_by_centroid, center_by_coordinate, center_by_first_point, normalise};
 use crate::xyz::Structure;
 use nalgebra::Vector3;
