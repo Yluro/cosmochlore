@@ -2,7 +2,7 @@ pub mod calc;
 
 use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
-use crate::csom::io::CenteringMode;
+use crate::csom::prepare::CenteringMode;
 use crate::csom::calc_csom;
 use crate::error::Error;
 use crate::out::*;
