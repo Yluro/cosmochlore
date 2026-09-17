@@ -1,4 +1,7 @@
 pub mod linalg;
+// Only consumer is tests::bnb_automorphisms_matches_naive; the CShM search itself
+// prunes by bounds, not by automorphisms.
+#[cfg(test)]
 pub mod automorphism;
 pub mod permutations;
 pub mod bounds;

@@ -1,4 +1,5 @@
 use crate::data;
+#[cfg(test)]
 use crate::xyz::{Atom, Structure};
 use data::standard_shapes::builtin_shapes;
 use nalgebra::Vector3;
@@ -32,7 +33,8 @@ impl ReferenceShape {
 }
 
 
-/// Build a structure from a given reference shape vertices and index.
+/// Build a structure from a given reference shape vertices and index. Test-only helper.
+#[cfg(test)]
 pub fn structure_from_shape(vertices: u8, index: usize) -> Structure {
     let shape = resolve_shapes(vertices, Some(&[index])).unwrap().remove(0);
     Structure {

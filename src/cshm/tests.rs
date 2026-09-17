@@ -330,8 +330,8 @@ fn bnb_is_faster_than_bf() {
         Vector3::new(-0.61748904, 0.0, -0.78657949),
     ];
 
-    let mut ref_bf = reference.clone();
-    let mut prob_bf = problem.clone();
+    let mut ref_bf = reference;
+    let mut prob_bf = problem;
 
     let shape21_result = 2.630;
 
@@ -339,8 +339,8 @@ fn bnb_is_faster_than_bf() {
     let (s_bf,_) = best_permutation_brute_force(&mut ref_bf, &mut prob_bf);
     let time_bf = start_bf.elapsed();
 
-    let mut ref_bnb = reference.clone();
-    let mut prob_bnb = problem.clone();
+    let mut ref_bnb = reference;
+    let mut prob_bnb = problem;
 
     let start_bnb = Instant::now();
     let (s_bnb, _, _, _) = find_best_permutation(&mut ref_bnb, &mut prob_bnb, true); // capped trigonal prism has centre first

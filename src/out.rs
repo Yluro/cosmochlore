@@ -112,7 +112,7 @@ pub fn write_cshm_reconstructed_xyz (file_name: &str, results: &[CShMResult], la
                 labels[problem_idx], point.x, point.y, point.z
             )?;
         }
-        writeln!(file, "")?;
+        writeln!(file)?;
     };
 
     Ok(())
@@ -263,7 +263,7 @@ pub fn write_csom_operated_xyz(
         for (label, point) in labels.iter().zip(original_coords) {
             writeln!(file, "{}  {:.6}  {:.6}  {:.6}", label, point.x, point.y, point.z)?;
         }
-        writeln!(file, "")?;
+        writeln!(file)?;
 
         // `rotation` is orthogonal, so its transpose is its inverse -- undoes the
         // CSOM-alignment rotation without an explicit matrix inversion.
@@ -278,7 +278,7 @@ pub fn write_csom_operated_xyz(
                 let real_point = (rotation_inv * point) / result.scale + result.centroid;
                 writeln!(file, "{}  {:.6}  {:.6}  {:.6}", label, real_point.x, real_point.y, real_point.z)?;
             }
-            writeln!(file, "")?;
+            writeln!(file)?;
         }
     }
 

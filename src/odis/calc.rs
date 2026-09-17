@@ -316,19 +316,6 @@ mod tests {
         assert!((calculate_od(&prism).unwrap().vol - 2.25).abs() < 1e-3);
     }
 
-    /// Rotate the "top" three ligands (the ones on the +z side of the centre) of a trigonal
-    /// prism around the z axis, tracing out the Bailar twist pathway towards an octahedron.
-    fn twist_top_face(structure: &Structure, degrees: f64) -> Structure {
-        let rotation = nalgebra::Rotation3::from_axis_angle(&Vector3::z_axis(), degrees.to_radians());
-        let mut twisted = structure.clone();
-        for atom in twisted.ligands.iter_mut() {
-            if atom.coords.z > 0.0 {
-                atom.coords = rotation * atom.coords;
-            }
-        }
-        twisted
-    }
-
     #[test]
     fn ideal_trigonal_prism_gives_the_maximum_theta() {
         let octahedron = shapes::structure_from_shape(6,2);
