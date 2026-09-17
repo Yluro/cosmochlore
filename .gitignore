@@ -1,2 +1,15 @@
 /target
 /.claude/
+
+# IDE
+/.idea/
+
+# Run output: cosmochlore writes these next to its input file
+# (`<name>_cshm_table.csv`, `<name>_<PG>_operated.xyz`, ...). Keep tests/ for fixtures.
+*_cshm_table.csv
+*_csom_table.csv
+*_odis_table.csv
+*_details.csv
+*_operated.xyz
+*_merged.mol2
+*_ideal.xyz
