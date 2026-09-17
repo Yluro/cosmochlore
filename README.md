@@ -18,7 +18,7 @@ Cosmochlore includes three measures covering a different ways of measuring how d
 
 ### Future Features
  - Include Cosmochlore into [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master).
- - Automatic point-group detection for `csom` (currently a target point group must always be given via `--pg`).
+ - Automatic point-group detection for `csom` (currently `--pg` selects which of the 47 supported point groups to test, and all of them are tested when it is omitted).
 
 _[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
 
@@ -79,14 +79,15 @@ _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 |--------------------------|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `-n` `--nc`              | None                                        | Treat the structure as non-centered (see `cshm`'s `-n`).                                                                                                                                                                                                                  |
 | `-c` <br> `--center`     | `<POSITION>`                                | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted.                                                                                   |
-| `-p` <br> `--pg`         | `<POINT_GROUPS>...`                         | **Currently required.** Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list.                                         |
+| `-p` <br> `--pg`         | `<POINT_GROUPS>...`                         | Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list. If omitted, every supported point group (all 47) is analysed.                |
 | `-m` <br> `--mode`       | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise.                                                                                                                                         |
 | `-u` <br> `--vector`     | `<X> <Y> <Z>`                               | Centering vector, required when `--mode manual` is used.                                                                                                                                                                                                                  |
 | `-t` <br> `--table`      | None                                        | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix).                                                                                                                                                                             |
 | `-f` <br> `--full`       | None                                        | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation.                                                                                                                                        |
 | `-o` <br> `--operated`   | None                                        | Write, per analysed point group, a `name_<PG>_operated.xyz` file with every symmetry-operated image of the structure at the minimum-deviation orientation, plus a `name_<PG>_merged.mol2` overlaying all of those images in one 3D structure for viewers such as Mercury. |
-| `-s` <br> `--seeds`      | `<N>`                                       | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. _It is recomended not to change this parameter._                                                                                                                              |
-| `-i` <br> `--iterations` | `<N>`                                       | Maximum number of iterations used to refine the symmetry axis. Defaults to `1000`. _It is recomended not to change this parameter._                                                                                                                                       |
+| `-s` <br> `--seeds`      | `<N>`                                       | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. _It is recommended not to change this parameter._                                                                                                                             |
+| `-i` <br> `--iterations` | `<N>`                                       | Maximum number of Nelder-Mead iterations used to refine each seed. Defaults to `200`. _It is recommended not to change this parameter._                                                                                                                                   |
+| `-e` <br> `--tol`        | `<TOLERANCE>`                               | Convergence tolerance of the Nelder-Mead refinement (the standard deviation of the deviations across the simplex). Defaults to `1e-6`. _It is recommended not to change this parameter._                                                                                  |
 | `-g` <br> `--ignore`     | None                                        | Ignore atom labels when searching for the best atom-to-atom permutation: every atom is treated as interchangeable regardless of element/label, instead of only matching atoms that share a label.                                                                         |
 
 #### Optional arguments for `odis`:
@@ -97,7 +98,7 @@ _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 | `-f` <br> `--full`   | None         | Full analysis of the octahedron, including CShM (against `OC-6`/`TPR-6`) and CSoM (against the common octahedral distortion point groups) values. |
 | `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                          |
 
-_Note`odis` requires a centered structure with exactly one central atom and six ligands (7 atoms total in the `.xyz` file)._
+_Note: `odis` requires a centered structure with exactly one central atom and six ligands (7 atoms total in the `.xyz` file)._
 
 
 ### Example usage of `cshm`
@@ -105,13 +106,13 @@ Given the following `FeHS.xyz` file:
 ````xyz
 7
 High-spin iron(ii) complex
-Fe6 4.92991 10.3899 12.9237
-N004 6.20468 10.6922 14.7747
-N006 5.00034 8.51382 13.9503
-N008 6.80263 10.0749 11.7725
-N00B 5.47238 12.2809 12.1201
-N00C 3.30536 11.3249 13.862
-N00D 3.74731 9.47729 11.4687
+Fe6 4.93013 10.3906 12.9236
+N004 6.21021 10.6927 14.7824
+N006 4.99632 8.50231 13.9489
+N008 6.81046 10.0777 11.7691
+N00B 5.46476 12.2907 12.1187
+N00C 3.30099 11.3236 13.8608
+N00D 3.74774 9.47633 11.4653
 ````
 Running:
 
@@ -122,30 +123,31 @@ cosmochlore cshm FeHS.xyz --ref ebcT-6.yaml -t -i
 Will output:
 
 ````output
+Input file: FeHS.xyz
 ============================================================
  Symbol   Shape                           Symmetry   CShM   
 ------------------------------------------------------------
- HP-6     Hexagon                         D6h        33.215 
- PPY-6    Pentagonal pyramid              C5v        23.015 
- OC-6     Octahedron                      Oh         2.109  
- TPR-6    Trigonal prism                  D3h        11.027 
- JPPY-6   Johnson pentagonal pyramid J2   C5v        27.034 
- ebcT-6   Edge-bicapped tetrahedron       D2d        14.335 
+ HP-6     Hexagon                         D6h        33.210 
+ PPY-6    Pentagonal pyramid              C5v        23.050 
+ OC-6     Octahedron                      Oh         2.089  
+ TPR-6    Trigonal prism                  D3h        11.079 
+ JPPY-6   Johnson pentagonal pyramid J2   C5v        27.050 
+ ebcT-6   Edge-bicapped tetrahedron       D2d        14.277 
 ------------------------------------------------------------
-Writing output table to .\tests\FeHS_cshm_table.csv...
-Writing idealised polyhedra coordinates to table to .\tests\FeHS_ideal.xyz...
-Program finished in 18.5727ms
+Writing output table to FeHS_cshm_table.csv...
+Writing idealised polyhedra coordinates to table to FeHS_ideal.xyz...
+Program finished in 6.8154ms
 ````
 The output of the calculation is saved in the file `FeHS_cshm_table.csv` by passing the `-t`/`--table` flag.
 
 ````csv
 Symbol,Name,Symmetry,CShM
-HP-6,Hexagon,D6h,33.215
-PPY-6,Pentagonal pyramid,C5v,23.015
-OC-6,Octahedron,Oh,2.109
-TPR-6,Trigonal prism,D3h,11.027
-JPPY-6,Johnson pentagonal pyramid J2,C5v,27.034
-ebcT-6,Edge-bicapped tetrahedron,D2d,14.335
+HP-6,Hexagon,D6h,33.210
+PPY-6,Pentagonal pyramid,C5v,23.050
+OC-6,Octahedron,Oh,2.089
+TPR-6,Trigonal prism,D3h,11.079
+JPPY-6,Johnson pentagonal pyramid J2,C5v,27.050
+ebcT-6,Edge-bicapped tetrahedron,D2d,14.277
 ````
 
 The `FeHS_ideal.xyz` file was produced by calling the `-i`/`--ideal` flag. The coordinates of the ideal octahedron placed in the correct position of the structure can be extracted from it.
@@ -172,7 +174,7 @@ Input file: FeHS.xyz
  D4h          5.611     
 ------------------------
 Writing output table to FeHS_csom_table.csv...
-Program finished in 3.031317s
+Program finished in 204.5002ms
 ````
 
 Passing the `-t`/`--table` flag writes the point group / deviation / rotation matrix summary to `FeHS_csom_table.csv`. Passing `-f`/`--full` additionally writes, for every point group requested, a `FeHS_<PG>_details.csv` file breaking the deviation down by individual symmetry operation (_e.g._ `FeHS_Oh_details.csv` lists every one of `Oh`'s 48 operations separately).
@@ -194,10 +196,13 @@ Input file: FeHS.xyz
  Zeta                 0.3622  Ang         
  Delta              0.001007              
  Sigma                 82.29  deg         
+ Theta                306.81  deg         
+ Volume              12.9644  Ang^3       
 ----------------------------------
  Tau                   54.42  deg         
  Mu                     0.17  Ang         
 ==================================
+Writing output table to FeHS_odis_table.csv...
 
 Input file: FeHS.xyz
 ============================================
@@ -214,15 +219,17 @@ Input file: FeHS.xyz
 ------------------------
  Oh           5.380     
  D4h          5.611     
+ D3h          17.792    
  D3d          5.691     
  D2h          5.948     
  C4v          4.947     
  C3v          5.335     
  C2v          2.420     
 ------------------------
-Program finished in 5.1892944s
+Writing output table to FeHS_csom_table.csv...
+Program finished in 442.2413ms
 ````
-Passing the `-t`/`--table` flag writes the distortion parameters to a `<NAME>_odis_table.csv`. Passing the `-f`/`--full` flag computes the CShM against an octahedron, and trigonal prism  
+Passing the `-t`/`--table` flag writes the distortion parameters to a `<NAME>_odis_table.csv`. Passing the `-f`/`--full` flag additionally computes the CShM against the ideal octahedron and trigonal prism (`OC-6`, `TPR-6`) and the CSoM against the eight point groups most commonly seen in octahedral distortions (`Oh`, `D4h`, `D3h`, `D3d`, `D2h`, `C4v`, `C3v`, `C2v`).
 
 ## Reference Polyhedra
 The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera _et at._<sup>2</sup>
@@ -382,9 +389,9 @@ ebcT-6:
     - [1.0000,   0.0000,   1.0000]
     - [0.0000,   1.0000,   1.0000]
     - [0.5000,   0.5000,   1.6495]
-    - [0.5000,   0.5000,   0.5000]
+    - [0.0000,   0.0000,   0.0000]
   centre:
-    - [ 0.0000,   0.0000,   0.0000 ]
+    - [ 0.5000,   0.5000,   0.5000 ]
 
 fvCU-6:
   name: Face-divacant cube
@@ -406,7 +413,7 @@ Comments are also supported by the YAML parser, every line that starts with `#` 
 
 ## Supported point groups
 
-The `csom -p/--pg` flag accepts any of the following point groups, given in Schoenflies notation:
+The `csom -p/--pg` flag accepts any of the following 47 point groups, given in Schoenflies notation (all of them are analysed when the flag is omitted):
 
 ```
 C2   C2h  C2v  C3   C3h  C3v  C4   C4h  C4v  C5   C5h  C5v
@@ -435,8 +442,8 @@ The rotation/translation/scaling part is solved via an SVD-based Kabsch-style al
 
 The main problem to solve for `csom` is that symmetry element operations depend on a given's shape position in space. Once a centering criteria is stablished by the user, `csom` searches for the orientation of the structure that minimizes the average deviation from a given point group's symmetry operations. This is done by:
 
-1. **Fibonacci-sphere seeding**: `--seeds` orientation vectors are spread evenly over the unit sphere and each is scored, giving a good starting point without an expensive exhaustive search.
-2. **Nelder-Mead refinement**: each seed is locally optimized using the derivative-free Nelder-Mead optimization method (up to `--iterations` steps). Best axis is then defined for the 
+1. **Fibonacci-sphere seeding**: `--seeds` rotation vectors are spread evenly over the unit sphere and used as starting points, so that no orientation is far from a seed without an expensive exhaustive search.
+2. **Nelder-Mead refinement**: every seed is locally optimized using the derivative-free Nelder-Mead method, minimizing the average deviation over the three components of the rotation vector, until the simplex converges to `--tol` or `--iterations` steps are reached. The refined rotation with the lowest deviation over all seeds is kept as the structure's orientation for that point group.
 3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimized over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive by default, that is, atoms are only matched with others of the same element; pass `--ignore` to instead let the search match any atom to any other, regardless of label. When the structure is centered on its first atom, that atom is excluded from the Hungarian search and matched to itself directly, since it sits at the origin and is therefore invariant under every symmetry operation -- this reduces the assignment's dimensionality by one at no cost in accuracy.
 
 The reported CSoM score is the deviation averaged over all every symmetry operations of a given point group.
