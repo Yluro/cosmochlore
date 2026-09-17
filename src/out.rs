@@ -1,7 +1,7 @@
 use crate::cshm::CShMResult;
+use crate::csom::prepare::strip_all_labels;
+use crate::csom::types::CsomResult;
 use crate::odis::OdisResult;
-use crate::csom::CsomResult;
-use crate::csom::io::strip_all_labels;
 use nalgebra::{Matrix3, Vector3};
 use std::fs::File;
 use std::io::Write;
