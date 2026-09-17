@@ -1,60 +1,22 @@
 use crate::cli::CsomArgs;
-use crate::xyz::{parse_xyz, resolve_center, Structure};
-use crate::error::Error;
-use nalgebra::{Matrix3, Vector3};
-use crate::csom::dev::point_group_operation_deviations;
-use crate::csom::io::{prepare_csom_structure, CenteringMode};
+use crate::csom::deviation::point_group_operation_deviations;
+use crate::csom::prepare::{CenteringMode, prepare_csom_structure};
 use crate::csom::optimize::find_best_axis;
 use crate::data::pgs::POINTGROUP_NAMES;
+use crate::error::Error;
 use crate::geometry::rotation_matrix_from_vector;
-use crate::out::{print_csom_table, write_csom_csv, write_csom_details_csv, write_csom_operated_xyz, write_csom_merged_mol2};
+use crate::out::{print_csom_table, write_csom_csv, write_csom_details_csv, write_csom_merged_mol2, write_csom_operated_xyz};
+use crate::xyz::{Structure, parse_xyz, resolve_center};
+use nalgebra::Vector3;
+use types::{CsomError, CsomOperation, CsomResult};
 
-pub(crate) mod io;
-mod dev;
+mod assignment;
+mod deviation;
+pub(crate) mod prepare;
 #[cfg(test)]
 mod tests;
 mod optimize;
-
-/// One symmetry operation of a point group, measured against the structure at the refined axis.
-pub struct CsomOperation {
-    /// Schoenflies name of the operation.
-    pub name: String,
-
-    /// The operation's matrix, in the refined (rotated) frame.
-    pub matrix: Matrix3<f64>,
-
-    /// Deviation of the structure from this single operation.
-    pub deviation: f64,
-
-    /// `image[i]` is where the operation sends atom `i`, so it is still atom `i`'s own
-    /// position and carries atom `i`'s label.
-    pub image: Vec<Vector3<f64>>,
-
-    /// `pairing[i]` is the atom whose image atom `i` was scored against. Honouring labels
-    /// that is always an atom of the same element; with `--ignore` an atom can be paired
-    /// with the image of a different element, which is what lowers the deviation.
-    pub pairing: Vec<usize>,
-}
-
-pub struct CsomResult {
-    /// Point group analysed.
-    pub point_group: String,
-
-    /// Deviation from the ideal symmetry
-    pub deviation: f64,
-
-    /// Rotation matrix that defines the refined axis.
-    pub rotation: Matrix3<f64>,
-
-    /// Per-operation breakdown.
-    pub operations: Vec<CsomOperation>,
-
-    /// Normalization scale factor for the structure
-    pub scale: f64,
-
-    /// Centering vector used.
-    pub centroid: Vector3<f64>,
-}
+pub(crate) mod types;
 
 
 pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
@@ -156,13 +118,4 @@ pub fn calc_csom(
     }
 
     Ok(results)
-}
-
-
-#[derive(Debug, thiserror::Error)]
-pub enum CsomError {
-    #[error("wrong point group name: {pg}")]
-    WrongSpaceGroup { pg: String},
-    #[error("axis optimisation failed: {0}")]
-    OptimizationFailed(String),
 }
