@@ -1,7 +1,10 @@
 use nalgebra::{Matrix3, Vector3};
-use crate::csom::dev::*;
-use crate::csom::io::strip_label;
-use crate::geometry::{center_by_centroid, center_by_first_point, normalise, rotation_matrix};
+use crate::csom::assignment::*;
+use crate::csom::deviation::*;
+use crate::csom::optimize::{find_best_axis, optimise_axis};
+use crate::csom::prepare::{strip_label, CsomStructure};
+use crate::csom::types::CsomError;
+use crate::geometry::{center_by_centroid, center_by_first_point, normalise, rotation_matrix, rotation_matrix_from_vector};
 
 
 fn octahedron() -> Vec<Vector3<f64>> {
@@ -234,4 +237,102 @@ fn operated_image_keeps_every_atom_with_its_own_label() {
         op.pairing.iter().enumerate().any(|(i, &j)| labels[i] != labels[j])
     });
     assert!(crossed, "expected ignoring labels to pair the Cl with a nitrogen image somewhere");
+}
+
+fn octahedron_structure() -> CsomStructure {
+    let points = vec![
+        Vector3::new(0.0, 0.0, -1.0),
+        Vector3::new(1.0, 0.0, 0.0),
+        Vector3::new(0.0, 1.0, 0.0),
+        Vector3::new(-1.0, 0.0, 0.0),
+        Vector3::new(0.0, -1.0, 0.0),
+        Vector3::new(0.0, 0.0, 1.0),
+    ];
+    let labels = vec!["N".to_string(); 6];
+    let groups = group_by_label(&labels);
+    CsomStructure { points, has_centre: false, groups }
+}
+
+/// A water molecule (C2v) with O–H = 0.9584 A, H–O–H = 104.45°
+fn water_structure() -> CsomStructure {
+    let bond = 0.9584;
+    let half_angle = 104.45f64.to_radians() / 2.0;
+
+    let mut points = vec![
+        Vector3::new(0.0, 0.0, 0.0),
+        Vector3::new(bond * half_angle.sin(), 0.0, -bond * half_angle.cos()),
+        Vector3::new(-bond * half_angle.sin(), 0.0, -bond * half_angle.cos()),
+    ];
+    center_by_centroid(&mut points);
+
+    let labels = vec!["O".to_string(), "H".to_string(), "H".to_string()];
+    let groups = group_by_label(&labels);
+    CsomStructure { points, has_centre: false, groups }
+}
+
+#[test]
+fn optimise_axis_converges_for_perfect_octahedron() {
+    let structure = octahedron_structure();
+    // Start from a slightly off-identity guess so the simplex has real work to do.
+    let axis0 = Vector3::new(0.01, 0.02, 0.03);
+
+    let (_, cost) = optimise_axis(axis0, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
+
+    assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
+}
+
+#[test]
+fn optimise_axis_rejects_unknown_point_group() {
+    let structure = octahedron_structure();
+    let axis0 = Vector3::zeros();
+
+    let result = optimise_axis(axis0, &structure, "NotAGroup", 1000, 1e-8, false);
+
+    assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
+}
+
+#[test]
+fn find_best_axis_converges_for_rotated_octahedron() {
+    let mut structure = octahedron_structure();
+
+    // Rotate the octahedron off its canonical axes so the search has to find the
+    // symmetry axis rather than starting right on top of it.
+    let rot_mat = rotation_matrix_from_vector(Vector3::new(1.0, 1.0, 1.0));
+    structure.points = structure.points.iter().map(|p| rot_mat * p).collect();
+
+    let (_, cost) = find_best_axis(8, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
+
+    assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
+}
+
+#[test]
+fn find_best_axis_recovers_the_c2_axis_of_a_rotated_water_molecule() {
+    let mut structure = water_structure();
+
+    // An arbitrary rotation with no special relation to water's own C2 axis.
+    let applied_rotation = rotation_matrix_from_vector(Vector3::new(0.4, -0.3, 0.9));
+    structure.points = structure.points.iter().map(|p| applied_rotation * p).collect();
+
+    let (axis, cost) = find_best_axis(20, &structure, "C2v", 1000, 1e-8, false).expect("C2v is a valid point group");
+    assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
+
+    // The rotation the optimiser found should undo `applied_rotation` well enough
+    // that composing the two carries water's own C2 axis (z, in the untouched
+    // molecule) back onto itself.
+    let recovered_rotation = rotation_matrix_from_vector(axis);
+    let recovered_z_axis = recovered_rotation * applied_rotation * Vector3::z();
+
+    assert!(
+        (recovered_z_axis - Vector3::z()).norm() < 1e-2,
+        "expected the recovered rotation to realign water's C2 axis with z, got {recovered_z_axis}"
+    );
+}
+
+#[test]
+fn find_best_axis_rejects_unknown_point_group() {
+    let structure = octahedron_structure();
+
+    let result = find_best_axis(8, &structure, "NotAGroup", 1000, 1e-8, false);
+
+    assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
 }
