@@ -17,8 +17,11 @@ const SIN_72: f64 = 0.951_056_516_295_153_6;
 const COS_144: f64 = 0.809_016_994_374_947_4;
 const SIN_144: f64 = 0.587_785_252_292_473_1;
 
-/// Look up a point group's raw (operation name, matrix) list.
-pub fn get_pointgroup(name: &str) -> Option<&'static [(&'static str, [[f64; 3]; 3])]> {
+/// A single symmetry operation: its Schoenflies name paired with its row-major matrix.
+pub type SymmetryOperation = (&'static str, [[f64; 3]; 3]);
+
+/// Look up a point group's raw symmetry-operation list.
+pub fn get_pointgroup(name: &str) -> Option<&'static [SymmetryOperation]> {
     match name {
         "C2" => Some(POINTGROUP_C2),
         "C2h" => Some(POINTGROUP_C2H),
