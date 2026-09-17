@@ -1,26 +1,27 @@
 use crate::cli::CsomArgs;
 use crate::csom::deviation::point_group_operation_deviations;
-use crate::csom::prepare::{CenteringMode, prepare_csom_structure};
 use crate::csom::optimize::search_best_axis;
+use crate::csom::prepare::{CenteringMode, prepare_csom_structure};
 use crate::data::pgs::POINTGROUP_NAMES;
 use crate::error::Error;
 use crate::geometry::rotation_matrix_from_vector;
-use crate::out::{print_csom_table, write_csom_csv, write_csom_details_csv, write_csom_merged_mol2, write_csom_operated_xyz};
+use crate::out::{
+    print_csom_table, write_csom_csv, write_csom_details_csv, write_csom_merged_mol2,
+    write_csom_operated_xyz,
+};
 use crate::xyz::{Structure, parse_xyz, resolve_center};
 use nalgebra::Vector3;
 use types::{CsomError, CsomOperationResult, CsomResult};
 
 mod assignment;
 mod deviation;
+mod optimize;
 pub(crate) mod prepare;
 #[cfg(test)]
 mod tests;
-mod optimize;
 pub(crate) mod types;
 
-
 pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
-
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user get mapped to 0 based for parser.
     let center = resolve_center(args.not_centered, args.center.map(|c| c - 1));
@@ -28,7 +29,9 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
 
     // 2. Fetch the desired point groups. When none are given, analyse against every supported
     //    point group.
-    let point_groups = args.point_groups.unwrap_or_else(|| POINTGROUP_NAMES.iter().map(|pg| pg.to_string()).collect());
+    let point_groups = args
+        .point_groups
+        .unwrap_or_else(|| POINTGROUP_NAMES.iter().map(|pg| pg.to_string()).collect());
 
     // Capture the atom labels and original coordinates, in file order, before `structure` is
     // consumed by `calc_csom`.
@@ -42,7 +45,17 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
     let with_operations = args.full || args.operated;
 
     // 3. Prepare the structure and measure it against each point group.
-    let results = calc_csom(structure, args.centering_mode, args.vector, &point_groups, args.seeds, args.iterations, args.tolerance, with_operations, args.ignore_labels)?;
+    let results = calc_csom(
+        structure,
+        args.centering_mode,
+        args.vector,
+        &point_groups,
+        args.seeds,
+        args.iterations,
+        args.tolerance,
+        with_operations,
+        args.ignore_labels,
+    )?;
 
     print_csom_table(&results, &args.name);
 
@@ -62,7 +75,13 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
     //    merged .mol2 overlaying every image in one 3D structure for viewers such as Mercury.
     if args.operated {
         write_csom_operated_xyz(&results, &args.name, &labels, &original_coords)?;
-        write_csom_merged_mol2(&results, &args.name, &labels, &original_coords, has_centre_atom)?;
+        write_csom_merged_mol2(
+            &results,
+            &args.name,
+            &labels,
+            &original_coords,
+            has_centre_atom,
+        )?;
     }
 
     Ok(())
@@ -86,8 +105,11 @@ pub fn calc_csom(
     with_operations: bool,
     ignore_labels: bool,
 ) -> Result<Vec<CsomResult>, CsomError> {
-
-    for pg in point_groups { if !POINTGROUP_NAMES.contains(&pg.as_str()) {return Err(CsomError::WrongSpaceGroup { pg: pg.clone() })}}
+    for pg in point_groups {
+        if !POINTGROUP_NAMES.contains(&pg.as_str()) {
+            return Err(CsomError::WrongSpaceGroup { pg: pg.clone() });
+        }
+    }
 
     // Prepare the structure depending on centering mode.
     // (prepare_csom_structure converts --vector's raw f64s into a Vector3 itself.)
@@ -96,13 +118,27 @@ pub fn calc_csom(
 
     let mut results: Vec<CsomResult> = Vec::new();
     for point_group in point_groups {
-        let (rotation_vector, deviation) = search_best_axis(samples, &csom_structure, point_group, iterations, tolerance, ignore_labels)?;
+        let (rotation_vector, deviation) = search_best_axis(
+            samples,
+            &csom_structure,
+            point_group,
+            iterations,
+            tolerance,
+            ignore_labels,
+        )?;
         let rotation = rotation_matrix_from_vector(rotation_vector);
 
         let operations: Vec<CsomOperationResult> = if with_operations {
             // Re-measure at the refined axis to break the overall deviation down by operation.
-            let rotated_points: Vec<Vector3<f64>> = csom_structure.points.iter().map(|p| rotation * p).collect();
-            point_group_operation_deviations(&rotated_points, &csom_structure.groups, point_group, ignore_labels, csom_structure.has_centre)?
+            let rotated_points: Vec<Vector3<f64>> =
+                csom_structure.points.iter().map(|p| rotation * p).collect();
+            point_group_operation_deviations(
+                &rotated_points,
+                &csom_structure.groups,
+                point_group,
+                ignore_labels,
+                csom_structure.has_centre,
+            )?
         } else {
             Vec::new()
         };

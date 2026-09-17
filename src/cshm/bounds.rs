@@ -21,7 +21,6 @@ pub(crate) fn precompute_correlation_blocks(
     hi
 }
 
-
 /// Precomputes the Euclidean norm of every point once, so the branch-and-bound
 /// loop can look these up instead of recomputing `.norm()` at every node.
 pub(crate) fn precompute_norms(points: &[Vector3<f64>]) -> Vec<f64> {
@@ -42,10 +41,7 @@ pub(crate) fn max_unassigned_norm(ref_norms: &[f64], assigned: &[bool]) -> f64 {
     ref_norms
         .iter()
         .zip(assigned.iter())
-        .filter(|&(_, is_assigned)| !is_assigned )
+        .filter(|&(_, is_assigned)| !is_assigned)
         .map(|(&norm, _)| norm)
         .fold(0.0, f64::max)
 }
-
-
-

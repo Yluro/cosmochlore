@@ -1,5 +1,5 @@
-use nalgebra::Vector3;
 use crate::shapes::ReferenceShape;
+use nalgebra::Vector3;
 
 #[derive(Debug, PartialEq)]
 enum Section {
@@ -8,15 +8,15 @@ enum Section {
     Centre,
 }
 
-
 fn read_yaml(path: &str) -> Result<String, YamlParseError> {
     Ok(std::fs::read_to_string(path)?)
 }
 
 fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, YamlParseError> {
-
     if content.trim().is_empty() {
-        return Err(YamlParseError::FileEmpty { file: file.to_string() })
+        return Err(YamlParseError::FileEmpty {
+            file: file.to_string(),
+        });
     }
 
     let mut shapes: Vec<ReferenceShape> = Vec::new();
@@ -25,15 +25,18 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
     let mut id: Option<u8> = None;
     let mut symm: Option<String> = None;
     let mut name: Option<String> = None;
-    let mut vertices: Vec<[f64;3]> = Vec::new();
-    let mut centre: Vec<[f64;3]> = Vec::new();
+    let mut vertices: Vec<[f64; 3]> = Vec::new();
+    let mut centre: Vec<[f64; 3]> = Vec::new();
     let mut current_section = Section::Unset;
 
     for (line_no, raw_line) in content.lines().enumerate() {
+        if raw_line.trim().is_empty() {
+            continue;
+        }
+        if raw_line.trim().starts_with("#") {
+            continue;
+        }
 
-        if raw_line.trim().is_empty() { continue; }
-        if raw_line.trim().starts_with("#") { continue;}
-        
         // New entry means not start with whitespace and end with ":"
         let is_new_entry = !raw_line.starts_with(' ') && raw_line.trim_end().ends_with(':');
         let line = raw_line.trim();
@@ -47,7 +50,10 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
 
             let new_symbol = line.trim_end_matches(':').to_string();
             if new_symbol.is_empty() {
-                return Err(YamlParseError::BadSymbol { file: file.to_string(), line_no });
+                return Err(YamlParseError::BadSymbol {
+                    file: file.to_string(),
+                    line_no,
+                });
             }
 
             // reset everything for the new entry
@@ -68,19 +74,24 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
 
             if value.is_empty() {
                 return Err(YamlParseError::MissingField {
-                    file: file.to_string(), symbol: symbol.clone().unwrap_or_default(), field: "id"
-                })
+                    file: file.to_string(),
+                    symbol: symbol.clone().unwrap_or_default(),
+                    field: "id",
+                });
             }
 
             id = Some(value.parse::<u8>().unwrap());
             continue;
         }
 
-        if line.starts_with("symmetry") ||  line.starts_with("symm"){
+        if line.starts_with("symmetry") || line.starts_with("symm") {
             let value = line.split(':').nth(1).unwrap_or("").trim();
             if value.is_empty() {
                 return Err(YamlParseError::NoValue {
-                    file: file.to_string(), symbol: symbol.clone().unwrap_or_default(), field: "symm", line_no,
+                    file: file.to_string(),
+                    symbol: symbol.clone().unwrap_or_default(),
+                    field: "symm",
+                    line_no,
                 });
             }
             symm = Some(value.to_string());
@@ -91,14 +102,17 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
             let value = line.split(':').nth(1).unwrap_or("").trim();
             if value.is_empty() {
                 return Err(YamlParseError::NoValue {
-                    file: file.to_string(), symbol: symbol.clone().unwrap_or_default(), field: "name", line_no,
+                    file: file.to_string(),
+                    symbol: symbol.clone().unwrap_or_default(),
+                    field: "name",
+                    line_no,
                 });
             }
             name = Some(value.to_string());
             continue;
         }
 
-        if line.starts_with("centre") ||  line.starts_with("center") ||  line.starts_with("metal"){
+        if line.starts_with("centre") || line.starts_with("center") || line.starts_with("metal") {
             current_section = Section::Centre;
             continue;
         }
@@ -118,14 +132,21 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
 
             let parts: Vec<&str> = inner.split(',').collect();
             if parts.len() != 3 {
-                return Err(YamlParseError::BadCoordinate {file: file.to_string(), line_no})
+                return Err(YamlParseError::BadCoordinate {
+                    file: file.to_string(),
+                    line_no,
+                });
             }
-
 
             let mut numbers: Vec<f64> = Vec::new();
             for part in parts {
-                let x = part.trim().parse::<f64>()
-                    .map_err(|_| YamlParseError::BadCoordinate {file: file.to_string(), line_no})?;
+                let x = part
+                    .trim()
+                    .parse::<f64>()
+                    .map_err(|_| YamlParseError::BadCoordinate {
+                        file: file.to_string(),
+                        line_no,
+                    })?;
                 numbers.push(x);
             }
             let xyz = [numbers[0], numbers[1], numbers[2]];
@@ -133,13 +154,20 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
             match current_section {
                 Section::Vertices => vertices.push(xyz),
                 Section::Centre => centre.push(xyz),
-                Section::Unset => return Err(YamlParseError::UnexpectedCoordinate {file: file.to_string(), line_no}),
-
+                Section::Unset => {
+                    return Err(YamlParseError::UnexpectedCoordinate {
+                        file: file.to_string(),
+                        line_no,
+                    });
+                }
             }
             continue;
         }
         // If a line is not caught by any if block, means it contains something unknown to the parser
-        return Err(YamlParseError::UnparsableLine {file: file.to_string(), line_no })
+        return Err(YamlParseError::UnparsableLine {
+            file: file.to_string(),
+            line_no,
+        });
     }
 
     // finalise the LAST entry (no more "new entry" line to trigger it)
@@ -158,33 +186,41 @@ fn finalise_entry(
     symm: &Option<String>,
     name: &Option<String>,
     vertices: &[[f64; 3]],
-    centre: &[[f64; 3]]
+    centre: &[[f64; 3]],
 ) -> Result<ReferenceShape, YamlParseError> {
-
     let symbol = symbol.clone().ok_or_else(|| YamlParseError::MissingField {
-        file: file.to_string(), symbol: "?".to_string(), field: "symbol"
+        file: file.to_string(),
+        symbol: "?".to_string(),
+        field: "symbol",
     })?;
 
     let symm = symm.clone().ok_or_else(|| YamlParseError::MissingField {
-        file: file.to_string(), symbol: symbol.to_string(), field: "symm"
+        file: file.to_string(),
+        symbol: symbol.to_string(),
+        field: "symm",
     })?;
 
     let name = name.clone().ok_or_else(|| YamlParseError::MissingField {
-        file: file.to_string(), symbol: symbol.to_string(), field: "name"
+        file: file.to_string(),
+        symbol: symbol.to_string(),
+        field: "name",
     })?;
 
     if vertices.is_empty() {
         return Err(YamlParseError::MissingField {
-            file: file.to_string(), symbol: symbol.to_string(), field: "vertices"
-        })
+            file: file.to_string(),
+            symbol: symbol.to_string(),
+            field: "vertices",
+        });
     }
 
     if centre.is_empty() {
         return Err(YamlParseError::MissingField {
-            file: file.to_string(), symbol: symbol.to_string(), field: "centre"
-        })
+            file: file.to_string(),
+            symbol: symbol.to_string(),
+            field: "centre",
+        });
     }
-
 
     Ok(ReferenceShape {
         symbol,
@@ -194,40 +230,42 @@ fn finalise_entry(
         centre: Vector3::from(centre[0]),
         vertices: vertices.iter().map(|v| Vector3::from(*v)).collect(),
     })
-
 }
-
 
 pub fn parse_custom_shapes(path: &str) -> Result<Vec<ReferenceShape>, YamlParseError> {
     let content = read_yaml(path)?;
     parse_yaml_str(&content, path)
 }
 
-
-
-
-
 // ERROR HANDLING
 #[derive(Debug, thiserror::Error)]
 pub enum YamlParseError {
     #[error("could not read file: {0}")]
-    Io(#[from] std::io::Error),                                     // Can't read file
+    Io(#[from] std::io::Error), // Can't read file
     #[error("could not read {file} file: empty file")]
-    FileEmpty { file: String },                              // File is empty
+    FileEmpty { file: String }, // File is empty
     #[error("bad entry in file {file} at line {}", line_no + 1)]
-    BadSymbol { file: String, line_no: usize },                  // Entry appears but is in wrong format for example ":" meets criteria of starting with no ' ' and ending with ':'
+    BadSymbol { file: String, line_no: usize }, // Entry appears but is in wrong format for example ":" meets criteria of starting with no ' ' and ending with ':'
     #[error("entry for {symbol} is missing {field} in file {file}")]
-    MissingField {file: String, symbol: String, field: &'static str }, // Some entry has missing fields
+    MissingField {
+        file: String,
+        symbol: String,
+        field: &'static str,
+    }, // Some entry has missing fields
     #[error("entry for {symbol} has no value for {field} in file {file} at line {}", line_no + 1)]
-    NoValue {file: String, symbol: String, field: &'static str, line_no: usize },   // field appeared, but has no value
+    NoValue {
+        file: String,
+        symbol: String,
+        field: &'static str,
+        line_no: usize,
+    }, // field appeared, but has no value
     #[error("unexpected contents in file {file} at line {}", line_no + 1)]
-    UnparsableLine {file: String, line_no: usize },         // Some entry has unexpected fields. It reaches the end of the "if chain" without getting parsed.
+    UnparsableLine { file: String, line_no: usize }, // Some entry has unexpected fields. It reaches the end of the "if chain" without getting parsed.
     #[error("found unexpected coordinate block in file {file} at line {} ", line_no + 1)]
-    UnexpectedCoordinate {file: String, line_no: usize },   // Coordinate appears when Section::Unset
+    UnexpectedCoordinate { file: String, line_no: usize }, // Coordinate appears when Section::Unset
     #[error("bad coordinates in file {file} at line {} ", line_no + 1)]
-    BadCoordinate {file: String, line_no: usize },          // wrong coordinate format
+    BadCoordinate { file: String, line_no: usize }, // wrong coordinate format
 }
-
 
 // TESTS
 #[cfg(test)]
@@ -271,7 +309,8 @@ TEST-4:
     }
 
     #[test]
-    fn missing_field_error() { // Input has missing name field.
+    fn missing_field_error() {
+        // Input has missing name field.
         let input = "\
 TEST-2:
   symmetry: D3h
@@ -285,7 +324,11 @@ TEST-2:
         let result = parse_yaml_str(input, "test.yaml");
         assert!(result.is_err());
         match result {
-            Err(YamlParseError::MissingField { file, symbol, field }) => {
+            Err(YamlParseError::MissingField {
+                file,
+                symbol,
+                field,
+            }) => {
                 assert_eq!(file, "test.yaml");
                 assert_eq!(symbol, "TEST-2");
                 assert_eq!(field, "name");
@@ -295,7 +338,8 @@ TEST-2:
     }
 
     #[test]
-    fn unexpected_coordinate_error() { // Input has missing name field.
+    fn unexpected_coordinate_error() {
+        // Input has missing name field.
         let input = "\
 TEST-2:
   symmetry: D3h
@@ -319,7 +363,8 @@ TEST-2:
     }
 
     #[test]
-    fn bad_coordinate_error() { // Input has missing name field.
+    fn bad_coordinate_error() {
+        // Input has missing name field.
         let input = "\
 TEST-2:
   symmetry: D3h
@@ -343,7 +388,8 @@ TEST-2:
     }
 
     #[test]
-    fn unexpected_line_error() { // Input has missing name field.
+    fn unexpected_line_error() {
+        // Input has missing name field.
         let input = "\
 TEST-2:
   symmetry: D3h
@@ -369,7 +415,8 @@ TEST-2:
     }
 
     #[test]
-    fn no_value_error() { // Input has missing name field.
+    fn no_value_error() {
+        // Input has missing name field.
         let input = "\
 TEST-2:
   symmetry:
@@ -385,7 +432,12 @@ TEST-2:
         println!("{:?}", result);
         assert!(result.is_err());
         match result {
-            Err(YamlParseError::NoValue { file, symbol, field, line_no }) => {
+            Err(YamlParseError::NoValue {
+                file,
+                symbol,
+                field,
+                line_no,
+            }) => {
                 assert_eq!(file, "test.yaml");
                 assert_eq!(symbol, "TEST-2");
                 assert_eq!(field, "symm");
@@ -396,7 +448,8 @@ TEST-2:
     }
 
     #[test]
-    fn file_empty_error() { // Input has missing name field.
+    fn file_empty_error() {
+        // Input has missing name field.
         let input = "\
 \n\n   \n
 ";
@@ -404,7 +457,7 @@ TEST-2:
         println!("{:?}", result);
         assert!(result.is_err());
         match result {
-            Err(YamlParseError::FileEmpty { file}) => {
+            Err(YamlParseError::FileEmpty { file }) => {
                 assert_eq!(file, "test.yaml");
             }
             other => panic!("unexpected result: {:?}", other),
@@ -412,7 +465,8 @@ TEST-2:
     }
 
     #[test]
-    fn bad_entry_error() { // Input has missing name field.
+    fn bad_entry_error() {
+        // Input has missing name field.
         let input = "\
 :
   symmetry: D3h

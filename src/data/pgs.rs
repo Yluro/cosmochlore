@@ -73,7 +73,6 @@ pub fn get_pointgroup(name: &str) -> Option<&'static [SymmetryOperation]> {
     }
 }
 
-
 /// Look up a point group as a HashMap<operation name, Vec<Matrix3<f64>>>.
 /// An operation name (e.g. "3C2") can repeat with a different matrix
 /// each time; all matrices sharing a name are collected under that key.
@@ -86,9 +85,6 @@ pub fn get_pointgroup_map(name: &str) -> Option<HashMap<&'static str, Vec<Matrix
         map
     })
 }
-
-
-
 
 #[rustfmt::skip]
 pub static POINTGROUP_C2: &[(&str, [[f64; 3]; 3])] = &[
@@ -936,8 +932,6 @@ pub(crate) fn to_matrix3(m: [[f64; 3]; 3]) -> Matrix3<f64> {
         m[2][0], m[2][1], m[2][2],
     )
 }
-
-
 
 #[rustfmt::skip]
 pub const POINTGROUP_NAMES: &[&str] = &[

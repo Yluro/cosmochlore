@@ -1,9 +1,8 @@
 //! AUTOMORPHISM FINDING FOR REFERENCE SHAPES
 use nalgebra::{Matrix3, Vector3};
 
-use crate::cshm::linalg::*;
 use crate::cshm::bounds::*;
-
+use crate::cshm::linalg::*;
 
 /// Finds a Reference Shape's Automorphisms.
 /// Expects centered and normalised Shapes.
@@ -28,7 +27,7 @@ pub fn find_automorphisms(reference: &[Vector3<f64>], has_centre: bool) -> Vec<V
         h_partial = hi[0][0];
     }
 
-    const EPS:f64 = 1e-6;
+    const EPS: f64 = 1e-6;
 
     automorphism_branch(
         reference,
@@ -75,7 +74,8 @@ fn automorphism_branch(
 
     for ref_idx in 0..n {
         // Main loop to look for perms.
-        if assigned[ref_idx] { // Skip the currently assigned points in the permutation
+        if assigned[ref_idx] {
+            // Skip the currently assigned points in the permutation
             continue;
         }
         // Choosing the next point starts here:
@@ -92,8 +92,15 @@ fn automorphism_branch(
         if s_bound < epsilon {
             current_perm.push(ref_idx);
             automorphism_branch(
-                reference, hi, ref_norms, ref_suffix, assigned, current_perm,
-                h_partial, epsilon, automorphisms,
+                reference,
+                hi,
+                ref_norms,
+                ref_suffix,
+                assigned,
+                current_perm,
+                h_partial,
+                epsilon,
+                automorphisms,
             );
 
             current_perm.pop();
@@ -102,4 +109,3 @@ fn automorphism_branch(
         *h_partial -= hi[ref_idx][pos];
     }
 }
-

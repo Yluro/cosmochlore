@@ -12,7 +12,6 @@ fn sq_dist_cost(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> Vec<Vec<f64>> {
     cost
 }
 
-
 /// Jonker-Volgenant / Kuhn-Munkres algorithm with dual potentials. O(n^3). Assumes a square cost matrix.
 /// Returns, for each row i, the column it's assigned to (0-indexed).
 pub fn hungarian(cost: &[Vec<f64>]) -> Vec<usize> {
@@ -111,7 +110,6 @@ pub fn best_permutation(a: &[Vector3<f64>], b: &[Vector3<f64>]) -> (Vec<Vector3<
     (b_permuted, assignment)
 }
 
-
 /// Splits an array of points A and labels L given the different labels of L
 ///
 /// ["Cl", "Cl2", "O"] -> ["Cl", "Cl"], ["O",]
@@ -120,7 +118,7 @@ fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
 
     for (i, label) in labels.iter().enumerate() {
         result
-            .entry(label.clone())// Get the entry for the element
+            .entry(label.clone()) // Get the entry for the element
             .or_default() // If element is not present, insert an empty Vec<>
             .push(i); // Push the Vector3 to the first element.
     }
@@ -131,8 +129,6 @@ fn split_by_atoms(labels: &[String]) -> HashMap<String, Vec<usize>> {
 pub(crate) fn group_by_label(labels: &[String]) -> Vec<Vec<usize>> {
     split_by_atoms(labels).into_values().collect()
 }
-
-
 
 /// Finds the best permutation of b to a using the Hungarian algorithm.
 ///
@@ -199,8 +195,7 @@ pub fn best_permutation_multiple_atoms(
     groups: &[Vec<usize>],
     ignore_labels: bool,
     has_centre: bool,
-) -> (Vec<Vector3<f64>>, Vec<Vector3<f64>>, Vec<usize>)
-{
+) -> (Vec<Vector3<f64>>, Vec<Vector3<f64>>, Vec<usize>) {
     debug_assert_eq!(a.len(), b.len());
 
     let mut pairs: Vec<(usize, usize, Vector3<f64>, Vector3<f64>)> = Vec::new();
@@ -222,13 +217,11 @@ pub fn best_permutation_multiple_atoms(
     }
 
     // Sort pairs by ascending order of z- y- x- values so output from hashmap is deterministic.
-    pairs.sort_by(
-        |(_, _, a1, _), (_, _, a2, _)| {
-            a1.z.total_cmp(&a2.z)
-                .then(a1.y.total_cmp(&a2.y))
-                .then(a1.x.total_cmp(&a2.x))
-        }
-    );
+    pairs.sort_by(|(_, _, a1, _), (_, _, a2, _)| {
+        a1.z.total_cmp(&a2.z)
+            .then(a1.y.total_cmp(&a2.y))
+            .then(a1.x.total_cmp(&a2.x))
+    });
 
     let mut final_a = Vec::with_capacity(pairs.len());
     let mut final_b = Vec::with_capacity(pairs.len());

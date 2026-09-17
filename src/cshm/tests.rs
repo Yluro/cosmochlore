@@ -8,16 +8,15 @@ use crate::geometry::center_and_normalise;
 
 #[test]
 fn centre_and_normalises_correctly() {
-    let mut points = Vec::from(
-        [Vector3::new(1.0, 0.0, 0.0), // Regular octahedron centered at 1 0 0
-            Vector3::new(2.0, 0.0, 1.0),
-            Vector3::new(1.0, 1.0, 0.0),
-            Vector3::new(1.0, 0.0, 1.0),
-            Vector3::new(-0.0, 0.0, 1.0),
-            Vector3::new(1.0, -1.0, 0.0),
-            Vector3::new(1.0, 0.0, -1.0),
-        ]
-    );
+    let mut points = Vec::from([
+        Vector3::new(1.0, 0.0, 0.0), // Regular octahedron centered at 1 0 0
+        Vector3::new(2.0, 0.0, 1.0),
+        Vector3::new(1.0, 1.0, 0.0),
+        Vector3::new(1.0, 0.0, 1.0),
+        Vector3::new(-0.0, 0.0, 1.0),
+        Vector3::new(1.0, -1.0, 0.0),
+        Vector3::new(1.0, 0.0, -1.0),
+    ]);
 
     center_and_normalise(&mut points);
 
@@ -33,14 +32,16 @@ fn centre_and_normalises_correctly() {
     centroid[1] /= points.len() as f64;
     centroid[2] /= points.len() as f64;
 
-    for point in centroid.iter() {assert!(point.abs() < 1e-10)}
+    for point in centroid.iter() {
+        assert!(point.abs() < 1e-10)
+    }
 
     let mut s2: f64 = 0.0;
-    for point in points.iter() {s2 += point[0] * point[0] + point[1] * point[1] + point[2] * point[2]};
+    for point in points.iter() {
+        s2 += point[0] * point[0] + point[1] * point[1] + point[2] * point[2]
+    }
     assert!((s2 - points.len() as f64).abs() < 1e-10);
-
 }
-
 
 #[test]
 fn recovers_from_rotation() {
@@ -52,20 +53,20 @@ fn recovers_from_rotation() {
         Vector3::new(-0.0, 0.0, 1.0),
     ];
 
-    let know_rotation = Matrix3::new(
-        0.0, -1.0, 0.0,
-        1.0,  0.0, 0.0,
-        0.0,  0.0, 1.0,
-    );
+    let know_rotation = Matrix3::new(0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0);
 
-    let rotated = reference.iter().map(|&v| know_rotation * v).collect::<Vec<_>>();
+    let rotated = reference
+        .iter()
+        .map(|&v| know_rotation * v)
+        .collect::<Vec<_>>();
 
     let h = correlation_matrix(&reference, &rotated);
     let (recovered_r, _) = optimal_rotation(h);
 
-
-    recovered_r.iter().zip(know_rotation.iter()).for_each(|(r1, r2)| {assert!((r1-r2).abs() < 1e-10)});
-
+    recovered_r
+        .iter()
+        .zip(know_rotation.iter())
+        .for_each(|(r1, r2)| assert!((r1 - r2).abs() < 1e-10));
 }
 
 #[test]
@@ -86,8 +87,6 @@ fn perfect_gives_zero() {
     println!("s is: {}", s);
     assert!(s.abs() < 1e-10);
 }
-
-
 
 fn octahedron() -> [Vector3<f64>; 7] {
     [
@@ -110,23 +109,28 @@ fn bnb_automorphisms_matches_naive() {
     let perms = bnb_automorphisms.len();
     bnb_automorphisms.sort();
     all_automorphisms.sort();
-    assert_eq!(perms, 48);    // Finds all the 48 symmetry elements of the octahedron.
-    assert_eq!(bnb_automorphisms, all_automorphisms, "Expected {:?}, found: {:?}", all_automorphisms.len(), bnb_automorphisms.len());
+    assert_eq!(perms, 48); // Finds all the 48 symmetry elements of the octahedron.
+    assert_eq!(
+        bnb_automorphisms,
+        all_automorphisms,
+        "Expected {:?}, found: {:?}",
+        all_automorphisms.len(),
+        bnb_automorphisms.len()
+    );
 }
 
 #[test]
-fn water_matches_result_from_shape21 () {
+fn water_matches_result_from_shape21() {
     // Coords from problem taken from water dataset from Olex2
     let mut problem = [
-        Vector3::new(0.0,       8.0648,     0.0),       // Central Mn
-        Vector3::new(-1.332417, 6.56007,   -1.099508),  // N2'
-        Vector3::new(1.3324,    9.5695,     1.0995),    // N2
-        Vector3::new(0.521462,  6.437162,   1.333904),  // O4
-        Vector3::new(-0.5215,   9.6924,    -1.3339),    // O4'
-        Vector3::new(1.619207,  7.429778,  -1.386425),  // O5
-        Vector3::new(-1.6192,   8.6998,     1.3864),    // O5'
+        Vector3::new(0.0, 8.0648, 0.0),              // Central Mn
+        Vector3::new(-1.332417, 6.56007, -1.099508), // N2'
+        Vector3::new(1.3324, 9.5695, 1.0995),        // N2
+        Vector3::new(0.521462, 6.437162, 1.333904),  // O4
+        Vector3::new(-0.5215, 9.6924, -1.3339),      // O4'
+        Vector3::new(1.619207, 7.429778, -1.386425), // O5
+        Vector3::new(-1.6192, 8.6998, 1.3864),       // O5'
     ];
-
 
     // This list of atoms is manually set in order to correspond
     // to the correct assignation of point pairs.
@@ -168,15 +172,16 @@ fn square() -> Vec<Vector3<f64>> {
     ]
 }
 
-
 #[test]
 fn identity_problem_gives_zero_score() {
     let mut reference = square();
     let mut problem = square();
 
-
     let (best_s, best_perm) = best_permutation_brute_force(&mut reference, &mut problem);
-    assert!(best_s.abs() < 1e-10, "expected near-zero shape measure, got {best_s}");
+    assert!(
+        best_s.abs() < 1e-10,
+        "expected near-zero shape measure, got {best_s}"
+    );
     assert_eq!(best_perm.len(), 4)
 }
 
@@ -188,7 +193,10 @@ fn permuted_problem_gives_zero_score() {
     let mut problem = vec![reference[2], reference[0], reference[3], reference[1]];
 
     let (best_s, _best_perm) = best_permutation_brute_force(&mut reference, &mut problem);
-    assert!(best_s.abs() < 1e-10, "expected near-zero shape measure, got {best_s}");
+    assert!(
+        best_s.abs() < 1e-10,
+        "expected near-zero shape measure, got {best_s}"
+    );
 }
 
 #[test]
@@ -233,7 +241,8 @@ fn unordered_coordinates_matches_shape21() {
         Vector3::new(-3.05614, 5.527, -2.6526),
     ];
 
-    let mut reference_hexagon = [ // Regular hexagon reference from standard_shapes.rs
+    let mut reference_hexagon = [
+        // Regular hexagon reference from standard_shapes.rs
         Vector3::new(1.0, 0.0, 0.0),
         Vector3::new(0.5, 0.8660254, 0.0),
         Vector3::new(-0.5, 0.8660254, 0.0),
@@ -248,9 +257,8 @@ fn unordered_coordinates_matches_shape21() {
         Vector3::new(0.0, 1.0, 0.0),
         Vector3::new(-1.0, 0.0, 0.0),
         Vector3::new(-0.0, -1.0, 0.0),
-        Vector3::new(0.0, 0.0, 1.0)
+        Vector3::new(0.0, 0.0, 1.0),
     ];
-
 
     center_and_normalise(&mut reference_hexagon);
     center_and_normalise(&mut reference_octahedron);
@@ -261,10 +269,14 @@ fn unordered_coordinates_matches_shape21() {
     let (best_s_hex, _) = best_permutation_brute_force(&mut reference_hexagon, &mut problem);
     let (best_s_oc, _) = best_permutation_brute_force(&mut reference_octahedron, &mut problem);
 
-    assert!((best_s_hex - shape21_hex).abs() < 1e-3,
-            "Result doesn't match SHAPE 2.1. Expected {shape21_hex}, got {best_s_hex}");
-    assert!((best_s_oc - shape21_oc).abs() < 1e-3,
-            "Result doesn't match SHAPE 2.1. Expected {shape21_oc}, got {best_s_oc}");
+    assert!(
+        (best_s_hex - shape21_hex).abs() < 1e-3,
+        "Result doesn't match SHAPE 2.1. Expected {shape21_hex}, got {best_s_hex}"
+    );
+    assert!(
+        (best_s_oc - shape21_oc).abs() < 1e-3,
+        "Result doesn't match SHAPE 2.1. Expected {shape21_oc}, got {best_s_oc}"
+    );
 }
 
 #[test]
@@ -277,15 +289,19 @@ fn branch_and_bound_matches_brute_force_results() {
         Vector3::new(0.95, 1.0, 0.0),
     ]; // Noisy square.
 
-    let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
+    let (s_bf, _) = best_permutation_brute_force(&mut reference, &mut problem);
     let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem, false); // square() has no centre point
 
-    assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.")
+    assert!(
+        (s_bf - s_bnb).abs() < 1e-10,
+        "true optimal value was pruned. Expected {s_bf}, found {s_bnb}."
+    )
 }
 
 #[test]
 fn bnb_matches_bf_matches_shape21_hard() {
-    let mut problem = [ // Coordinates from refined FeHS dataset.
+    let mut problem = [
+        // Coordinates from refined FeHS dataset.
         Vector3::new(4.92991, 10.3899, 12.9237),
         Vector3::new(6.20468, 10.6922, 14.7747),
         Vector3::new(5.00034, 8.51382, 13.9503),
@@ -299,16 +315,23 @@ fn bnb_matches_bf_matches_shape21_hard() {
 
     let shape21_result = 2.109;
 
-    let (s_bf,_) = best_permutation_brute_force(&mut reference, &mut problem);
+    let (s_bf, _) = best_permutation_brute_force(&mut reference, &mut problem);
     let (s_bnb, _, _, _) = find_best_permutation(&mut reference, &mut problem, true); // octahedron() has centre first
 
-    assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
-    assert!((s_bnb - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}.")
+    assert!(
+        (s_bf - s_bnb).abs() < 1e-10,
+        "true optimal value was pruned. Expected {s_bf}, found {s_bnb}."
+    );
+    assert!(
+        (s_bnb - shape21_result).abs() < 1e-3,
+        "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}."
+    )
 }
 
 #[test]
 fn bnb_is_faster_than_bf() {
-    let problem = [ // From Eu7 dataset.
+    let problem = [
+        // From Eu7 dataset.
         Vector3::new(5.44844, 5.38278, 7.85016),
         Vector3::new(6.16348, 8.57381, 7.75539),
         Vector3::new(4.83935, 2.1473, 8.09115),
@@ -319,7 +342,8 @@ fn bnb_is_faster_than_bf() {
         Vector3::new(6.48067, 4.00061, 5.84709),
     ];
 
-    let reference = [ // Capped trigonal prism
+    let reference = [
+        // Capped trigonal prism
         Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(0.0, 0.0, 1.0),
         Vector3::new(0.68689018, 0.68689018, 0.23741035),
@@ -336,7 +360,7 @@ fn bnb_is_faster_than_bf() {
     let shape21_result = 2.630;
 
     let start_bf = Instant::now();
-    let (s_bf,_) = best_permutation_brute_force(&mut ref_bf, &mut prob_bf);
+    let (s_bf, _) = best_permutation_brute_force(&mut ref_bf, &mut prob_bf);
     let time_bf = start_bf.elapsed();
 
     let mut ref_bnb = reference;
@@ -346,16 +370,28 @@ fn bnb_is_faster_than_bf() {
     let (s_bnb, _, _, _) = find_best_permutation(&mut ref_bnb, &mut prob_bnb, true); // capped trigonal prism has centre first
     let time_bnb = start_bnb.elapsed();
 
-    assert!((s_bf - s_bnb).abs() < 1e-10, "true optimal value was pruned. Expected {s_bf}, found {s_bnb}.");
-    assert!((s_bnb - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}.");
+    assert!(
+        (s_bf - s_bnb).abs() < 1e-10,
+        "true optimal value was pruned. Expected {s_bf}, found {s_bnb}."
+    );
+    assert!(
+        (s_bnb - shape21_result).abs() < 1e-3,
+        "Calculation doesn't match SHAPE 2.1 output: Expected {shape21_result}, found {s_bnb}."
+    );
 
     println!("Brute force: {:?}, Branch & bound: {:?}", time_bf, time_bnb);
-    assert!(time_bnb < time_bf, "expected B&B to be faster: bf={:?}, bnb={:?}", time_bf, time_bnb);
+    assert!(
+        time_bnb < time_bf,
+        "expected B&B to be faster: bf={:?}, bnb={:?}",
+        time_bf,
+        time_bnb
+    );
 }
 
 #[test]
 fn strain_12_point_test() {
-    let mut problem = [ // 11 coordinate Lanthanum complex
+    let mut problem = [
+        // 11 coordinate Lanthanum complex
         Vector3::new(4.95508, 11.3487, 7.16088),
         Vector3::new(5.71619, 10.8511, 9.51126),
         Vector3::new(2.62287, 11.6697, 8.08526),
@@ -392,7 +428,10 @@ fn strain_12_point_test() {
 
     let shape21_result = 7.288;
 
-    assert!((s - shape21_result).abs() < 1e-3, "Calculation doesn't match SHAPE 2.1. Expected: {shape21_result}, found {s}.");
+    assert!(
+        (s - shape21_result).abs() < 1e-3,
+        "Calculation doesn't match SHAPE 2.1. Expected: {shape21_result}, found {s}."
+    );
 }
 
 #[test]
@@ -400,20 +439,17 @@ fn can_reconstruct_original() {
     let mut reference = noisy_square();
 
     // Rotation of 90-deg in z-axis
-    let rotation = Matrix3::new(
-        0.0, -1.0, 0.0,
-        1.0,  0.0, 0.0,
-        0.0,  0.0, 1.0,
-    );
+    let rotation = Matrix3::new(0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0);
 
     let translation = Vector3::new(2.0, 0.0, 0.0);
 
-    let mut problem: Vec<Vector3<f64>> = reference.iter()
+    let mut problem: Vec<Vector3<f64>> = reference
+        .iter()
         .map(|p| rotation * p + translation)
         .collect();
 
-
-    let (s, best_perm, reconstructed, rot_mat) = find_best_permutation(&mut reference, &mut problem, false); // noisy_square() has no centre point
+    let (s, best_perm, reconstructed, rot_mat) =
+        find_best_permutation(&mut reference, &mut problem, false); // noisy_square() has no centre point
 
     println!("s = {s}");
     println!("best_perm = {:?}", best_perm);
@@ -427,12 +463,17 @@ fn can_reconstruct_original() {
     // reconstructed[i] should now match the ORIGINAL problem[i] (before
     // find_best_permutation mutated it via center_and_normalise).
     // Recompute the original problem here since `problem` was mutated in place:
-    let original_problem: Vec<Vector3<f64>> = noisy_square().iter() // see note below
+    let original_problem: Vec<Vector3<f64>> = noisy_square()
+        .iter() // see note below
         .map(|p| rotation * p + translation)
         .collect();
 
     for (rec, orig) in reconstructed.iter().zip(original_problem.iter()) {
-        assert!((rec - orig).norm() < 1e-6, "mismatch: {:?} vs {:?}", rec, orig);
+        assert!(
+            (rec - orig).norm() < 1e-6,
+            "mismatch: {:?} vs {:?}",
+            rec,
+            orig
+        );
     }
-
 }

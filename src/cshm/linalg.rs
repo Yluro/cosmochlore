@@ -16,7 +16,7 @@ pub fn correlation_matrix(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) 
 /// Finds the optimal rotation given a correlation matrix H using
 /// Kabsch's SVD algorithm.
 /// Returns the Orientation Matrix and a vector of eigenvalues.
-pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>)  {
+pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>) {
     let svd = h.svd(true, true); // computes U and V^T
     let u = svd.u.unwrap();
     let v_t = svd.v_t.unwrap();
@@ -28,7 +28,7 @@ pub fn optimal_rotation(h: Matrix3<f64>) -> (Matrix3<f64>, Vector3<f64>)  {
 /// Computes the shape measure given a list of eigenvalues from the SVD.
 pub fn shape_measure(singular_values: &Vector3<f64>, n: usize) -> f64 {
     let a: f64 = singular_values.iter().sum();
-    (1.0 - a*a/(n as f64 * n as f64)) * 100.0
+    (1.0 - a * a / (n as f64 * n as f64)) * 100.0
 }
 
 /// Eigenvalues of M = H^T*H of a symmetric 3x3 matrix via the trigonometric solution

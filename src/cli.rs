@@ -1,5 +1,5 @@
-use clap::{Args, Parser, Subcommand};
 use crate::csom::prepare::CenteringMode;
+use clap::{Args, Parser, Subcommand};
 
 /// Parses the `--center` value as a 1-based atom position, rejecting 0.
 fn parse_center_position(s: &str) -> Result<usize, String> {
@@ -63,10 +63,10 @@ pub struct CshmArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct  CsomArgs {
+pub struct CsomArgs {
     /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
     pub name: String,
-    
+
     /// Treat the structure as non-centered
     #[arg(short = 'n', long = "nc")]
     pub not_centered: bool,
@@ -109,17 +109,32 @@ pub struct  CsomArgs {
 
     /// Number of samples taken f the Fibonacci sphere.
     /// It is recommended not to change this parameter.
-    #[arg(short = 's', long = "seeds", default_value = "20", value_name = "N_seeds")]
+    #[arg(
+        short = 's',
+        long = "seeds",
+        default_value = "20",
+        value_name = "N_seeds"
+    )]
     pub seeds: usize,
 
     /// Maximum number of iterations for Nelder-Mead optimization of the z-axis.
     /// It is recommended not to change this parameter.
-    #[arg(short = 'i', long = "iterations", default_value = "200", value_name = "N_iter")]
+    #[arg(
+        short = 'i',
+        long = "iterations",
+        default_value = "200",
+        value_name = "N_iter"
+    )]
     pub iterations: usize,
 
     /// Tolerance of the Nelder-Mead optimization for finding optimal value.
     /// It is recommended not to change this parameter.
-    #[arg(short = 'e', long = "tol", default_value = "1e-6", value_name = "TOLERANCE")]
+    #[arg(
+        short = 'e',
+        long = "tol",
+        default_value = "1e-6",
+        value_name = "TOLERANCE"
+    )]
     pub tolerance: f64,
 }
 

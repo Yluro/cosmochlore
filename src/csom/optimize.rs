@@ -9,20 +9,20 @@ use nalgebra::Vector3;
 
 /// Generates N evenly-spaced points around a sphere of Radius = 1.
 fn fibonacci_sphere_sampling(n: usize) -> Vec<Vector3<f64>> {
-    if n == 0 { return vec![Vector3::new(0.0, 0.0, 1.0)]; }
+    if n == 0 {
+        return vec![Vector3::new(0.0, 0.0, 1.0)];
+    }
 
     let phi: f64 = std::f64::consts::PI * (5.0f64.sqrt() - 1f64);
     let mut points = Vec::new();
 
     for i in 0..n {
-
         let y = 1.0 - (i as f64 / (n as f64 - 1.0));
-        let r = (1.0 - y*y).sqrt();
+        let r = (1.0 - y * y).sqrt();
         let theta = phi * i as f64;
 
         points.push(Vector3::new(r * theta.cos(), y, r * theta.sin()));
-
-    };
+    }
     points
 }
 
@@ -35,7 +35,6 @@ fn orientation_cost(
     let rotated: Vec<Vector3<f64>> = structure.iter().map(|p| r * p).collect();
     deviation(&rotated)
 }
-
 
 /// Binds a structure and a target point group together so argmin can minimize
 /// [`orientation_cost`] over rotation vectors: `Param` is `[x, y, z]`, an axis-angle
@@ -53,8 +52,16 @@ impl CostFunction for OrientationProblem<'_> {
 
     fn cost(&self, v: &Self::Param) -> Result<Self::Output, Error> {
         let mut deviation = |rotated: &[Vector3<f64>]| {
-            point_group_dev(rotated, &self.structure.groups, self.pg_name, self.ignore_labels, self.structure.has_centre)
-                .expect("point group name was validated in refine_axis_from_seed before this closure runs")
+            point_group_dev(
+                rotated,
+                &self.structure.groups,
+                self.pg_name,
+                self.ignore_labels,
+                self.structure.has_centre,
+            )
+            .expect(
+                "point group name was validated in refine_axis_from_seed before this closure runs",
+            )
         };
         Ok(orientation_cost(v, &self.structure.points, &mut deviation))
     }
@@ -74,7 +81,9 @@ pub(crate) fn refine_axis_from_seed(
 ) -> Result<(Vector3<f64>, f64), CsomError> {
     // Fail fast on an unknown point group instead of on every cost evaluation.
     if get_pointgroup_map(pg_name).is_none() {
-        return Err(CsomError::WrongSpaceGroup { pg: pg_name.to_string() });
+        return Err(CsomError::WrongSpaceGroup {
+            pg: pg_name.to_string(),
+        });
     }
 
     // Initialize a small simplex around the sampled axis (n + 1 = 4 points for 3 parameters).
@@ -87,7 +96,11 @@ pub(crate) fn refine_axis_from_seed(
         .with_sd_tolerance(tolerance)
         .map_err(|e| CsomError::OptimizationFailed(e.to_string()))?;
 
-    let problem = OrientationProblem { structure, pg_name, ignore_labels };
+    let problem = OrientationProblem {
+        structure,
+        pg_name,
+        ignore_labels,
+    };
 
     let result = Executor::new(problem, solver)
         .configure(|state| state.max_iters(max_iters as u64))
@@ -118,7 +131,14 @@ pub(crate) fn search_best_axis(
     let mut best: Option<(Vector3<f64>, f64)> = None;
 
     for axis0 in fibonacci_sphere_sampling(n) {
-        let candidate = refine_axis_from_seed(axis0, structure, pg_name, max_iters, tolerance, ignore_labels)?;
+        let candidate = refine_axis_from_seed(
+            axis0,
+            structure,
+            pg_name,
+            max_iters,
+            tolerance,
+            ignore_labels,
+        )?;
 
         // First sample always wins since best is None.
         // Then only keep the ones that score lower S-value.

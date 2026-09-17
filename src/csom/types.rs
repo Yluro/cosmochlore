@@ -3,7 +3,7 @@ use nalgebra::{Matrix3, Vector3};
 #[derive(Debug, thiserror::Error)]
 pub enum CsomError {
     #[error("wrong point group name: {pg}")]
-    WrongSpaceGroup { pg: String},
+    WrongSpaceGroup { pg: String },
     #[error("axis optimisation failed: {0}")]
     OptimizationFailed(String),
 }

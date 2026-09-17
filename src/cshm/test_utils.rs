@@ -27,7 +27,6 @@ pub(crate) fn naive_find_automorphism(points: &[Vector3<f64>]) -> Vec<Vec<usize>
     automorphisms
 }
 
-
 /// Finds the best permutation by iterating all over the n! permutation list
 /// but prunes by automorphisms using naive_find_automorphism.
 pub(crate) fn best_permutation_brute_force(
@@ -65,7 +64,6 @@ pub(crate) fn best_permutation_brute_force(
             let equiv: Vec<usize> = (0..n).map(|i| a[perm[i]]).collect();
             visited.insert(equiv);
         }
-
 
         // Shape calculation
         let h = correlation_matrix(problem, &reordered);

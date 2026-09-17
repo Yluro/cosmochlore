@@ -1,14 +1,14 @@
-mod xyz;
 mod cli;
-mod yaml;
-mod shapes;
-mod data;
 mod cshm;
 mod csom;
-mod odis;
-mod out;
+mod data;
 mod error;
 pub mod geometry;
+mod odis;
+mod out;
+mod shapes;
+mod xyz;
+mod yaml;
 
 use crate::cli::{Cli, Command};
 use crate::error::Error;
@@ -16,16 +16,15 @@ use crate::out::welcome_msg;
 use clap::Parser;
 use std::time::Instant;
 
-
 fn main() -> Result<(), Error> {
     let main_start = Instant::now();
     let args = Cli::parse();
     welcome_msg();
-    
+
     let run = match args.command {
-        Command::Cshm(cshm_args) => { cshm::cshm_main(cshm_args) },
-        Command::Csom(csom_args) => { csom::csom_main(csom_args) },
-        Command::Odis(odis_args) => { odis::main_odis(odis_args) },
+        Command::Cshm(cshm_args) => cshm::cshm_main(cshm_args),
+        Command::Csom(csom_args) => csom::csom_main(csom_args),
+        Command::Odis(odis_args) => odis::main_odis(odis_args),
     };
 
     if let Err(err) = run {
@@ -38,5 +37,3 @@ fn main() -> Result<(), Error> {
     //if args.crab {print_crab()}
     run
 }
-
-

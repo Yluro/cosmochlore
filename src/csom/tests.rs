@@ -1,27 +1,29 @@
-use nalgebra::{Matrix3, Vector3};
 use crate::csom::assignment::*;
 use crate::csom::deviation::*;
 use crate::csom::optimize::{refine_axis_from_seed, search_best_axis};
-use crate::csom::prepare::{strip_label, CsomStructure};
+use crate::csom::prepare::{CsomStructure, strip_label};
 use crate::csom::types::CsomError;
-use crate::geometry::{center_by_centroid, center_by_first_point, normalise, rotation_matrix, rotation_matrix_from_vector};
-
+use crate::geometry::{
+    center_by_centroid, center_by_first_point, normalise, rotation_matrix,
+    rotation_matrix_from_vector,
+};
+use nalgebra::{Matrix3, Vector3};
 
 fn octahedron() -> Vec<Vector3<f64>> {
-    Vec::from([ // Regular octahedron centered at origo
-        Vector3::zeros(),           // Point 0
+    Vec::from([
+        // Regular octahedron centered at origo
+        Vector3::zeros(),             // Point 0
         Vector3::new(0.0, 0.0, -1.0), // 1
-        Vector3::new(1.0, 0.0, 0.0), // 2
-        Vector3::new(0.0, 1.0, 0.0), // 3
+        Vector3::new(1.0, 0.0, 0.0),  // 2
+        Vector3::new(0.0, 1.0, 0.0),  // 3
         Vector3::new(-1.0, 0.0, 0.0), // 4
         Vector3::new(0.0, -1.0, 0.0), // 5
-        Vector3::new(0.0, 0.0, 1.0), //6
+        Vector3::new(0.0, 0.0, 1.0),  //6
     ])
 }
 
 #[test]
 fn can_rotate_and_assign() {
-
     let mut shape: Vec<Vector3<f64>> = octahedron();
     normalise(&mut shape);
 
@@ -30,7 +32,10 @@ fn can_rotate_and_assign() {
 
     let rot_mat = rotation_matrix(axis, angle);
 
-    let rotated: Vec<Vector3<f64>> = shape.iter().map(|v| rot_mat * *v).collect::<Vec<Vector3<f64>>>();
+    let rotated: Vec<Vector3<f64>> = shape
+        .iter()
+        .map(|v| rot_mat * *v)
+        .collect::<Vec<Vector3<f64>>>();
 
     let (_, perm) = best_permutation(&shape, rotated.as_slice());
     let expected_perm = vec![0, 1, 3, 4, 5, 2, 6];
@@ -38,10 +43,8 @@ fn can_rotate_and_assign() {
     assert_eq!(perm, expected_perm)
 }
 
-
 #[test]
 fn mismatched_gives_nonzero_dev() {
-
     let mut shape: Vec<Vector3<f64>> = octahedron();
     normalise(&mut shape);
 
@@ -55,31 +58,39 @@ fn mismatched_gives_nonzero_dev() {
         "N2'".to_string(),
     ];
 
-    let stripped = labels.iter().map(|l| strip_label(l).to_string() ).collect::<Vec<String>>();
+    let stripped = labels
+        .iter()
+        .map(|l| strip_label(l).to_string())
+        .collect::<Vec<String>>();
     assert_eq!(vec!["Fe", "N", "Cl", "Cl", "Cl", "O", "N"], stripped);
-
 
     let axis = Vector3::new(0.0, 0.0, 1.0);
     let angle = 90.0; // Approximate C4 rotation.
 
     let rot_mat = rotation_matrix(axis, angle);
 
-    let rotated: Vec<Vector3<f64>> = shape.iter().map(|v| rot_mat * *v).collect::<Vec<Vector3<f64>>>();
+    let rotated: Vec<Vector3<f64>> = shape
+        .iter()
+        .map(|v| rot_mat * *v)
+        .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&stripped);
-    let (a, b, _) = best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, false);
+    let (a, b, _) =
+        best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, false);
 
     // Sanity: same length, all atoms retained.
     assert_eq!(a.len(), shape.len());
     assert_eq!(b.len(), shape.len());
 
     let sds = sds_dev(&a, &b);
-    assert!(sds > 1e-6, "expected nonzero deviation due to mismatched Cl group, got {sds}");
+    assert!(
+        sds > 1e-6,
+        "expected nonzero deviation due to mismatched Cl group, got {sds}"
+    );
 }
 
 #[test]
 fn ignoring_labels_finds_the_perfect_match_across_mismatched_labels() {
-
     let mut shape: Vec<Vector3<f64>> = octahedron();
     normalise(&mut shape);
 
@@ -100,20 +111,30 @@ fn ignoring_labels_finds_the_perfect_match_across_mismatched_labels() {
     let angle = 90.0; // Exact C4 rotation: a true symmetry operation of the octahedron.
 
     let rot_mat = rotation_matrix(axis, angle);
-    let rotated: Vec<Vector3<f64>> = shape.iter().map(|v| rot_mat * *v).collect::<Vec<Vector3<f64>>>();
+    let rotated: Vec<Vector3<f64>> = shape
+        .iter()
+        .map(|v| rot_mat * *v)
+        .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&labels);
-    let (_, honouring_labels, _) = best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, false);
-    assert!(sds_dev(&shape, &honouring_labels) > 1e-6, "mismatched label should prevent a perfect match");
+    let (_, honouring_labels, _) =
+        best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, false);
+    assert!(
+        sds_dev(&shape, &honouring_labels) > 1e-6,
+        "mismatched label should prevent a perfect match"
+    );
 
-    let (a, b, _) = best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, true, false);
+    let (a, b, _) =
+        best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, true, false);
     let sds = sds_dev(&a, &b);
-    assert!(sds < 1e-6, "expected near-zero deviation once labels are ignored, got {sds}");
+    assert!(
+        sds < 1e-6,
+        "expected near-zero deviation once labels are ignored, got {sds}"
+    );
 }
 
 #[test]
 fn pinned_centre_atom_is_never_reassigned() {
-
     let mut shape: Vec<Vector3<f64>> = octahedron(); // index 0 sits at the origin
     normalise(&mut shape);
 
@@ -124,15 +145,22 @@ fn pinned_centre_atom_is_never_reassigned() {
     let axis = Vector3::new(0.0, 0.0, 1.0);
     let angle = 90.0;
     let rot_mat = rotation_matrix(axis, angle);
-    let rotated: Vec<Vector3<f64>> = shape.iter().map(|v| rot_mat * *v).collect::<Vec<Vector3<f64>>>();
+    let rotated: Vec<Vector3<f64>> = shape
+        .iter()
+        .map(|v| rot_mat * *v)
+        .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&labels);
-    let (a, b, _) = best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, true);
+    let (a, b, _) =
+        best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, true);
 
     // The pinned centre (origin) must appear paired with itself among the returned pairs.
     let centre_pair = a.iter().zip(b.iter()).find(|(pa, _)| pa.norm() < 1e-9);
     let (_, centre_b) = centre_pair.expect("origin point should be present in the output");
-    assert!(centre_b.norm() < 1e-9, "pinned centre should be matched to itself, got {centre_b}");
+    assert!(
+        centre_b.norm() < 1e-9,
+        "pinned centre should be matched to itself, got {centre_b}"
+    );
 }
 
 #[test]
@@ -148,29 +176,31 @@ fn matches_expected_sds_after_permutation() {
         "K1".to_string(),
         "K2".to_string(),
         "K3".to_string(),
-        "O7".to_string()
+        "O7".to_string(),
     ];
 
-    let stripped = labels.iter().map(|l| strip_label(l).to_string() ).collect::<Vec<String>>();
+    let stripped = labels
+        .iter()
+        .map(|l| strip_label(l).to_string())
+        .collect::<Vec<String>>();
 
-    let plane_of_sym_x = Matrix3::new(
-        -1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 0.0, 1.0,
-    );
+    let plane_of_sym_x = Matrix3::new(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
 
     let _ = center_by_centroid(&mut square);
-    let operated = square.iter().map(|v| plane_of_sym_x * *v).collect::<Vec<Vector3<f64>>>();
+    let operated = square
+        .iter()
+        .map(|v| plane_of_sym_x * *v)
+        .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&stripped);
-    let (a, b, _) = best_permutation_multiple_atoms(&square, operated.as_slice(), &groups, false, false);
+    let (a, b, _) =
+        best_permutation_multiple_atoms(&square, operated.as_slice(), &groups, false, false);
     let sds = sds_dev(&a, &b);
     assert!((sds - 100.0).abs() < 1e-6, "expected sds = 100, got {sds}");
 }
 
 #[test]
 fn oc_for_oh_point_group() {
-
     let mut shape: Vec<Vector3<f64>> = octahedron();
     let labels = [
         "Fe".to_string(),
@@ -179,7 +209,7 @@ fn oc_for_oh_point_group() {
         "N".to_string(),
         "N".to_string(),
         "N".to_string(),
-        "N".to_string()
+        "N".to_string(),
     ];
     let _ = center_by_first_point(&mut shape);
     let _ = normalise(&mut shape);
@@ -191,12 +221,15 @@ fn oc_for_oh_point_group() {
     assert!(average_dev.is_ok());
 
     let average_dev = average_dev.unwrap();
-    assert!(average_dev.abs() < 1e-3, "expected average_dev = 0.0, found {}",  average_dev);
+    assert!(
+        average_dev.abs() < 1e-3,
+        "expected average_dev = 0.0, found {}",
+        average_dev
+    );
 }
 
 #[test]
 fn operated_image_keeps_every_atom_with_its_own_label() {
-
     let mut shape: Vec<Vector3<f64>> = octahedron();
     let _ = center_by_first_point(&mut shape);
     let _ = normalise(&mut shape);
@@ -234,9 +267,15 @@ fn operated_image_keeps_every_atom_with_its_own_label() {
     // The mislabelled ligand must really be paired across elements for some operation,
     // otherwise the check above never sees the case that broke.
     let crossed = ops.iter().any(|op| {
-        op.pairing.iter().enumerate().any(|(i, &j)| labels[i] != labels[j])
+        op.pairing
+            .iter()
+            .enumerate()
+            .any(|(i, &j)| labels[i] != labels[j])
     });
-    assert!(crossed, "expected ignoring labels to pair the Cl with a nitrogen image somewhere");
+    assert!(
+        crossed,
+        "expected ignoring labels to pair the Cl with a nitrogen image somewhere"
+    );
 }
 
 fn octahedron_structure() -> CsomStructure {
@@ -250,7 +289,11 @@ fn octahedron_structure() -> CsomStructure {
     ];
     let labels = vec!["N".to_string(); 6];
     let groups = group_by_label(&labels);
-    CsomStructure { points, has_centre: false, groups }
+    CsomStructure {
+        points,
+        has_centre: false,
+        groups,
+    }
 }
 
 /// A water molecule (C2v) with O–H = 0.9584 A, H–O–H = 104.45°
@@ -267,7 +310,11 @@ fn water_structure() -> CsomStructure {
 
     let labels = vec!["O".to_string(), "H".to_string(), "H".to_string()];
     let groups = group_by_label(&labels);
-    CsomStructure { points, has_centre: false, groups }
+    CsomStructure {
+        points,
+        has_centre: false,
+        groups,
+    }
 }
 
 #[test]
@@ -276,9 +323,13 @@ fn refine_axis_from_seed_converges_for_perfect_octahedron() {
     // Start from a slightly off-identity guess so the simplex has real work to do.
     let axis0 = Vector3::new(0.01, 0.02, 0.03);
 
-    let (_, cost) = refine_axis_from_seed(axis0, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
+    let (_, cost) = refine_axis_from_seed(axis0, &structure, "Oh", 1000, 1e-8, false)
+        .expect("Oh is a valid point group");
 
-    assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
+    assert!(
+        cost.abs() < 1e-3,
+        "expected near-zero deviation, got {cost}"
+    );
 }
 
 #[test]
@@ -300,9 +351,13 @@ fn search_best_axis_converges_for_rotated_octahedron() {
     let rot_mat = rotation_matrix_from_vector(Vector3::new(1.0, 1.0, 1.0));
     structure.points = structure.points.iter().map(|p| rot_mat * p).collect();
 
-    let (_, cost) = search_best_axis(8, &structure, "Oh", 1000, 1e-8, false).expect("Oh is a valid point group");
+    let (_, cost) = search_best_axis(8, &structure, "Oh", 1000, 1e-8, false)
+        .expect("Oh is a valid point group");
 
-    assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
+    assert!(
+        cost.abs() < 1e-3,
+        "expected near-zero deviation, got {cost}"
+    );
 }
 
 #[test]
@@ -311,10 +366,18 @@ fn search_best_axis_recovers_the_c2_axis_of_a_rotated_water_molecule() {
 
     // An arbitrary rotation with no special relation to water's own C2 axis.
     let applied_rotation = rotation_matrix_from_vector(Vector3::new(0.4, -0.3, 0.9));
-    structure.points = structure.points.iter().map(|p| applied_rotation * p).collect();
+    structure.points = structure
+        .points
+        .iter()
+        .map(|p| applied_rotation * p)
+        .collect();
 
-    let (axis, cost) = search_best_axis(20, &structure, "C2v", 1000, 1e-8, false).expect("C2v is a valid point group");
-    assert!(cost.abs() < 1e-3, "expected near-zero deviation, got {cost}");
+    let (axis, cost) = search_best_axis(20, &structure, "C2v", 1000, 1e-8, false)
+        .expect("C2v is a valid point group");
+    assert!(
+        cost.abs() < 1e-3,
+        "expected near-zero deviation, got {cost}"
+    );
 
     // The rotation the optimiser found should undo `applied_rotation` well enough
     // that composing the two carries water's own C2 axis (z, in the untouched

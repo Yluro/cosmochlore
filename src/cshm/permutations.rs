@@ -1,9 +1,9 @@
 //! MAIN FUNCTIONS OF CSHM, OPTIMAL PERMUTATION FINDING FOR A REFERENCE SHAPE GIVEN A NON-ALIGNED PROBLEM SHAPE.
 
-use nalgebra::{Matrix3, Vector3};
 use crate::cshm::bounds::*;
 use crate::cshm::linalg::*;
 use crate::geometry::center_and_normalise;
+use nalgebra::{Matrix3, Vector3};
 
 /// Recursively finds the best permutation of a given reference shape so that its points align
 /// to the problem shape. Will prune non-optimal permutations using the partial sum of the singular
@@ -56,12 +56,12 @@ pub(crate) fn find_best_permutation(
         &mut best_rot_matrix,
     );
 
-    let reconstructed: Vec<Vector3<f64>> = reference.iter()
-        .map(|p| (best_rot_matrix.transpose() * p ) / normalisation_constant + problem_centroid)
+    let reconstructed: Vec<Vector3<f64>> = reference
+        .iter()
+        .map(|p| (best_rot_matrix.transpose() * p) / normalisation_constant + problem_centroid)
         .collect();
 
     (best_s, best_perm, reconstructed, best_rot_matrix)
-
 }
 
 fn branch(
@@ -77,12 +77,11 @@ fn branch(
     best_perm: &mut Vec<usize>,
     best_rot_matrix: &mut Matrix3<f64>,
 ) {
-
     let n = reference.len();
     debug_assert_eq!(n, problem.len());
 
-
-    if current_perm.len() == n { // If a permutation is complete then:
+    if current_perm.len() == n {
+        // If a permutation is complete then:
         let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference[p]).collect();
         let h = correlation_matrix(problem, &reordered);
         let (rot_matrix, a_i) = optimal_rotation(h);
@@ -111,18 +110,26 @@ fn branch(
         // to the correlation matrix measure of the rest of points.
         let remaining_bound = max_unassigned_norm(ref_norms, assigned) * prob_suffix[pos + 1];
         let a_bound = a_partial + remaining_bound;
-        let s_bound = (1.0 - a_bound.powi(2)/((n as f64).powi(2))) * 100.0;
+        let s_bound = (1.0 - a_bound.powi(2) / ((n as f64).powi(2))) * 100.0;
 
-
-        if s_bound < *best_s { // If we have found a better s
+        if s_bound < *best_s {
+            // If we have found a better s
             current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
             // Recursively call the branch function again.
             branch(
-                reference, problem, hi, ref_norms, prob_suffix,
-                assigned, current_perm, h_partial, best_s, best_perm, best_rot_matrix
+                reference,
+                problem,
+                hi,
+                ref_norms,
+                prob_suffix,
+                assigned,
+                current_perm,
+                h_partial,
+                best_s,
+                best_perm,
+                best_rot_matrix,
             );
             current_perm.pop();
-
         }
         assigned[ref_idx] = false;
         *h_partial -= hi[ref_idx][pos]; // Subtract the matrix when backtracking the current

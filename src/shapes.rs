@@ -32,19 +32,25 @@ impl ReferenceShape {
     }
 }
 
-
 /// Build a structure from a given reference shape vertices and index. Test-only helper.
 #[cfg(test)]
 pub fn structure_from_shape(vertices: u8, index: usize) -> Structure {
     let shape = resolve_shapes(vertices, Some(&[index])).unwrap().remove(0);
     Structure {
-        centre: Some(Atom { label: "M".to_string(), coords: shape.centre }),
-        ligands: shape.vertices.iter()
-            .map(|v| Atom { label: "L".to_string(), coords: *v })
+        centre: Some(Atom {
+            label: "M".to_string(),
+            coords: shape.centre,
+        }),
+        ligands: shape
+            .vertices
+            .iter()
+            .map(|v| Atom {
+                label: "L".to_string(),
+                coords: *v,
+            })
             .collect(),
     }
 }
-
 
 fn shape_by_vertex(no_vertices: u8) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
     let shapes_map = builtin_shapes();
@@ -54,7 +60,10 @@ fn shape_by_vertex(no_vertices: u8) -> Result<Vec<ReferenceShape>, ShapeLookupEr
     }
 }
 
-fn shapes_by_index(shapes: &[ReferenceShape], indices: &[usize]) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
+fn shapes_by_index(
+    shapes: &[ReferenceShape],
+    indices: &[usize],
+) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
     let mut result: Vec<ReferenceShape> = Vec::new();
 
     for idx in indices {
@@ -62,14 +71,16 @@ fn shapes_by_index(shapes: &[ReferenceShape], indices: &[usize]) -> Result<Vec<R
 
         match found {
             Some(shape) => result.push(shape.clone()),
-            None => return Err(ShapeLookupError::IndexOutOfBounds(*idx))
+            None => return Err(ShapeLookupError::IndexOutOfBounds(*idx)),
         }
-
     }
     Ok(result)
 }
 
-pub fn resolve_shapes(no_vertices: u8, indices: Option<&[usize]>) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
+pub fn resolve_shapes(
+    no_vertices: u8,
+    indices: Option<&[usize]>,
+) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
     let ref_shapes = shape_by_vertex(no_vertices);
 
     match indices {
@@ -85,7 +96,11 @@ pub enum ShapeLookupError {
     #[error("there is no reference shape with index {0}")]
     IndexOutOfBounds(usize),
     #[error("wrong number of vertices for shape {symbol}: expected {expected}, found {found}")]
-    VertexCountMismatch { symbol: String, expected: u8, found: usize}, // Used for user input.
+    VertexCountMismatch {
+        symbol: String,
+        expected: u8,
+        found: usize,
+    }, // Used for user input.
 }
 
 pub fn check_vertex_count(shape: &ReferenceShape, count: u8) -> Result<(), ShapeLookupError> {
@@ -95,10 +110,9 @@ pub fn check_vertex_count(shape: &ReferenceShape, count: u8) -> Result<(), Shape
     Err(ShapeLookupError::VertexCountMismatch {
         symbol: shape.symbol.clone(),
         expected: count as usize as u8,
-        found: shape.vertices.len()
+        found: shape.vertices.len(),
     })
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -115,7 +129,6 @@ mod tests {
 
         assert_eq!(counts, expected)
     }
-
 
     #[test]
     fn matches_shape21_library() {
@@ -142,7 +155,10 @@ mod tests {
     #[test]
     fn error_on_bad_vertex_count() {
         let result = resolve_shapes(99, Some([0, 1].as_slice()));
-        assert!(matches!(result, Err(ShapeLookupError::NoShapesForVertexCount(99))));
+        assert!(matches!(
+            result,
+            Err(ShapeLookupError::NoShapesForVertexCount(99))
+        ));
     }
 
     #[test]

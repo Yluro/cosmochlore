@@ -1,0 +1,3 @@
+# Follow the platform line ending: CRLF on Windows checkouts (core.autocrlf), LF on CI.
+# rustfmt's default would rewrite a CRLF file as LF on every run.
+newline_style = "Native"

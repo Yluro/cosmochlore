@@ -10,30 +10,25 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
     // const N: i32 = 7;
 
     // 0. Extract the centre and ligand coordinates from the structure parsed by xyz.rs
-    let centre= structure.centre.as_ref().ok_or(OdisError::NoCentre)?;
+    let centre = structure.centre.as_ref().ok_or(OdisError::NoCentre)?;
 
-    let centre = Vector3::new(
-        centre.coords[0],
-        centre.coords[1],
-        centre.coords[2],
-    );
+    let centre = Vector3::new(centre.coords[0], centre.coords[1], centre.coords[2]);
 
-    let ligands: Vec<Vector3<f64>> = structure.ligands
+    let ligands: Vec<Vector3<f64>> = structure
+        .ligands
         .iter()
         .map(|ligand| Vector3::new(ligand.coords[0], ligand.coords[1], ligand.coords[2]))
         .collect();
 
-    if ligands.len() + 1 != 7 { return Err(OdisError::IncorrectNumberOfPoints {n: ligands.len() + 1}) };
+    if ligands.len() + 1 != 7 {
+        return Err(OdisError::IncorrectNumberOfPoints {
+            n: ligands.len() + 1,
+        });
+    };
 
     // 1. Build an array of points and vectors of the octahedron for easy calculation later.
     let points = [
-        centre,
-        ligands[0],
-        ligands[1],
-        ligands[2],
-        ligands[3],
-        ligands[4],
-        ligands[5],
+        centre, ligands[0], ligands[1], ligands[2], ligands[3], ligands[4], ligands[5],
     ];
 
     let vectors = [
@@ -56,19 +51,15 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
 
     // 3. D-mean, zeta (bond length distortion) and Delta (octahedral tilting) and mu (centroid-deviation) calculations.
 
-    let d_mean = distances
-        .iter()
-        .sum::<f64>() / ligands.len() as f64;
+    let d_mean = distances.iter().sum::<f64>() / ligands.len() as f64;
 
-    let zeta = distances
-        .iter()
-        .map(|di| (di - d_mean).abs())
-        .sum::<f64>();
+    let zeta = distances.iter().map(|di| (di - d_mean).abs()).sum::<f64>();
 
     let delta = distances
         .iter()
-        .map(|di| ((di - d_mean)/(d_mean)).powi(2) )
-        .sum::<f64>() / distances.len() as f64;
+        .map(|di| ((di - d_mean) / (d_mean)).powi(2))
+        .sum::<f64>()
+        / distances.len() as f64;
 
     let mu = vectors.iter().sum::<Vector3<f64>>().norm() / vectors.len() as f64;
 
@@ -85,13 +76,13 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
             .abs()
             .to_degrees();
         angles.push(angle);
-    };
+    }
     angles.sort_by(|a, b| a.total_cmp(b));
     let phis = &angles[..12]; // All 12 small angles in the list have to be cis angles.
-    let psis = &angles[12..];    // All 3 others have to be trans angles.
+    let psis = &angles[12..]; // All 3 others have to be trans angles.
 
-    let sigma: f64 = phis.iter().map(|phi| {(90.0 - phi).abs()}).sum();
-    let tau: f64 = psis.iter().map(|phi| {(180.0 - phi).abs()}).sum();
+    let sigma: f64 = phis.iter().map(|phi| (90.0 - phi).abs()).sum();
+    let tau: f64 = psis.iter().map(|phi| (180.0 - phi).abs()).sum();
 
     // 5. Theta (face twisting) calculation, following OctaDist's algorithm: walk the eight
     // triangular faces of the (possibly distorted) octahedron and, for each, project the centre
@@ -106,18 +97,16 @@ pub fn calculate_od(structure: &Structure) -> Result<OdisResult, OdisError> {
     // 6. Octahedron volume, via decomposition into tetrahedra (see `calc_vol`).
     let vol = calc_vol(centre, &ligand_arr);
 
-    Ok(
-        OdisResult {
-            d_mean,
-            zeta,
-            delta,
-            sigma,
-            theta,
-            vol,
-            tau,
-            mu,
-        }
-    )
+    Ok(OdisResult {
+        d_mean,
+        zeta,
+        delta,
+        sigma,
+        theta,
+        vol,
+        tau,
+        mu,
+    })
 }
 
 /// Compute the angle in degrees between two vectors, in `[0, 180]`.
@@ -138,12 +127,14 @@ fn angle_sign(v1: Vector3<f64>, v2: Vector3<f64>, direct: Vector3<f64>) -> f64 {
     let angle = v1.dot(&v2).clamp(-1.0, 1.0).acos().to_degrees();
 
     let matrix = nalgebra::Matrix3::new(
-        v1.x, v1.y, v1.z,
-        v2.x, v2.y, v2.z,
-        direct.x, direct.y, direct.z,
+        v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, direct.x, direct.y, direct.z,
     );
 
-    if matrix.determinant() < 0.0 { -angle } else { angle }
+    if matrix.determinant() < 0.0 {
+        -angle
+    } else {
+        angle
+    }
 }
 
 /// Coefficients `(a, b, c, d)` of the plane `a*x + b*y + c*z = d` through three points.
@@ -259,7 +250,12 @@ fn calc_theta(centre: Vector3<f64>, ligands: &[Vector3<f64>; 6]) -> f64 {
 }
 
 /// Six times the signed volume of the tetrahedron with vertices `a`, `b`, `c`, `d`.
-fn tetrahedron_volume_x6(a: Vector3<f64>, b: Vector3<f64>, c: Vector3<f64>, d: Vector3<f64>) -> f64 {
+fn tetrahedron_volume_x6(
+    a: Vector3<f64>,
+    b: Vector3<f64>,
+    c: Vector3<f64>,
+    d: Vector3<f64>,
+) -> f64 {
     (a - d).dot(&(b - d).cross(&(c - d)))
 }
 
@@ -271,13 +267,13 @@ fn calc_vol(centre: Vector3<f64>, ligands: &[Vector3<f64>; 6]) -> f64 {
 
     let mut volume = 0.0;
     for r in 0..8 {
-        volume += tetrahedron_volume_x6(centroid, coord_lig[0], coord_lig[1], coord_lig[2]).abs() / 6.0;
+        volume +=
+            tetrahedron_volume_x6(centroid, coord_lig[0], coord_lig[1], coord_lig[2]).abs() / 6.0;
         cycle_octahedron_faces(&mut coord_lig, r);
     }
 
     volume
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -287,21 +283,25 @@ mod tests {
 
     #[test]
     fn matches_octadist_results() {
-        let structure = parse_xyz(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/FeHS.xyz"), Some(0)).unwrap();
+        let structure = parse_xyz(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/FeHS.xyz"),
+            Some(0),
+        )
+        .unwrap();
 
         let calc = calculate_od(&structure);
         assert!(calc.is_ok());
 
         let calc = calc.unwrap();
         println!("{:?}", calc);
-        assert!((calc.d_mean - 2.1623).abs() < 1e-3 );
-        assert!((calc.zeta - 0.3621).abs() < 1e-3 );
-        assert!((calc.delta - 0.001006).abs() < 1e-3 );
-        assert!((calc.sigma - 82.29).abs() < 1e-2 );
-        assert!((calc.theta - 306.81).abs() < 1e-2 );
-        assert!((calc.vol - 12.9644).abs() < 1e-3 );
-        assert!((calc.tau - 54.41).abs() < 1e-2 );
-        assert!((calc.mu - 0.17).abs() < 1e-2 );
+        assert!((calc.d_mean - 2.1623).abs() < 1e-3);
+        assert!((calc.zeta - 0.3621).abs() < 1e-3);
+        assert!((calc.delta - 0.001006).abs() < 1e-3);
+        assert!((calc.sigma - 82.29).abs() < 1e-2);
+        assert!((calc.theta - 306.81).abs() < 1e-2);
+        assert!((calc.vol - 12.9644).abs() < 1e-3);
+        assert!((calc.tau - 54.41).abs() < 1e-2);
+        assert!((calc.mu - 0.17).abs() < 1e-2);
     }
 
     #[test]
@@ -318,8 +318,8 @@ mod tests {
 
     #[test]
     fn ideal_trigonal_prism_gives_the_maximum_theta() {
-        let octahedron = shapes::structure_from_shape(6,2);
-        let prism = shapes::structure_from_shape(6,3);
+        let octahedron = shapes::structure_from_shape(6, 2);
+        let prism = shapes::structure_from_shape(6, 3);
 
         // Theta is 0 for the perfectly staggered (Oh) octahedron...
         let octahedron_theta = calculate_od(&octahedron).unwrap().theta;

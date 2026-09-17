@@ -3,8 +3,8 @@ pub mod linalg;
 // prunes by bounds, not by automorphisms.
 #[cfg(test)]
 pub mod automorphism;
-pub mod permutations;
 pub mod bounds;
+pub mod permutations;
 #[cfg(test)]
 pub mod test_utils;
 #[cfg(test)]
@@ -25,31 +25,36 @@ pub struct CShMResult {
     pub symm: String,
     pub cshm: f64,
     pub perm: Vec<usize>,
-    pub xyz: Vec<Vector3<f64>>
+    pub xyz: Vec<Vector3<f64>>,
 }
 
-
-pub fn calc_cshm(reference_shapes: Vec<ReferenceShape>, problem_structure: &Structure, has_centre: bool) -> Vec<CShMResult> {
-
-    let problem: Vec<Vector3<f64>> = problem_structure.atoms().iter().map(|atom| atom.coords).collect();
+pub fn calc_cshm(
+    reference_shapes: Vec<ReferenceShape>,
+    problem_structure: &Structure,
+    has_centre: bool,
+) -> Vec<CShMResult> {
+    let problem: Vec<Vector3<f64>> = problem_structure
+        .atoms()
+        .iter()
+        .map(|atom| atom.coords)
+        .collect();
     let mut results: Vec<CShMResult> = Vec::new();
-
 
     for shape in reference_shapes {
         let mut reference = shape.points(has_centre);
         let mut problem_copy = problem.clone();
 
-        let (s, best_perm, reconstructed, _) = find_best_permutation(&mut reference, &mut problem_copy, has_centre);
+        let (s, best_perm, reconstructed, _) =
+            find_best_permutation(&mut reference, &mut problem_copy, has_centre);
 
-        results.push(
-            CShMResult {
-                name: shape.name,
-                symbol: shape.symbol,
-                symm: shape.symm,
-                cshm: s,
-                perm: best_perm,
-                xyz: reconstructed,
-            })
+        results.push(CShMResult {
+            name: shape.name,
+            symbol: shape.symbol,
+            symm: shape.symm,
+            cshm: s,
+            perm: best_perm,
+            xyz: reconstructed,
+        })
     }
     results
 }
@@ -65,7 +70,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
 
     // 3. Fetch builtin-shapes for that vertex count and index selection
     let indices = &args.shapes;
-    let mut ref_shapes =  shapes::resolve_shapes(n, indices.as_deref())?;
+    let mut ref_shapes = shapes::resolve_shapes(n, indices.as_deref())?;
 
     // 4. If user has input any shapes, add them to compare list.
     if let Some(files) = &args.user_shapes {
@@ -76,8 +81,8 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
             user_shapes.append(&mut s);
         }
 
-
-        for shape in user_shapes { // For each parsed shape, check its vertex count and append to list if right.
+        for shape in user_shapes {
+            // For each parsed shape, check its vertex count and append to list if right.
             check_vertex_count(&shape, n)?;
             ref_shapes.push(shape);
         }
@@ -88,12 +93,13 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
     let has_centre = center.is_some();
     let results = calc_cshm(ref_shapes, &structure, has_centre);
 
-
     // 6. Output results.
     print_cshm_table(&results, &args.name);
 
     // 7. If --table is passed
-    if args.table { write_cshm_csv(&results, &args.name)?; }
+    if args.table {
+        write_cshm_csv(&results, &args.name)?;
+    }
 
     // 8. If --ideal is passed
     if args.ideal {
@@ -102,7 +108,9 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
     }
 
     // If --crab is passed.
-    if args.crab { print_crab(); }
+    if args.crab {
+        print_crab();
+    }
 
     Ok(())
 }

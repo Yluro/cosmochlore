@@ -2,8 +2,8 @@ pub mod calc;
 
 use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
-use crate::csom::prepare::CenteringMode;
 use crate::csom::calc_csom;
+use crate::csom::prepare::CenteringMode;
 use crate::error::Error;
 use crate::out::*;
 use crate::{shapes, xyz};
@@ -26,11 +26,10 @@ pub enum OdisError {
     #[error("structure has no central atom")]
     NoCentre,
     #[error("wrong number of points, expected: 7, found: {n}")]
-    IncorrectNumberOfPoints{ n: usize },
+    IncorrectNumberOfPoints { n: usize },
 }
 
 pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
-
     // 1. Extract structure from .xyz
     let center = xyz::resolve_center(false, args.center.map(|c| c - 1));
     let structure = xyz::parse_xyz(&args.name, center)?;
@@ -40,15 +39,19 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
 
     // 3. Output results
     print_odis_table(&odis_result, &args.name);
-    if args.table || args.full {write_odis_csv(odis_result, &args.name)?};
+    if args.table || args.full {
+        write_odis_csv(odis_result, &args.name)?
+    };
 
     // End the program here if --full is not passed.
-    if !args.full {return Ok(())};
+    if !args.full {
+        return Ok(());
+    };
 
     // 4. Calculate cshm against OC-6 and TRP-6 if --full is passed.
     let n = 6; // Number of vertices
     let indices = Some(Vec::from([2, 3])); // Indices of OC and TRP
-    let ref_shapes =  shapes::resolve_shapes(n, indices.as_deref())?;
+    let ref_shapes = shapes::resolve_shapes(n, indices.as_deref())?;
     let has_centre = true;
 
     let cshm_results = calc_cshm(ref_shapes, &structure, has_centre);
@@ -66,9 +69,22 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
         "C4v", // One ligand distinct from the other five (square-pyramidal-like).
         "C3v", // Facial substitution pattern (fac-MA3B3).
         "C2v", // cis-disubstitution pattern (cis-MA4B2).
-    ].iter().map(|pg| pg.to_string()).collect();
+    ]
+    .iter()
+    .map(|pg| pg.to_string())
+    .collect();
 
-    let csom_results = calc_csom(structure, CenteringMode::First, None, &csom_point_groups, 20, 1000, 1e-8, false, false)?;
+    let csom_results = calc_csom(
+        structure,
+        CenteringMode::First,
+        None,
+        &csom_point_groups,
+        20,
+        1000,
+        1e-8,
+        false,
+        false,
+    )?;
     print_csom_table(&csom_results, &args.name);
     write_csom_csv(&csom_results, &args.name)?;
 
