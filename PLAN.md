@@ -39,7 +39,11 @@ Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 - C4 `NON-ISSUE` — denominator is only always `n` when centroid-centered; with `--center`/`--vector` (`has_centre`) the origin isn't the centroid, so it genuinely varies. Recomputing it is O(n) against the O(n³) Hungarian assignment in the same loop, so branching on `has_centre` to shortcut it isn't worth the complexity. `src/csom/dev.rs:10-24`
 - C5 `OPEN` — all 20 seeds fully refined instead of scoring first, refining best 2-3. `src/csom/optimize.rs:110`
 - C6 `OPEN` — no convergence tolerance; simplex near-degenerate (0.001 edges). `src/csom/optimize.rs:77-87`
-- C15 `NEW/REGRESSION` — cost fn builds full `CsomOperation` (3 allocs) just to read a scalar. `src/csom/dev.rs:276-283`
+- C15 `FIXED` — `point_group_dev` (the hot-loop entry point) now sums per-operation deviations
+  directly via `operation_deviation_scalar`, instead of going through
+  `point_group_operation_deviations`. No more `name.to_string()` allocation or `Vec<CsomOperation>`
+  collection per call; `point_group_operation_deviations`/`operation_deviation` (full breakdown,
+  with name/image/pairing) is kept for the one-off `--full`/`--operated` report path. `src/csom/deviation.rs`
 - C8 `OPEN` — shapes/seeds/point-groups loops are serial; `rayon` would help. `src/cshm/mod.rs`, `src/csom/optimize.rs:110`
 - C9 `MOOT` — automorphism dedup removed outright (superseded, not fixed)
 - C10 `FIXED` — closed-form 3x3 eigenvalues (Smith 1961). `src/cshm/linalg.rs:36`
@@ -47,7 +51,11 @@ Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
 - C12 `OPEN` — `builtin_shapes()` rebuilds full 90-shape HashMap on every lookup. `src/data/standard_shapes.rs:7`
 - C13 `MOOT` — superseded by C9
 - C14 `OPEN` — no `[profile.release]` tuning; `license = "GPL-3"` not valid SPDX (want `GPL-3.0-only`). `Cargo.toml`
-- C16 `NEW` — winning axis's per-operation deviations computed twice: once inside Nelder-Mead (`optimise_axis`'s `best_cost`, discarded down to a scalar per C15), once again explicitly via `point_group_operation_deviations` to build the `--full` breakdown. Not part of the O(10^6) inner loop (one extra full evaluation per point group), but pure duplicate work at the same rotation. `src/csom/optimize.rs:100`, `src/csom/mod.rs:141-143`
+- C16 `FIXED` — resolved as a corollary of C15: `point_group_dev` no longer calls
+  `point_group_operation_deviations` at all during the Nelder-Mead search, so there's no longer
+  a "first, discarded" full computation for the winning axis to duplicate. The one call to
+  `point_group_operation_deviations` in `calc_csom` (`src/csom/mod.rs:102-105`), gated by
+  `with_operations`, is now the *only* full computation, not a redundant second one.
 
 ## D · Simplification
 
@@ -63,7 +71,7 @@ Uncommitted in working tree: C1 fix (`src/csom/dev.rs`). B5/B6 already committed
   things: deviation math (`sds_dev`, `point_group_dev`), a generic Hungarian-matching algorithm
   (`hungarian`, `best_permutation`) that isn't CSOM-specific, and the label-grouping assignment
   glue (`assign_group`, `best_permutation_multiple_atoms`). `mod.rs` mixes CLI entry
-  (`csom_main`), orchestration (`calc_csom`), and domain types (`CsomOperation`, `CsomResult`,
+  (`csom_main`), orchestration (`calc_csom`), and domain types (`CsomOperationResult`, `CsomResult`,
   `CsomError`) in one file. Split done (rename only, no logic change): `types.rs` (the three
   structs/enum, out of `mod.rs`), `prepare.rs` (renamed `io.rs`), `assignment.rs` (split out of
   `dev.rs`: `hungarian`/`best_permutation`/`best_permutation_multiple_atoms`/`group_by_label`),
