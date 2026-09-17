@@ -3,8 +3,8 @@
 Revision 4, reviewed at `1ea345a`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 27/50 fixed, 4 partly, 3 moot, 3 non-issue, 13 open (3 of them new: B10, C17, E7).
-Step 1 of the order of work landed after this review (E2, E6 — see those entries); the
+Totals: 30/51 fixed, 3 partly, 3 moot, 3 non-issue, 12 open (2 of them new: B10, C17).
+Steps 1–2 of the order of work landed after this review (E2, E5, E6, E7, E8 — see those entries); the
 `cargo fmt` pass in `e163603` moved every line reference below, so grep before trusting one.
 All 56 tests pass. Working tree clean apart from untracked run output in `tests/` and `.idea/`
 (see E7). Since revision 3 (`4123ede`): C6, D4 fixed; C14 half done; E4 moot; E5 regressed;
@@ -110,19 +110,31 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 - E4 `MOOT` — `tests/FeCl6_table.csv` (and `FeCl6_ideal.xyz`) deleted in `7354442`. The SHAPE
   2.1 values are pinned inline in `src/cshm/tests.rs` (water 0.035/33.342, Eu7 2.109/2.630/7.288),
   so nothing was lost.
-- E5 `PARTLY` — regressed since rev 3. README now says `--iterations` defaults to 1000 (it is
-  200), that `--pg` is "**Currently required.**" (it is optional; omitted = all 47), repeats that
-  at line 21, and has no row for `-e`/`--tol`. Algorithm step 2 still ends mid-sentence
-  ("Best axis is then defined for the"). `README.md:21,82,89,439`
+- E5 `FIXED` — every README row checked against `cli.rs`: `--iterations` 200, `--pg` optional (both
+  places), `-e`/`--tol` row added, csom algorithm step 2 completed (and step 1 no longer claims seeds
+  are scored before refinement — they are all refined, see C5). Also found and fixed: the odis
+  `--full` sentence was truncated too; the odis example lacked the `Theta`/`Volume` rows and the
+  `D3h` group; the cshm example used older coordinates than `tests/FeHS.xyz` while the other two
+  examples used the fixture. All three example blocks are now verbatim output of the release binary
+  on `tests/FeHS.xyz` + `tests/ebcT-6.yaml` (see E8 for why `ebcT-6` changed from 14.335 to 14.277).
+  Was: `--iterations` said 1000, `--pg` "Currently required", no `--tol` row, step 2 cut off.
 - E6 `FIXED` in `f9cccad` — `automorphism.rs` and `structure_from_shape` are `#[cfg(test)]`,
   `twist_top_face` deleted; `writeln!(file)` ×3 and four `.clone()`-on-Copy went with it.
   Was: 3 dead-code warnings in the binary: `find_automorphisms`, `automorphism_branch`
   (only caller: `cshm/tests.rs:108`), `structure_from_shape` (only callers: `odis/calc.rs` tests).
   `twist_top_face` is inside `#[cfg(test)]` but called from nowhere — dead even for tests.
   Blocks `-D warnings` in CI. `src/cshm/automorphism.rs`, `src/shapes.rs:36`, `src/odis/calc.rs:321`
-- E7 `NEW` — `tests/` is collecting run output: 11 untracked `*_operated.xyz`, `*_merged.mol2`,
-  `*_table.csv` files, plus `.idea/`. Add them to `.gitignore` (or write output next to the
-  input by default and keep `tests/` for fixtures only). `.gitignore`
+- E7 `FIXED` — `.gitignore` now covers `.idea/` and every output name `out.rs` writes
+  (`*_cshm_table.csv`, `*_csom_table.csv`, `*_odis_table.csv`, `*_details.csv`, `*_operated.xyz`,
+  `*_merged.mol2`, `*_ideal.xyz`). Residue: `tests/FeHS_ideal.xyz` is a tracked run output (added
+  in `623eb10`, nothing reads it, differs from a fresh run) — `git rm` it or keep it deliberately.
+  Was: 19 untracked `*_operated.xyz`/`*_merged.mol2`/`*_ideal.xyz` files in `tests/` plus `.idea/`.
+- E8 `FIXED` — `tests/ebcT-6.yaml` had its `centre` and the fourth tetrahedron vertex swapped:
+  `(0.5, 0.5, 0.5)` (the centroid of the `(1,1,0)/(1,0,1)/(0,1,1)/(0,0,0)` tetrahedron) was listed
+  as a vertex and `(0,0,0)` as the centre. Before A9 the unpinned search silently found the swap,
+  which is where the README's 14.335 came from; with the centre pinned the mis-specified shape
+  scored 35.8. Swapped back in the fixture and in the README's yaml example; the README's inline
+  structure now reproduces 14.335 exactly and `tests/FeHS.xyz` gives 14.277. No test used the file.
 
 ## Part II — Measures worth adding
 
@@ -154,7 +166,7 @@ Tier 0:
 ## Order of work
 
 1. ~~E6 dead-code cleanup → wire up CI (E2)~~ done (`f9cccad`…`ac5035d`)
-2. E5 README drift (4 edits) and E7 `.gitignore` — cheap, user-facing, no code risk
+2. ~~E5 README drift and E7 `.gitignore`~~ done (plus E8, the `ebcT-6` fixture fix it uncovered)
 3. B10 + rest of D7: one `SearchSettings` struct closes B10 and `calc_csom`'s arg-count
    warning; `writeln!(file)` ×3; name the `symops.rs` type
 4. C17, then C3 — resolve the point group once; make grouping deterministic and drop the
