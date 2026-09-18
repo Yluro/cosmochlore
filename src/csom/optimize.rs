@@ -1,6 +1,6 @@
 use crate::csom::deviation::point_group_dev;
 use crate::csom::prepare::CsomStructure;
-use crate::csom::types::CsomError;
+use crate::csom::types::{CsomError, OptimiserSettings};
 use crate::data::pgs::get_pointgroup_map;
 use crate::geometry::rotation_matrix_from_vector;
 use argmin::core::{CostFunction, Error, Executor, State};
@@ -116,27 +116,25 @@ pub(crate) fn refine_axis_from_seed(
     Ok((Vector3::new(best_v[0], best_v[1], best_v[2]), best_cost))
 }
 
-/// Samples `n` candidate axes on a Fibonacci sphere and refines each one with
+/// Samples `settings.seeds` candidate axes on a Fibonacci sphere and refines each one with
 /// [`refine_axis_from_seed`].
 ///
 /// Returns the best rotation vector found and its deviation score.
 pub(crate) fn search_best_axis(
-    n: usize,
     structure: &CsomStructure,
     pg_name: &str,
-    max_iters: usize,
-    tolerance: f64,
+    settings: OptimiserSettings,
     ignore_labels: bool,
 ) -> Result<(Vector3<f64>, f64), CsomError> {
     let mut best: Option<(Vector3<f64>, f64)> = None;
 
-    for axis0 in fibonacci_sphere_sampling(n) {
+    for axis0 in fibonacci_sphere_sampling(settings.seeds) {
         let candidate = refine_axis_from_seed(
             axis0,
             structure,
             pg_name,
-            max_iters,
-            tolerance,
+            settings.iterations,
+            settings.tolerance,
             ignore_labels,
         )?;
 

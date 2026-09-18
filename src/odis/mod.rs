@@ -4,6 +4,7 @@ use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
 use crate::csom::calc_csom;
 use crate::csom::prepare::CenteringMode;
+use crate::csom::types::OptimiserSettings;
 use crate::error::Error;
 use crate::out::*;
 use crate::{shapes, xyz};
@@ -79,9 +80,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
         CenteringMode::First,
         None,
         &csom_point_groups,
-        20,
-        1000,
-        1e-8,
+        OptimiserSettings::default(),
         false,
         false,
     )?;

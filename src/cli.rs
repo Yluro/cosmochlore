@@ -1,4 +1,5 @@
 use crate::csom::prepare::CenteringMode;
+use crate::csom::types::OptimiserSettings;
 use clap::{Args, Parser, Subcommand};
 
 /// Parses the `--center` value as a 1-based atom position, rejecting 0.
@@ -112,7 +113,7 @@ pub struct CsomArgs {
     #[arg(
         short = 's',
         long = "seeds",
-        default_value = "20",
+        default_value_t = OptimiserSettings::default().seeds,
         value_name = "N_seeds"
     )]
     pub seeds: usize,
@@ -122,7 +123,7 @@ pub struct CsomArgs {
     #[arg(
         short = 'i',
         long = "iterations",
-        default_value = "200",
+        default_value_t = OptimiserSettings::default().iterations,
         value_name = "N_iter"
     )]
     pub iterations: usize,
@@ -132,10 +133,21 @@ pub struct CsomArgs {
     #[arg(
         short = 'e',
         long = "tol",
-        default_value = "1e-6",
+        default_value_t = OptimiserSettings::default().tolerance,
         value_name = "TOLERANCE"
     )]
     pub tolerance: f64,
+}
+
+impl CsomArgs {
+    /// The search knobs as given on the command line.
+    pub fn search_settings(&self) -> OptimiserSettings {
+        OptimiserSettings {
+            seeds: self.seeds,
+            iterations: self.iterations,
+            tolerance: self.tolerance,
+        }
+    }
 }
 
 #[derive(Args, Debug)]

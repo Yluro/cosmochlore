@@ -11,7 +11,7 @@ use crate::out::{
 };
 use crate::xyz::{Structure, parse_xyz, resolve_center};
 use nalgebra::Vector3;
-use types::{CsomError, CsomOperationResult, CsomResult};
+use types::{CsomError, CsomOperationResult, CsomResult, OptimiserSettings};
 
 mod assignment;
 mod deviation;
@@ -22,6 +22,8 @@ mod tests;
 pub(crate) mod types;
 
 pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
+    let settings = args.search_settings();
+
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user get mapped to 0 based for parser.
     let center = resolve_center(args.not_centered, args.center.map(|c| c - 1));
@@ -50,9 +52,7 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
         args.centering_mode,
         args.vector,
         &point_groups,
-        args.seeds,
-        args.iterations,
-        args.tolerance,
+        settings,
         with_operations,
         args.ignore_labels,
     )?;
@@ -87,7 +87,8 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
     Ok(())
 }
 
-/// Prepares `structure` for CSOM analysis and, for each of `point_groups`.
+/// Prepares `structure` for CSOM analysis and, for each of `point_groups`, searches for the
+/// orientation of minimum deviation with `settings`.
 ///
 /// When `with_operations` is true, each result's `operations` is also filled in with the
 /// deviation of every individual symmetry operation at the refined axis
@@ -99,9 +100,7 @@ pub fn calc_csom(
     centering_mode: CenteringMode,
     centering_vector: Option<Vec<f64>>,
     point_groups: &[String],
-    samples: usize,
-    iterations: usize,
-    tolerance: f64,
+    settings: OptimiserSettings,
     with_operations: bool,
     ignore_labels: bool,
 ) -> Result<Vec<CsomResult>, CsomError> {
@@ -118,14 +117,8 @@ pub fn calc_csom(
 
     let mut results: Vec<CsomResult> = Vec::new();
     for point_group in point_groups {
-        let (rotation_vector, deviation) = search_best_axis(
-            samples,
-            &csom_structure,
-            point_group,
-            iterations,
-            tolerance,
-            ignore_labels,
-        )?;
+        let (rotation_vector, deviation) =
+            search_best_axis(&csom_structure, point_group, settings, ignore_labels)?;
         let rotation = rotation_matrix_from_vector(rotation_vector);
 
         let operations: Vec<CsomOperationResult> = if with_operations {
