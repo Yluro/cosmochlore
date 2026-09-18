@@ -9,6 +9,7 @@ pub mod permutations;
 pub mod test_utils;
 #[cfg(test)]
 pub mod tests;
+pub(crate) mod types;
 
 use crate::cli::CshmArgs;
 use crate::error::Error;
@@ -18,15 +19,7 @@ use crate::xyz::Structure;
 use crate::{shapes, xyz, yaml};
 use nalgebra::Vector3;
 pub(crate) use permutations::find_best_permutation;
-
-pub struct CShMResult {
-    pub name: String,
-    pub symbol: String,
-    pub symm: String,
-    pub cshm: f64,
-    pub perm: Vec<usize>,
-    pub xyz: Vec<Vector3<f64>>,
-}
+use types::CShMResult;
 
 pub fn calc_cshm(
     reference_shapes: Vec<ReferenceShape>,

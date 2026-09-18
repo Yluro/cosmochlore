@@ -1,4 +1,4 @@
-use crate::cshm::CShMResult;
+use crate::cshm::types::CShMResult;
 use crate::csom::prepare::strip_all_labels;
 use crate::csom::types::CsomResult;
 use crate::odis::OdisResult;
