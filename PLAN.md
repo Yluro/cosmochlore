@@ -3,7 +3,7 @@
 Revision 4, reviewed at `1ea345a`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 31/51 fixed, 3 partly, 3 moot, 3 non-issue, 11 open (1 of them new: C17).
+Totals: 32/52 fixed, 3 partly, 3 moot, 3 non-issue, 11 open (1 of them new: C17).
 Steps 1–3 of the order of work landed after this review (B10, D7, E2, E5, E6, E7, E8 — see those entries); the
 `cargo fmt` pass in `e163603` moved every line reference below, so grep before trusting one.
 All 56 tests pass. Working tree clean apart from untracked run output in `tests/` and `.idea/`
@@ -25,7 +25,7 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 
 ## B · Consistency
 
-- B1 `FIXED` — `ReferenceShape` stores `Vector3` not `[f64;3]`. `src/shapes.rs:6-19`
+- B1 `FIXED` — `ReferenceShape` stores `Vector3` not `[f64;3]`. `src/data/standard_shapes.rs` (since D9)
 - B2 `FIXED` — unified `Structure::atoms()` / `ReferenceShape::points()`. `src/xyz.rs:17-24`
 - B3 `FIXED` — `samples`/`iterations` plain `usize`, `&str` not `&String`. `src/cli.rs`
 - B4 `FIXED` — one `thiserror`-based `error::Error`, not 5 hand-rolled enums. `src/error.rs`
@@ -34,10 +34,10 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 - B7 `FIXED` — shape generator import path fixed. `generate_builtin_shapes_rs.py:130`
 - B8 `OPEN` — `rotation_matrix()` transposes, `rotation_matrix_from_vector()` doesn't. `src/geometry.rs:97-127`
 - B9 `PARTLY` — `csom --ignore` is a flag, `cshm` always ignores labels. `src/cli.rs:107-108`
-- B10 `FIXED` — `csom::types::SearchSettings { seeds, iterations, tolerance }` with `Default` =
+- B10 `FIXED` — `csom::types::OptimiserSettings { seeds, iterations, tolerance }` with `Default` =
   `(20, 200, 1e-6)` is the one place the values live: `cli.rs` reads its `default_value_t`s from
   it (`CsomArgs::search_settings()` builds one from the flags), `calc_csom`/`search_best_axis`
-  take it, and `odis --full` passes `SearchSettings::default()`. odis' eight deviations are
+  take it, and `odis --full` passes `OptimiserSettings::default()`. odis' eight deviations are
   unchanged to 3 decimals (rotation matrices move in the 4th) and `odis --full` runs ~1.6x faster
   (600 -> 375 ms on FeHS). Was: odis hardcoded `(20, 1000, 1e-8)` vs the CLI's `(20, 200, 1e-6)`.
 
@@ -75,7 +75,7 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 - C9 `MOOT` — automorphism dedup removed outright (superseded, not fixed)
 - C10 `FIXED` — closed-form 3x3 eigenvalues (Smith 1961). `src/cshm/linalg.rs:36`
 - C11 `FIXED` — norms/suffix sums precomputed. `src/cshm/bounds.rs:25-37`
-- C12 `OPEN` — `builtin_shapes()` rebuilds full 90-shape HashMap on every lookup. `src/data/standard_shapes.rs:8`, `src/shapes.rs:48`
+- C12 `OPEN` — `builtin_shapes()` rebuilds full 90-shape HashMap on every lookup. `src/data/standard_shapes.rs`, `src/cshm/shape_lookup.rs`
 - C13 `MOOT` — superseded by C9
 - C14 `PARTLY` — `license = "GPL-3.0-only"` fixed (`734c0a9`); still no `[profile.release]`
   (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`). `Cargo.toml`
@@ -101,6 +101,13 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 - D8 `FIXED` — `csom` module split: `types.rs`, `prepare.rs` (was `io.rs`), `assignment.rs`
   (Hungarian + label grouping, out of `dev.rs`), `deviation.rs` (was `dev.rs`), `optimize.rs`,
   `mod.rs` left with `csom_main` + `calc_csom`. Rename only, no logic change. `src/csom/`
+- D9 `FIXED` — `shapes.rs` -> `cshm/shape_lookup.rs` (built-in lookup by vertex count/index,
+  `check_vertex_count`, `ShapeLookupError`): reference shapes are a cshm-only concept and `csom`
+  already keeps its own modules. `ReferenceShape` itself now lives next to its table in
+  `data/standard_shapes.rs`, emitted by the generator, which removes the `shapes` <-> `data`
+  import cycle. `yaml.rs` stays top-level for future non-shape inputs (user point groups).
+  The test-only `structure_from_shape` helper moved to `cshm/test_utils.rs` with the other test
+  scaffolding. Pure move: all cshm/csom/odis outputs byte-identical. `src/cshm/shape_lookup.rs`, `generate_builtin_shapes_rs.py`
 
 ## E · Build, tests, CI
 
