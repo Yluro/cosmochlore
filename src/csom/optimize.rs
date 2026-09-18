@@ -1,30 +1,12 @@
 use crate::csom::deviation::point_group_dev;
 use crate::csom::prepare::CsomStructure;
+use crate::csom::seeding::seed_rotation_vectors;
 use crate::csom::types::{CsomError, OptimiserSettings};
-use crate::data::pgs::get_pointgroup_map;
+use crate::data::pgs::{get_pointgroup, get_pointgroup_map};
 use crate::geometry::rotation_matrix_from_vector;
 use argmin::core::{CostFunction, Error, Executor, State};
 use argmin::solver::neldermead::NelderMead;
 use nalgebra::Vector3;
-
-/// Generates N evenly-spaced points around a sphere of Radius = 1.
-fn fibonacci_sphere_sampling(n: usize) -> Vec<Vector3<f64>> {
-    if n == 0 {
-        return vec![Vector3::new(0.0, 0.0, 1.0)];
-    }
-
-    let phi: f64 = std::f64::consts::PI * (5.0f64.sqrt() - 1f64);
-    let mut points = Vec::new();
-
-    for i in 0..n {
-        let y = 1.0 - (i as f64 / (n as f64 - 1.0));
-        let r = (1.0 - y * y).sqrt();
-        let theta = phi * i as f64;
-
-        points.push(Vector3::new(r * theta.cos(), y, r * theta.sin()));
-    }
-    points
-}
 
 fn orientation_cost(
     v: &[f64],
@@ -116,7 +98,8 @@ pub(crate) fn refine_axis_from_seed(
     Ok((Vector3::new(best_v[0], best_v[1], best_v[2]), best_cost))
 }
 
-/// Samples `settings.seeds` candidate axes on a Fibonacci sphere and refines each one with
+/// Refines every starting orientation of [`seed_rotation_vectors`] (`settings.seeds`
+/// candidate axis directions, each at every in-plane angle the point group tells apart) with
 /// [`refine_axis_from_seed`].
 ///
 /// Returns the best rotation vector found and its deviation score.
@@ -126,9 +109,13 @@ pub(crate) fn search_best_axis(
     settings: OptimiserSettings,
     ignore_labels: bool,
 ) -> Result<(Vector3<f64>, f64), CsomError> {
+    let ops = get_pointgroup(pg_name).ok_or_else(|| CsomError::WrongSpaceGroup {
+        pg: pg_name.to_string(),
+    })?;
+
     let mut best: Option<(Vector3<f64>, f64)> = None;
 
-    for axis0 in fibonacci_sphere_sampling(settings.seeds) {
+    for axis0 in seed_rotation_vectors(settings.seeds, ops) {
         let candidate = refine_axis_from_seed(
             axis0,
             structure,
@@ -145,6 +132,6 @@ pub(crate) fn search_best_axis(
         }
     }
 
-    // fibonacci_sphere_sampling will always yield one point. This error never fires.
+    // seed_rotation_vectors always yields at least one seed. This error never fires.
     best.ok_or_else(|| CsomError::OptimizationFailed("no candidate axes were sampled".to_string()))
 }

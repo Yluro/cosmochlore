@@ -108,7 +108,9 @@ pub struct CsomArgs {
     #[arg(short = 'g', long = "ignore")]
     pub ignore_labels: bool,
 
-    /// Number of samples taken f the Fibonacci sphere.
+    /// Number of candidate symmetry-axis directions, spread over a Fibonacci hemisphere, used
+    /// to seed the axis search. Each one is refined at every in-plane orientation the point
+    /// group tells apart.
     /// It is recommended not to change this parameter.
     #[arg(
         short = 's',

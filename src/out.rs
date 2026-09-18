@@ -1,6 +1,7 @@
 use crate::cshm::types::CShMResult;
 use crate::csom::prepare::strip_all_labels;
 use crate::csom::types::CsomResult;
+use crate::data::elements::covalent_radius;
 use crate::odis::OdisResult;
 use nalgebra::{Matrix3, Vector3};
 use std::fs::File;
@@ -374,8 +375,37 @@ pub fn write_csom_operated_xyz(
     Ok(())
 }
 
+/// Two atoms are bonded in the merged .mol2 when they are closer than this factor times the
+/// sum of their covalent radii (the same criterion as RDKit's connectivity perception).
+const BOND_TOLERANCE: f64 = 1.3;
+
+/// Bonds of one block of the merged .mol2, as 0-based atom index pairs `(i, j)` with `i < j`:
+/// every pair within `BOND_TOLERANCE` times the sum of their covalent radii, plus, when the
+/// structure has a centre atom (index 0), the centre to every ligand whatever its distance,
+/// so the coordination polyhedron is always drawn.
+///
+/// Each block is a rigid image of the original structure, so one list serves all of them.
+fn perceive_bonds(
+    elements: &[String],
+    coords: &[Vector3<f64>],
+    has_centre_atom: bool,
+) -> Vec<(usize, usize)> {
+    let radii: Vec<f64> = elements.iter().map(|e| covalent_radius(e)).collect();
+
+    let mut bonds = Vec::new();
+    for i in 0..coords.len() {
+        for j in (i + 1)..coords.len() {
+            let cutoff = BOND_TOLERANCE * (radii[i] + radii[j]);
+            if (has_centre_atom && i == 0) || (coords[i] - coords[j]).norm() <= cutoff {
+                bonds.push((i, j));
+            }
+        }
+    }
+    bonds
+}
+
 /// Writes, for each point group, a single `<file>_<point group>_merged.mol2` with all
-/// the reconstructed operated structures.
+/// the reconstructed operated structures. Bonds come from [`perceive_bonds`].
 pub fn write_csom_merged_mol2(
     results: &[CsomResult],
     file_name: &str,
@@ -386,6 +416,7 @@ pub fn write_csom_merged_mol2(
     let stem = file_name.strip_suffix(".xyz").unwrap_or(file_name);
     let elements = strip_all_labels(labels);
     let n_per_block = labels.len();
+    let bonds = perceive_bonds(&elements, original_coords, has_centre_atom);
 
     for result in results {
         let out_name = format!("{}_{}_merged.mol2", stem, result.point_group);
@@ -406,19 +437,13 @@ pub fn write_csom_merged_mol2(
             (op.name.as_str(), real_points)
         }));
 
-        let bonds_per_block = if has_centre_atom {
-            n_per_block.saturating_sub(1)
-        } else {
-            0
-        };
-
         writeln!(file, "@<TRIPOS>MOLECULE")?;
         writeln!(file, "{}_{}_merged", stem, result.point_group)?;
         writeln!(
             file,
             "{} {} {} 0 0",
             n_per_block * blocks.len(),
-            bonds_per_block * blocks.len(),
+            bonds.len() * blocks.len(),
             blocks.len()
         )?;
         writeln!(file, "SMALL")?;
@@ -439,14 +464,14 @@ pub fn write_csom_merged_mol2(
             }
         }
 
-        if bonds_per_block > 0 {
+        if !bonds.is_empty() {
             writeln!(file, "@<TRIPOS>BOND")?;
             let mut bond_id = 0usize;
             for block in 0..blocks.len() {
                 let base = block * n_per_block;
-                for i in 1..n_per_block {
+                for &(i, j) in &bonds {
                     bond_id += 1;
-                    writeln!(file, "{} {} {} 1", bond_id, base + 1, base + i + 1)?;
+                    writeln!(file, "{} {} {} 1", bond_id, base + i + 1, base + j + 1)?;
                 }
             }
         }
@@ -477,5 +502,56 @@ mod tests {
     #[test]
     fn csv_field_doubles_embedded_quotes() {
         assert_eq!(csv_field("6\" wide"), "\"6\"\" wide\"");
+    }
+
+    fn labels(symbols: &[&str]) -> Vec<String> {
+        symbols.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn perceive_bonds_joins_a_ring_without_a_centre() {
+        // A regular hexagon of carbons with 1.39 A edges, like a benzene ring.
+        let coords: Vec<Vector3<f64>> = (0..6)
+            .map(|k| {
+                let angle = k as f64 * std::f64::consts::FRAC_PI_3;
+                Vector3::new(1.39 * angle.cos(), 1.39 * angle.sin(), 0.0)
+            })
+            .collect();
+
+        let bonds = perceive_bonds(&labels(&["C"; 6]), &coords, false);
+
+        // Neighbours only: the 1,3 (2.41 A) and 1,4 (2.78 A) pairs are well past the cutoff.
+        assert_eq!(bonds, vec![(0, 1), (0, 5), (1, 2), (2, 3), (3, 4), (4, 5)]);
+    }
+
+    #[test]
+    fn perceive_bonds_always_joins_the_centre_to_every_ligand() {
+        // An octahedron with 3.0 A bonds: past the covalent cutoff for Fe-N (2.9 A), so
+        // only the centre rule can draw the polyhedron.
+        let mut coords = vec![Vector3::zeros()];
+        for axis in [Vector3::x(), Vector3::y(), Vector3::z()] {
+            coords.push(3.0 * axis);
+            coords.push(-3.0 * axis);
+        }
+        let elements = labels(&["Fe", "N", "N", "N", "N", "N", "N"]);
+
+        let bonds = perceive_bonds(&elements, &coords, true);
+        assert_eq!(bonds, vec![(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6)]);
+
+        // Without a declared centre the same coordinates are simply seven loose atoms.
+        assert!(perceive_bonds(&elements, &coords, false).is_empty());
+    }
+
+    #[test]
+    fn perceive_bonds_uses_the_fallback_radius_for_unknown_labels() {
+        // 2.5 A is a bond for a metal-sized dummy atom next to a nitrogen ((1.5 + 0.71) * 1.3
+        // = 2.87 A) but not between two nitrogens (1.85 A).
+        let coords = vec![Vector3::zeros(), Vector3::new(2.5, 0.0, 0.0)];
+
+        assert_eq!(
+            perceive_bonds(&labels(&["Xx", "N"]), &coords, false),
+            vec![(0, 1)]
+        );
+        assert!(perceive_bonds(&labels(&["N", "N"]), &coords, false).is_empty());
     }
 }

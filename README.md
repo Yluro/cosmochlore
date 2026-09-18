@@ -84,8 +84,8 @@ _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 | `-u` <br> `--vector`     | `<X> <Y> <Z>`                               | Centering vector, required when `--mode manual` is used.                                                                                                                                                                                                                  |
 | `-t` <br> `--table`      | None                                        | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix).                                                                                                                                                                             |
 | `-f` <br> `--full`       | None                                        | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation.                                                                                                                                        |
-| `-o` <br> `--operated`   | None                                        | Write, per analysed point group, a `name_<PG>_operated.xyz` file with every symmetry-operated image of the structure at the minimum-deviation orientation, plus a `name_<PG>_merged.mol2` overlaying all of those images in one 3D structure for viewers such as Mercury. |
-| `-s` <br> `--seeds`      | `<N>`                                       | Number of Fibonacci-sphere samples used to seed the symmetry-axis search. Defaults to `20`. _It is recommended not to change this parameter._                                                                                                                             |
+| `-o` <br> `--operated`   | None                                        | Write, per analysed point group, a `name_<PG>_operated.xyz` file with every symmetry-operated image of the structure at the minimum-deviation orientation, plus a `name_<PG>_merged.mol2` overlaying all of those images in one 3D structure for viewers such as Mercury. Bonds in the `.mol2` join atoms closer than 1.3 times the sum of their covalent radii, plus the centre atom to every ligand. |
+| `-s` <br> `--seeds`      | `<N>`                                       | Number of candidate symmetry-axis directions, spread over a Fibonacci hemisphere, used to seed the axis search; each is refined at every in-plane orientation the point group tells apart. Defaults to `20`. _It is recommended not to change this parameter._           |
 | `-i` <br> `--iterations` | `<N>`                                       | Maximum number of Nelder-Mead iterations used to refine each seed. Defaults to `200`. _It is recommended not to change this parameter._                                                                                                                                   |
 | `-e` <br> `--tol`        | `<TOLERANCE>`                               | Convergence tolerance of the Nelder-Mead refinement (the standard deviation of the deviations across the simplex). Defaults to `1e-6`. _It is recommended not to change this parameter._                                                                                  |
 | `-g` <br> `--ignore`     | None                                        | Ignore atom labels when searching for the best atom-to-atom permutation: every atom is treated as interchangeable regardless of element/label, instead of only matching atoms that share a label.                                                                         |
@@ -174,7 +174,7 @@ Input file: FeHS.xyz
  D4h          5.611     
 ------------------------
 Writing output table to FeHS_csom_table.csv...
-Program finished in 204.5002ms
+Program finished in 597.8122ms
 ````
 
 Passing the `-t`/`--table` flag writes the point group / deviation / rotation matrix summary to `FeHS_csom_table.csv`. Passing `-f`/`--full` additionally writes, for every point group requested, a `FeHS_<PG>_details.csv` file breaking the deviation down by individual symmetry operation (_e.g._ `FeHS_Oh_details.csv` lists every one of `Oh`'s 48 operations separately).
@@ -219,15 +219,15 @@ Input file: FeHS.xyz
 ------------------------
  Oh           5.380     
  D4h          5.611     
- D3h          17.792    
+ D3h          17.716    
  D3d          5.691     
  D2h          5.948     
  C4v          4.947     
- C3v          5.335     
+ C3v          5.198     
  C2v          2.420     
 ------------------------
 Writing output table to FeHS_csom_table.csv...
-Program finished in 442.2413ms
+Program finished in 922.3647ms
 ````
 Passing the `-t`/`--table` flag writes the distortion parameters to a `<NAME>_odis_table.csv`. Passing the `-f`/`--full` flag additionally computes the CShM against the ideal octahedron and trigonal prism (`OC-6`, `TPR-6`) and the CSoM against the eight point groups most commonly seen in octahedral distortions (`Oh`, `D4h`, `D3h`, `D3d`, `D2h`, `C4v`, `C3v`, `C2v`).
 
@@ -442,7 +442,7 @@ The rotation/translation/scaling part is solved via an SVD-based Kabsch-style al
 
 The main problem to solve for `csom` is that symmetry element operations depend on a given's shape position in space. Once a centering criteria is stablished by the user, `csom` searches for the orientation of the structure that minimizes the average deviation from a given point group's symmetry operations. This is done by:
 
-1. **Fibonacci-sphere seeding**: `--seeds` rotation vectors are spread evenly over the unit sphere and used as starting points, so that no orientation is far from a seed without an expensive exhaustive search.
+1. **Fibonacci-hemisphere seeding**: `--seeds` candidate directions for the principal symmetry axis are spread evenly over the upper hemisphere (an axis and its opposite are the same axis), and each seed is the rotation that aligns one of them with `z`, the principal axis of the point-group tables. Whatever the input orientation, some seed therefore starts with the true axis within the lattice spacing of `z`. Aligning the axis leaves the spin about it free, so when the point group has vertical mirror planes or perpendicular C2 axes (which make that spin matter) every direction is additionally tried at each in-plane angle, in steps no coarser than the lattice spacing, over the angle after which the group repeats -- 90° for C2v or Oh, 30° for D6h, none at all for C_n, S_n, C_nh, Cs or Ci.
 2. **Nelder-Mead refinement**: every seed is locally optimized using the derivative-free Nelder-Mead method, minimizing the average deviation over the three components of the rotation vector, until the simplex converges to `--tol` or `--iterations` steps are reached. The refined rotation with the lowest deviation over all seeds is kept as the structure's orientation for that point group.
 3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimized over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive by default, that is, atoms are only matched with others of the same element; pass `--ignore` to instead let the search match any atom to any other, regardless of label. When the structure is centered on its first atom, that atom is excluded from the Hungarian search and matched to itself directly, since it sits at the origin and is therefore invariant under every symmetry operation -- this reduces the assignment's dimensionality by one at no cost in accuracy.
 

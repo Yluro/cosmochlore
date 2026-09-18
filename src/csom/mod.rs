@@ -17,6 +17,7 @@ mod assignment;
 mod deviation;
 mod optimize;
 pub(crate) mod prepare;
+mod seeding;
 #[cfg(test)]
 mod tests;
 pub(crate) mod types;
