@@ -3,8 +3,8 @@
 Revision 4, reviewed at `1ea345a`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 30/51 fixed, 3 partly, 3 moot, 3 non-issue, 12 open (2 of them new: B10, C17).
-Steps 1–2 of the order of work landed after this review (E2, E5, E6, E7, E8 — see those entries); the
+Totals: 31/51 fixed, 3 partly, 3 moot, 3 non-issue, 11 open (1 of them new: C17).
+Steps 1–3 of the order of work landed after this review (B10, D7, E2, E5, E6, E7, E8 — see those entries); the
 `cargo fmt` pass in `e163603` moved every line reference below, so grep before trusting one.
 All 56 tests pass. Working tree clean apart from untracked run output in `tests/` and `.idea/`
 (see E7). Since revision 3 (`4123ede`): C6, D4 fixed; C14 half done; E4 moot; E5 regressed;
@@ -34,10 +34,12 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 - B7 `FIXED` — shape generator import path fixed. `generate_builtin_shapes_rs.py:130`
 - B8 `OPEN` — `rotation_matrix()` transposes, `rotation_matrix_from_vector()` doesn't. `src/geometry.rs:97-127`
 - B9 `PARTLY` — `csom --ignore` is a flag, `cshm` always ignores labels. `src/cli.rs:107-108`
-- B10 `NEW` — `odis --full` hardcodes its csom search as `(20 seeds, 1000 iters, tol 1e-8)` while the
-  `csom` CLI defaults are `(20, 200, 1e-6)`. Same structure, same point group, two different
-  numbers and a ~5x slower odis. Pull the three defaults into one place (a `SearchSettings`
-  struct would also clear `calc_csom`'s 9-argument clippy warning, D7). `src/odis/mod.rs:71`, `src/cli.rs:112-123`
+- B10 `FIXED` — `csom::types::SearchSettings { seeds, iterations, tolerance }` with `Default` =
+  `(20, 200, 1e-6)` is the one place the values live: `cli.rs` reads its `default_value_t`s from
+  it (`CsomArgs::search_settings()` builds one from the flags), `calc_csom`/`search_best_axis`
+  take it, and `odis --full` passes `SearchSettings::default()`. odis' eight deviations are
+  unchanged to 3 decimals (rotation matrices move in the 4th) and `odis --full` runs ~1.6x faster
+  (600 -> 375 ms on FeHS). Was: odis hardcoded `(20, 1000, 1e-8)` vs the CLI's `(20, 200, 1e-6)`.
 
 ## C · Performance (csom inner loop; now ~2·10^5 calls/point-group search after C6)
 
@@ -89,10 +91,13 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 - D6 `PARTLY` — `print_crab()` is now live behind the hidden `cshm --crab` flag; residue is the
   stale `//if args.crab {print_crab()}` comment in `src/main.rs:38` and `find_best_permutation`'s
   4th return (rotation matrix) still discarded by every production caller. `src/cshm/mod.rs:39`
-- D7 `FIXED` — clippy 31 -> 11 -> 10 warnings (default target). Left: 3 too-many-args
-  (`automorphism_branch`, `branch`, `calc_csom`), 1 complex type (`symops.rs:3`), 3 empty
-  `writeln!(file, "")` (`out.rs:115,266,281`), 3 dead-code (E6). `--all-targets` adds 4
-  `.clone()` on `Copy` in `cshm/tests.rs` and `twist_top_face`.
+- D7 `FIXED` — clippy 31 -> 11 -> 10 -> **0** warnings, `--all-targets`, no allows. The last four:
+  `calc_csom` takes `OptimiserSettings` (B10); `branch` takes `&SearchTables` (the two point sets +
+  the precomputed `hi`/norm/suffix tables) and `&mut SearchState` (partial permutation + best so
+  far) instead of 11 arguments; `find_automorphisms` reuses `SearchTables::new(reference,
+  reference)`; `symops::get_operation` returns `Option<&[SymmetryOperation]>`. cshm output is
+  byte-identical before/after on FeHS and La03 and the 11-vertex B&B timing is unchanged
+  (404 ms min both). Earlier rounds: `writeln!(file)` ×3, `.clone()`-on-`Copy` ×4, dead code (E6).
 - D8 `FIXED` — `csom` module split: `types.rs`, `prepare.rs` (was `io.rs`), `assignment.rs`
   (Hungarian + label grouping, out of `dev.rs`), `deviation.rs` (was `dev.rs`), `optimize.rs`,
   `mod.rs` left with `csom_main` + `calc_csom`. Rename only, no logic change. `src/csom/`
@@ -101,9 +106,9 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
 
 - E1 `OPEN` — no `lib.rs`; no integration tests possible, all tests are `#[cfg(test)]` inline
 - E2 `FIXED` — `.github/workflows/ci.yml` (`f9cccad`, `ac5035d`): Test, Clippy and Rustfmt jobs on
-  push to master and on PRs, `RUSTFLAGS=-D warnings`, `--locked`. Clippy still allows
-  `too_many_arguments`/`type_complexity` for the four sites step 3 owns — drop the two `-A`
-  flags with that change. One-time `cargo fmt` in `e163603` (blame-ignored); generated tables
+  push to master and on PRs, `RUSTFLAGS=-D warnings`, `--locked`; clippy runs with plain
+  `-D warnings` since step 3 (the two temporary `-A` flags are gone). One-time `cargo fmt` in
+  `e163603` (blame-ignored); generated tables
   in `data/pgs.rs` and `data/standard_shapes.rs` carry `#[rustfmt::skip]`, and the shapes
   generator emits it. `rustfmt.toml` pins `newline_style = "Native"` for the CRLF checkout.
 - E3 `OPEN` — `bnb_is_faster_than_bf` asserts on wall-clock time. `src/cshm/tests.rs:310`
@@ -126,7 +131,7 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
   Blocks `-D warnings` in CI. `src/cshm/automorphism.rs`, `src/shapes.rs:36`, `src/odis/calc.rs:321`
 - E7 `FIXED` — `.gitignore` now covers `.idea/` and every output name `out.rs` writes
   (`*_cshm_table.csv`, `*_csom_table.csv`, `*_odis_table.csv`, `*_details.csv`, `*_operated.xyz`,
-  `*_merged.mol2`, `*_ideal.xyz`). Residue: `tests/FeHS_ideal.xyz` is a tracked run output (added
+  `*_merged.mol2`, `*_ideal.xyz`). `tests/FeHS_ideal.xyz`, a tracked run output, was removed with step 3 (was: added
   in `623eb10`, nothing reads it, differs from a fresh run) — `git rm` it or keep it deliberately.
   Was: 19 untracked `*_operated.xyz`/`*_merged.mol2`/`*_ideal.xyz` files in `tests/` plus `.idea/`.
 - E8 `FIXED` — `tests/ebcT-6.yaml` had its `centre` and the fourth tetrahedron vertex swapped:
@@ -167,8 +172,8 @@ Tier 0:
 
 1. ~~E6 dead-code cleanup → wire up CI (E2)~~ done (`f9cccad`…`ac5035d`)
 2. ~~E5 README drift and E7 `.gitignore`~~ done (plus E8, the `ebcT-6` fixture fix it uncovered)
-3. B10 + rest of D7: one `SearchSettings` struct closes B10 and `calc_csom`'s arg-count
-   warning; `writeln!(file)` ×3; name the `symops.rs` type
+3. ~~B10 + rest of D7~~ done: `OptimiserSettings`, `SearchTables`/`SearchState`, `symops` type; clippy
+   gate is now unconditional
 4. C17, then C3 — resolve the point group once; make grouping deterministic and drop the
    per-call sort (both contained, both measurable with the 0.22 s baseline)
 5. C5 (score seeds, refine best 2-3) — needs the CI gate from step 1 first
