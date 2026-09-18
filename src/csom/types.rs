@@ -1,5 +1,27 @@
 use nalgebra::{Matrix3, Vector3};
 
+/// Knobs of the symmetry-axis search. `Default` is the one place the values live: the `csom`
+/// CLI defaults are read from it, and `odis --full` runs the same search with the same values.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OptimiserSettings {
+    /// Number of Fibonacci-sphere samples used to seed the search.
+    pub seeds: usize,
+    /// Maximum number of Nelder-Mead iterations spent refining each seed.
+    pub iterations: usize,
+    /// Nelder-Mead convergence tolerance: the standard deviation of the simplex's deviations.
+    pub tolerance: f64,
+}
+
+impl Default for OptimiserSettings {
+    fn default() -> Self {
+        Self {
+            seeds: 20,
+            iterations: 200,
+            tolerance: 1e-6,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum CsomError {
     #[error("wrong point group name: {pg}")]
