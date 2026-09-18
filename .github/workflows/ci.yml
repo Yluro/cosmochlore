@@ -50,16 +50,8 @@ jobs:
       - name: Cache cargo registry and build
         uses: Swatinem/rust-cache@v2
 
-      # The two `-A` flags cover the four sites clippy still flags -- three functions with
-      # more than seven arguments (calc_csom, the B&B branch functions) and the operation
-      # table type in data/symops.rs. Both are tracked in PLAN.md (D7 / B10); drop the flags
-      # once those land so the gate covers them too.
       - name: Clippy
-        run: >-
-          cargo clippy --all-targets --locked --
-          -D warnings
-          -A clippy::too_many_arguments
-          -A clippy::type_complexity
+        run: cargo clippy --all-targets --locked -- -D warnings
 
   fmt:
     name: Rustfmt
