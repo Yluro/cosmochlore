@@ -5,6 +5,47 @@ use crate::cshm::linalg::*;
 use crate::geometry::center_and_normalise;
 use nalgebra::{Matrix3, Vector3};
 
+/// The two centred, normalised point sets and the tables
+/// precomputed from them once per search.
+pub(super) struct SearchTables<'a> {
+    pub(super) reference: &'a [Vector3<f64>],
+    pub(super) problem: &'a [Vector3<f64>],
+    /// `hi[r][p]` is the correlation block `reference[r] * problem[p]^T`.
+    pub(super) hi: Vec<Vec<Matrix3<f64>>>,
+    /// Norm of every reference point.
+    pub(super) ref_norms: Vec<f64>,
+    /// `prob_suffix[p]` is the sum of the problem-point norms from `p` to the end.
+    pub(super) prob_suffix: Vec<f64>,
+}
+
+impl<'a> SearchTables<'a> {
+    /// Precomputes the hi correlation blocks, the reference norms and the
+    /// problem norms sum.
+    pub(super) fn new(reference: &'a [Vector3<f64>], problem: &'a [Vector3<f64>]) -> Self {
+        Self {
+            reference,
+            problem,
+            hi: precompute_correlation_blocks(reference, problem),
+            ref_norms: precompute_norms(reference),
+            prob_suffix: precompute_suffix_sums(&precompute_norms(problem)),
+        }
+    }
+}
+
+/// Encodes the recursion state.
+struct SearchState {
+    // Currently assigned points.
+    assigned: Vec<bool>,
+    // Current permutation being explored.
+    current_perm: Vec<usize>,
+    /// Correlation matrix of the partial permutation, kept up to date incrementally.
+    h_partial: Matrix3<f64>,
+    // Best scores found yet.
+    best_s: f64,
+    best_perm: Vec<usize>,
+    best_rot_matrix: Matrix3<f64>,
+}
+
 /// Recursively finds the best permutation of a given reference shape so that its points align
 /// to the problem shape. Will prune non-optimal permutations using the partial sum of the singular
 /// values.
@@ -20,118 +61,92 @@ pub(crate) fn find_best_permutation(
     center_and_normalise(reference);
     let (problem_centroid, normalisation_constant) = center_and_normalise(problem);
 
-    // Initialise return values
-    let mut best_s = f64::INFINITY;
-    let mut best_perm: Vec<usize> = Vec::new();
-    let mut best_rot_matrix = Matrix3::zeros();
-
-    // Initialise recursion visited and current permutation.
-    let mut assigned = vec![false; n];
-    let mut current_perm: Vec<usize> = Vec::with_capacity(n);
-    let mut h_partial = Matrix3::zeros();
-
     // Precompute the correlation matrices and norms for all points once.
-    let hi = precompute_correlation_blocks(reference, problem);
-    let ref_norms = precompute_norms(reference);
-    let prob_suffix = precompute_suffix_sums(&precompute_norms(problem));
+    let tables = SearchTables::new(reference, problem);
+
+    // Initialise the recursion state and the return values.
+    let mut state = SearchState {
+        assigned: vec![false; n],
+        current_perm: Vec::with_capacity(n),
+        h_partial: Matrix3::zeros(),
+        best_s: f64::INFINITY,
+        best_perm: Vec::new(),
+        best_rot_matrix: Matrix3::zeros(),
+    };
 
     // Fixes permutation of the central atom if found.
     if has_centre {
-        assigned[0] = true;
-        current_perm.push(0);
-        h_partial = hi[0][0];
+        state.assigned[0] = true;
+        state.current_perm.push(0);
+        state.h_partial = tables.hi[0][0];
     }
 
-    branch(
-        reference,
-        problem,
-        &hi,
-        &ref_norms,
-        &prob_suffix,
-        &mut assigned,
-        &mut current_perm,
-        &mut h_partial,
-        &mut best_s,
-        &mut best_perm,
-        &mut best_rot_matrix,
-    );
+    branch(&tables, &mut state);
 
     let reconstructed: Vec<Vector3<f64>> = reference
         .iter()
-        .map(|p| (best_rot_matrix.transpose() * p) / normalisation_constant + problem_centroid)
+        .map(|p| {
+            (state.best_rot_matrix.transpose() * p) / normalisation_constant + problem_centroid
+        })
         .collect();
 
-    (best_s, best_perm, reconstructed, best_rot_matrix)
+    (
+        state.best_s,
+        state.best_perm,
+        reconstructed,
+        state.best_rot_matrix,
+    )
 }
 
-fn branch(
-    reference: &[Vector3<f64>],
-    problem: &[Vector3<f64>],
-    hi: &Vec<Vec<Matrix3<f64>>>,
-    ref_norms: &[f64],
-    prob_suffix: &[f64],
-    assigned: &mut [bool],
-    current_perm: &mut Vec<usize>,
-    h_partial: &mut Matrix3<f64>,
-    best_s: &mut f64,
-    best_perm: &mut Vec<usize>,
-    best_rot_matrix: &mut Matrix3<f64>,
-) {
-    let n = reference.len();
-    debug_assert_eq!(n, problem.len());
+fn branch(tables: &SearchTables, state: &mut SearchState) {
+    let n = tables.reference.len();
+    debug_assert_eq!(n, tables.problem.len());
 
-    if current_perm.len() == n {
+    if state.current_perm.len() == n {
         // If a permutation is complete then:
-        let reordered: Vec<Vector3<f64>> = current_perm.iter().map(|&p| reference[p]).collect();
-        let h = correlation_matrix(problem, &reordered);
+        let reordered: Vec<Vector3<f64>> = state
+            .current_perm
+            .iter()
+            .map(|&p| tables.reference[p])
+            .collect();
+        let h = correlation_matrix(tables.problem, &reordered);
         let (rot_matrix, a_i) = optimal_rotation(h);
         let s = shape_measure(&a_i, n).max(0.0); // max 0.0 makes sure the s value doesn't go below 0 because floating point errors.
 
-        if s < *best_s {
-            *best_s = s;
-            *best_perm = current_perm.clone();
-            *best_rot_matrix = rot_matrix;
+        if s < state.best_s {
+            state.best_s = s;
+            state.best_perm = state.current_perm.clone();
+            state.best_rot_matrix = rot_matrix;
         }
         return;
     }
 
-    let pos = current_perm.len(); // Next problem-point index to assign
+    let pos = state.current_perm.len(); // Next problem-point index to assign
 
     for ref_idx in 0..n {
-        if assigned[ref_idx] {
+        if state.assigned[ref_idx] {
             continue;
         }
 
-        *h_partial += hi[ref_idx][pos]; // Sum the corresponding point to the partial correlation matrix
-        assigned[ref_idx] = true; // Mark the point as assigned.
+        state.h_partial += tables.hi[ref_idx][pos]; // Sum the corresponding point to the partial correlation matrix
+        state.assigned[ref_idx] = true; // Mark the point as assigned.
 
-        let a_partial: f64 = nuclear_norm(*h_partial); // Calculate the partial SV sum,
+        let a_partial: f64 = nuclear_norm(state.h_partial); // Calculate the partial SV sum,
         // Calculate the estimated remaining contributions
         // to the correlation matrix measure of the rest of points.
-        let remaining_bound = max_unassigned_norm(ref_norms, assigned) * prob_suffix[pos + 1];
+        let remaining_bound =
+            max_unassigned_norm(&tables.ref_norms, &state.assigned) * tables.prob_suffix[pos + 1];
         let a_bound = a_partial + remaining_bound;
         let s_bound = (1.0 - a_bound.powi(2) / ((n as f64).powi(2))) * 100.0;
 
-        if s_bound < *best_s {
+        if s_bound < state.best_s {
             // If we have found a better s
-            current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
+            state.current_perm.push(ref_idx); // Add the matrix when pushing new point to list.
             // Recursively call the branch function again.
-            branch(
-                reference,
-                problem,
-                hi,
-                ref_norms,
-                prob_suffix,
-                assigned,
-                current_perm,
-                h_partial,
-                best_s,
-                best_perm,
-                best_rot_matrix,
-            );
-            current_perm.pop();
+            branch(tables, state);
+            state.current_perm.pop();
         }
-        assigned[ref_idx] = false;
-        *h_partial -= hi[ref_idx][pos]; // Subtract the matrix when backtracking the current
+        state.assigned[ref_idx] = false;
+        state.h_partial -= tables.hi[ref_idx][pos]; // Subtract the matrix when backtracking the current
     }
 }
