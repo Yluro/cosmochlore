@@ -2,7 +2,7 @@ use crate::csom::assignment::*;
 use crate::csom::deviation::*;
 use crate::csom::optimize::{refine_axis_from_seed, search_best_axis};
 use crate::csom::prepare::{CsomStructure, strip_label};
-use crate::csom::types::CsomError;
+use crate::csom::types::{CsomError, OptimiserSettings};
 use crate::geometry::{
     center_by_centroid, center_by_first_point, normalise, rotation_matrix,
     rotation_matrix_from_vector,
@@ -278,6 +278,16 @@ fn operated_image_keeps_every_atom_with_its_own_label() {
     );
 }
 
+/// A tighter search than the CLI default, so the optimiser tests converge well inside their
+/// tolerances: `seeds` seeds, 1000 iterations, tolerance 1e-8.
+fn thorough_search(seeds: usize) -> OptimiserSettings {
+    OptimiserSettings {
+        seeds,
+        iterations: 1000,
+        tolerance: 1e-8,
+    }
+}
+
 fn octahedron_structure() -> CsomStructure {
     let points = vec![
         Vector3::new(0.0, 0.0, -1.0),
@@ -351,7 +361,7 @@ fn search_best_axis_converges_for_rotated_octahedron() {
     let rot_mat = rotation_matrix_from_vector(Vector3::new(1.0, 1.0, 1.0));
     structure.points = structure.points.iter().map(|p| rot_mat * p).collect();
 
-    let (_, cost) = search_best_axis(8, &structure, "Oh", 1000, 1e-8, false)
+    let (_, cost) = search_best_axis(&structure, "Oh", thorough_search(8), false)
         .expect("Oh is a valid point group");
 
     assert!(
@@ -372,7 +382,7 @@ fn search_best_axis_recovers_the_c2_axis_of_a_rotated_water_molecule() {
         .map(|p| applied_rotation * p)
         .collect();
 
-    let (axis, cost) = search_best_axis(20, &structure, "C2v", 1000, 1e-8, false)
+    let (axis, cost) = search_best_axis(&structure, "C2v", thorough_search(20), false)
         .expect("C2v is a valid point group");
     assert!(
         cost.abs() < 1e-3,
@@ -395,7 +405,7 @@ fn search_best_axis_recovers_the_c2_axis_of_a_rotated_water_molecule() {
 fn search_best_axis_rejects_unknown_point_group() {
     let structure = octahedron_structure();
 
-    let result = search_best_axis(8, &structure, "NotAGroup", 1000, 1e-8, false);
+    let result = search_best_axis(&structure, "NotAGroup", thorough_search(8), false);
 
     assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
 }
