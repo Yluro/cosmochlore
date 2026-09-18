@@ -1,6 +1,8 @@
+use crate::data::pgs::SymmetryOperation;
+
 #[allow(dead_code)]
 /// Look up the `operation` symmetry-operation set by name.
-pub fn get_operation(name: &str) -> Option<&'static [(&'static str, [[f64; 3]; 3])]> {
+pub fn get_operation(name: &str) -> Option<&'static [SymmetryOperation]> {
     match name {
         "C2" => Some(OPERATION_C2),
         "C3" => Some(OPERATION_C3),
