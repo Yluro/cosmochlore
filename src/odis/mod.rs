@@ -2,12 +2,13 @@ pub mod calc;
 
 use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
+use crate::cshm::shape_lookup::resolve_shapes;
 use crate::csom::calc_csom;
 use crate::csom::prepare::CenteringMode;
 use crate::csom::types::OptimiserSettings;
 use crate::error::Error;
 use crate::out::*;
-use crate::{shapes, xyz};
+use crate::xyz;
 pub use calc::calculate_od;
 
 #[derive(Debug, Clone)]
@@ -52,7 +53,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
     // 4. Calculate cshm against OC-6 and TRP-6 if --full is passed.
     let n = 6; // Number of vertices
     let indices = Some(Vec::from([2, 3])); // Indices of OC and TRP
-    let ref_shapes = shapes::resolve_shapes(n, indices.as_deref())?;
+    let ref_shapes = resolve_shapes(n, indices.as_deref())?;
     let has_centre = true;
 
     let cshm_results = calc_cshm(ref_shapes, &structure, has_centre);

@@ -3,7 +3,8 @@ use itertools::Itertools;
 use nalgebra::{Matrix3, Vector3};
 use std::time::Instant;
 
-use crate::cshm::{automorphism::*, linalg::*, permutations::*, test_utils::*};
+use crate::cshm::{automorphism::*, linalg::*, permutations::*, shape_lookup::*, test_utils::*};
+use crate::data::standard_shapes::*;
 use crate::geometry::center_and_normalise;
 
 #[test]
@@ -476,4 +477,54 @@ fn can_reconstruct_original() {
             orig
         );
     }
+}
+
+#[test]
+fn finds_correct_number_of_shapes() {
+    let map = builtin_shapes();
+
+    let mut counts: Vec<usize> = map.values().map(|shapes| shapes.len()).collect();
+    counts.sort();
+
+    let mut expected = vec![3, 4, 4, 5, 5, 7, 13, 13, 13, 7, 13, 1, 2, 1, 1];
+    expected.sort();
+
+    assert_eq!(counts, expected)
+}
+
+#[test]
+fn matches_shape21_library() {
+    let shapes = shape_by_vertex(12).unwrap();
+    let result = shapes_by_index(&shapes, &[12]).unwrap();
+
+    assert_eq!(result[0].name, "Sphenomegacorona J88");
+    assert_eq!(result[0].symbol, "JSPMC-12");
+
+    let shapes = shape_by_vertex(6).unwrap();
+    let result = shapes_by_index(&shapes, &[0, 2]).unwrap();
+
+    assert_eq!(result[0].name, "Hexagon");
+    assert_eq!(result[1].symbol, "OC-6");
+}
+
+#[test]
+fn no_indices_pass() {
+    let expect = 13;
+    let result = resolve_shapes(12, None).unwrap().len();
+    assert_eq!(result, expect);
+}
+
+#[test]
+fn error_on_bad_vertex_count() {
+    let result = resolve_shapes(99, Some([0, 1].as_slice()));
+    assert!(matches!(
+        result,
+        Err(ShapeLookupError::NoShapesForVertexCount(99))
+    ));
+}
+
+#[test]
+fn error_on_bad_index() {
+    let result = resolve_shapes(6, Some([0, 1, 7].as_slice()));
+    assert!(matches!(result, Err(ShapeLookupError::IndexOutOfBounds(7))));
 }

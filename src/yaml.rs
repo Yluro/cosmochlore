@@ -1,4 +1,4 @@
-use crate::shapes::ReferenceShape;
+use crate::data::standard_shapes::ReferenceShape;
 use nalgebra::Vector3;
 
 #[derive(Debug, PartialEq)]

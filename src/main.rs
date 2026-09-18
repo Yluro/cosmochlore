@@ -6,7 +6,6 @@ mod error;
 pub mod geometry;
 mod odis;
 mod out;
-mod shapes;
 mod xyz;
 mod yaml;
 

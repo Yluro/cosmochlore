@@ -1,6 +1,8 @@
 #![cfg(test)]
 use crate::cshm::linalg::*;
+use crate::cshm::shape_lookup;
 use crate::geometry::center_and_normalise;
+use crate::xyz::{Atom, Structure};
 use itertools::Itertools;
 use nalgebra::Vector3;
 /// BRUTE FORCE FUNCTIONS USED FOR SANITY-CHECKS AND TESTING. NOT USING THEM IN FINAL BUILDS.
@@ -76,4 +78,26 @@ pub(crate) fn best_permutation_brute_force(
         }
     }
     (best_s, best_perm)
+}
+
+/// Build a structure from a given reference shape vertices and index. Test-only helper.
+#[cfg(test)]
+pub fn structure_from_shape(vertices: u8, index: usize) -> Structure {
+    let shape = shape_lookup::resolve_shapes(vertices, Some(&[index]))
+        .unwrap()
+        .remove(0);
+    Structure {
+        centre: Some(Atom {
+            label: "M".to_string(),
+            coords: shape.centre,
+        }),
+        ligands: shape
+            .vertices
+            .iter()
+            .map(|v| Atom {
+                label: "L".to_string(),
+                coords: *v,
+            })
+            .collect(),
+    }
 }

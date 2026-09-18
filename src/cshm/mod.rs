@@ -5,6 +5,7 @@ pub mod linalg;
 pub mod automorphism;
 pub mod bounds;
 pub mod permutations;
+pub mod shape_lookup;
 #[cfg(test)]
 pub mod test_utils;
 #[cfg(test)]
@@ -12,13 +13,14 @@ pub mod tests;
 pub(crate) mod types;
 
 use crate::cli::CshmArgs;
+use crate::data::standard_shapes::ReferenceShape;
 use crate::error::Error;
 use crate::out::{print_crab, print_cshm_table, write_cshm_csv, write_cshm_reconstructed_xyz};
-use crate::shapes::{ReferenceShape, check_vertex_count};
 use crate::xyz::Structure;
-use crate::{shapes, xyz, yaml};
+use crate::{xyz, yaml};
 use nalgebra::Vector3;
 pub(crate) use permutations::find_best_permutation;
+use shape_lookup::{check_vertex_count, resolve_shapes};
 use types::CShMResult;
 
 pub fn calc_cshm(
@@ -63,7 +65,7 @@ pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
 
     // 3. Fetch builtin-shapes for that vertex count and index selection
     let indices = &args.shapes;
-    let mut ref_shapes = shapes::resolve_shapes(n, indices.as_deref())?;
+    let mut ref_shapes = resolve_shapes(n, indices.as_deref())?;
 
     // 4. If user has input any shapes, add them to compare list.
     if let Some(files) = &args.user_shapes {

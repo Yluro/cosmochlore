@@ -278,7 +278,7 @@ fn calc_vol(centre: Vector3<f64>, ligands: &[Vector3<f64>; 6]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::shapes;
+    use crate::cshm::test_utils::structure_from_shape;
     use crate::xyz::parse_xyz;
 
     #[test]
@@ -308,18 +308,18 @@ mod tests {
     fn calc_vol_matches_known_polyhedron_volumes() {
         // Regular octahedron with vertices at unit distance along the axes: two square
         // pyramids of base area 2 and height 1, so 2 * (1/3 * 2 * 1) = 4/3.
-        let octahedron = shapes::structure_from_shape(6, 2);
+        let octahedron = structure_from_shape(6, 2);
         assert!((calculate_od(&octahedron).unwrap().vol - 4.0 / 3.0).abs() < 1e-6);
 
         // Ideal (uniform) trigonal prism, cross-checked against `scipy.spatial.ConvexHull`.
-        let prism = shapes::structure_from_shape(6, 3);
+        let prism = structure_from_shape(6, 3);
         assert!((calculate_od(&prism).unwrap().vol - 2.25).abs() < 1e-3);
     }
 
     #[test]
     fn ideal_trigonal_prism_gives_the_maximum_theta() {
-        let octahedron = shapes::structure_from_shape(6, 2);
-        let prism = shapes::structure_from_shape(6, 3);
+        let octahedron = structure_from_shape(6, 2);
+        let prism = structure_from_shape(6, 3);
 
         // Theta is 0 for the perfectly staggered (Oh) octahedron...
         let octahedron_theta = calculate_od(&octahedron).unwrap().theta;
