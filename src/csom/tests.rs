@@ -473,6 +473,8 @@ fn in_plane_period_is_the_spacing_of_the_vertical_elements() {
     expect("D2h", 4.0);
     expect("D3h", 6.0);
     expect("D6h", 12.0);
+    expect("D7h", 14.0);
+    expect("D8h", 16.0);
     expect("D2d", 4.0);
     expect("D4d", 8.0);
     // Cubic groups: z is a C2 axis of T/Td and a C4 axis of O/Oh, but both only repeat every
@@ -487,7 +489,7 @@ fn in_plane_period_is_the_spacing_of_the_vertical_elements() {
     expect("Ih", 5.0);
 
     // Every operation is about z: the in-plane angle is irrelevant.
-    for pg in ["E", "Cs", "Ci", "C2", "C6", "S4", "C3h"] {
+    for pg in ["E", "Cs", "Ci", "C2", "C6", "C7", "S4", "C3h"] {
         assert!(
             period(pg).is_none(),
             "{pg} should be invariant under any spin about z"

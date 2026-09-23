@@ -47,20 +47,18 @@ pub(crate) fn fibonacci_hemisphere(n: usize) -> Vec<Vector3<f64>> {
         .collect()
 }
 
-/// In-plane period of a point group: the smallest spin about `z` that carries the group's
-/// operation set onto itself (by conjugation), so that two orientations of a structure
-/// differing by that spin score identically.
+/// In-plane period of a point group: the smallest spin about `z` that maps its operations
+/// onto themselves by conjugation. Orientations of a structure that differ by this spin score
+/// the same.
 ///
-/// `None` when the group is invariant under *every* spin about `z`, which is the case when all
-/// of its operations are rotations or rotoreflections about `z` (C_n, S_n, C_nh, Cs, Ci, E):
-/// the in-plane angle then does not affect the deviation at all.
+/// `None` when every operation is a rotation or rotoreflection about `z` (C_n, S_n, C_nh, Cs,
+/// Ci and E). Any spin leaves such a group unchanged, so the in-plane angle does not matter.
 pub(crate) fn in_plane_period(ops: &[SymmetryOperation]) -> Option<f64> {
     const EPS: f64 = 1e-9;
 
     let matrices: Vec<Matrix3<f64>> = ops.iter().map(|(_, m)| to_matrix3(*m)).collect();
 
-    // An operation commutes with every spin about z iff it is a rotation or rotoreflection
-    // about z itself: [[c, -s, 0], [s, c, 0], [0, 0, +-1]].
+    // Rotation or rotoreflection about z: [[c, -s, 0], [s, c, 0], [0, 0, +-1]].
     let is_axial = |m: &Matrix3<f64>| {
         m[(0, 2)].abs() < EPS
             && m[(1, 2)].abs() < EPS
@@ -73,7 +71,7 @@ pub(crate) fn in_plane_period(ops: &[SymmetryOperation]) -> Option<f64> {
         return None;
     }
 
-    // Order of the principal axis: the finest proper rotation about z in the table.
+    // Order n of the principal axis, read off the smallest proper rotation about z.
     let n = matrices
         .iter()
         .filter(|m| is_axial(m) && (m[(2, 2)] - 1.0).abs() < EPS)
@@ -81,8 +79,6 @@ pub(crate) fn in_plane_period(ops: &[SymmetryOperation]) -> Option<f64> {
         .filter(|&angle| angle > EPS)
         .fold(1usize, |n, angle| n.max((TAU / angle).round() as usize));
 
-    // Some tables (I, Ih, D7h, D8h) list their off-axis matrices to three decimals only, so
-    // membership is tested well above that precision.
     let maps_group_onto_itself = |angle: f64| {
         let spin = *Rotation3::from_axis_angle(&Vector3::z_axis(), angle).matrix();
         let spin_inv = spin.transpose();
@@ -90,14 +86,14 @@ pub(crate) fn in_plane_period(ops: &[SymmetryOperation]) -> Option<f64> {
             let conjugated = spin * m * spin_inv;
             matrices
                 .iter()
-                .any(|other| (conjugated - other).norm() < 1e-2)
+                .any(|other| (conjugated - other).norm() < EPS)
         })
     };
 
-    // The period is 2*pi/q for the largest q that works: at least n, since spinning by C_n
-    // itself changes nothing, and at most 2n, the spacing of the vertical planes and C2 axes
-    // of the dihedral groups (it is n, not 2n, for O and Oh, whose in-plane axes alternate
-    // between C4 and C2 and so only repeat every 90 degrees).
+    // The period is 2pi/q for the largest q that works. q is at least n, since spinning by C_n
+    // changes nothing, and at most 2n, the spacing of vertical planes and perpendicular C2
+    // axes. O, Oh, I and Ih stop at n: the elements around their principal axis alternate in
+    // kind.
     let q = (1..=2 * n)
         .rev()
         .find(|&q| maps_group_onto_itself(TAU / q as f64))
