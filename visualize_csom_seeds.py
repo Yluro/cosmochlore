@@ -26,23 +26,14 @@ Usage:
 
 import argparse
 import math
-import re
 from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-PGS_RS = Path(__file__).resolve().parent / "src" / "data" / "pgs.rs"
+from check_pointgroup_tables import parse as parse_pointgroup_tables
 
-# The named constants pgs.rs uses inside its matrices.
-CONSTANTS = {
-    "SQRT_3_DIV_2": math.sqrt(3) / 2,
-    "COS_72": math.cos(math.radians(72)),
-    "SIN_72": math.sin(math.radians(72)),
-    "COS_144": -math.cos(math.radians(144)),  # pgs.rs stores the magnitude, 0.809
-    "SIN_144": math.sin(math.radians(144)),
-    "FRAC_1_SQRT_2": 1 / math.sqrt(2),
-}
+PGS_RS = Path(__file__).resolve().parent / "src" / "data" / "pgs.rs"
 
 Z = np.array([0.0, 0.0, 1.0])
 X = np.array([1.0, 0.0, 0.0])
@@ -52,23 +43,10 @@ X = np.array([1.0, 0.0, 0.0])
 
 def read_point_group(name):
     """The operation matrices of `name` as pgs.rs::get_pointgroup returns them (E excluded)."""
-    source = PGS_RS.read_text(encoding="utf-8")
-    static = f"POINTGROUP_{name.upper()}"
-    match = re.search(rf"pub static {static}: [^=]+= &\[(.*?)^\];", source, re.S | re.M)
-    if match is None:
-        raise SystemExit(f"{name}: no {static} table in {PGS_RS}")
-
-    def value(token):
-        token = token.strip()
-        sign = -1.0 if token.startswith("-") else 1.0
-        token = token.lstrip("-")
-        return sign * (CONSTANTS[token] if token in CONSTANTS else float(token))
-
-    matrices = []
-    for row_block in re.finditer(r'\("[^"]*",\s*\[(\[.*?\]),\s*(\[.*?\]),\s*(\[.*?\])\]\)', match.group(1), re.S):
-        rows = [[value(t) for t in row.strip("[]").split(",")] for row in row_block.groups()]
-        matrices.append(np.array(rows))
-    return matrices
+    _, arms, tables, errors = parse_pointgroup_tables(PGS_RS.read_text(encoding="utf-8"))
+    if errors or arms.get(name) not in tables:
+        raise SystemExit(f"{name}: cannot read its table from {PGS_RS} {errors}")
+    return [m for _, m in tables[arms[name]]]
 
 
 # --- The same maths as seeding.rs -----------------------------------------------------------
@@ -138,7 +116,7 @@ def in_plane_period(matrices):
 
     def maps_group_onto_itself(angle):
         spin = spin_about_z(angle)
-        return all(any(np.linalg.norm(spin @ m @ spin.T - other) < 1e-2 for other in matrices)
+        return all(any(np.linalg.norm(spin @ m @ spin.T - other) < eps for other in matrices)
                    for m in matrices)
 
     for q in range(2 * n, 0, -1):
