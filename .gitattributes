@@ -1,4 +1,5 @@
 generate_builtin_shapes_rs.py export-ignore
+check_pointgroup_tables.py export-ignore
 visualize_csom_seeds.py export-ignore
 src/data/shapes/*.yaml export-ignore
 PLAN.md export-ignore
