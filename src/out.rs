@@ -207,13 +207,13 @@ pub fn print_odis_table(result: &OdisResult, file: &str) {
 
 pub fn print_csom_table(results: &[CsomResult], file: &str) {
     println!("\nInput file: {}", file);
-    println!("{}", "=".repeat(24));
-    println!(" {:<12} {:<10}", "Point group", "Deviation");
-    println!("{}", "-".repeat(24));
+    println!("{}", "=".repeat(20));
+    println!(" {:<12} {:<10}", "Point group", "CSoM");
+    println!("{}", "-".repeat(20));
     for result in results {
         println!(" {:<12} {:<10.3}", result.point_group, result.deviation);
     }
-    println!("{}", "-".repeat(24));
+    println!("{}", "-".repeat(20));
 }
 
 pub fn write_odis_csv(result: OdisResult, file_name: &str) -> Result<(), std::io::Error> {
