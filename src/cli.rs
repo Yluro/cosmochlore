@@ -108,9 +108,7 @@ pub struct CsomArgs {
     #[arg(short = 'g', long = "ignore")]
     pub ignore_labels: bool,
 
-    /// Number of candidate symmetry-axis directions, spread over a Fibonacci hemisphere, used
-    /// to seed the axis search. Each one is refined at every in-plane orientation the point
-    /// group tells apart.
+    /// Number of starting candidate symmetry-axis directions.
     /// It is recommended not to change this parameter.
     #[arg(
         short = 's',
@@ -133,8 +131,8 @@ pub struct CsomArgs {
     /// Tolerance of the Nelder-Mead optimization for finding optimal value.
     /// It is recommended not to change this parameter.
     #[arg(
-        short = 'e',
-        long = "tol",
+        short = 'T',
+        long = "tolerance",
         default_value_t = OptimiserSettings::default().tolerance,
         value_name = "TOLERANCE"
     )]
