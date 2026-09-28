@@ -13,3 +13,6 @@
 *_operated.xyz
 *_merged.mol2
 *_ideal.xyz
+
+# Python bytecode from the helper scripts
+__pycache__/
