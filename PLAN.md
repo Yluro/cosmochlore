@@ -171,6 +171,69 @@ Tier 3 (larger, highest scientific return):
 14. `OPEN` Automatic point-group detection — Nielsen 2024. D4's `todo!()` is gone, but the
     all-47-groups default is 47x the work of one group; detection is what makes it cheap.
 15. `OPEN` Steric descriptors (%Vbur, cone angle) — Cavallo/Tolman
+17. `OPEN` ADP-aware measures (thermal significance) — Munguba … Simas, *ACS Omega* 2025, 10,
+    47189 (doi 10.1021/acsomega.5c05878). Timaeus can pull each atom's ADPs from Olex2.
+    - **What the paper does**: it is a *library-level* criterion, not per-structure propagation.
+      Uiso = tr(U_cart)/3 (eq 6); radius r = √Uiso at 50 % probability coverage (c = 1.5382,
+      eq 5 — inferred from their E ≈ 0.12; neither paper nor SI states the formula, the SI only
+      gives the threshold 0.1541), divided by the M–L bond length. Pooled over
+      ~42k CSD complexes, fitted log-normal (CN-6 μ = −2.128, σ = 0.251; CN-7 μ = −2.208,
+      σ = 0.269), cutoff r_max = E + SD ≈ 85th percentile: **0.154 (CN-6), 0.145 (CN-7)**.
+      Two shapes (unit sphere, RMSD-aligned with Marques et al.'s algorithm) are *thermally
+      indistinguishable* if every matched vertex pair is ≤ r_max apart. A structure is accepted as
+      shape P if RMSD(structure, P) < r_max (their HABLII DAC-6 0.121, Eu HECU-7 0.055).
+    - **Input**: `Atom` gains `adp: Option<Matrix3<f64>>`. Parse 10-column xyz
+      (`label x y z U11 U22 U33 U23 U13 U12`, SHELX/CIF order) or 5-column `Uiso`; ADPs on all atoms
+      or on none; Cholesky check rejects non-positive-definite tensors. Timaeus exports **U_cart
+      in the xyz frame** (cctbx `adp_utils.u_cif_as_u_cart`), so cosmochlore never needs the cell.
+      Plain 4-column files keep byte-identical output.
+    - **Step 1, paper-faithful per-vertex test** (cheap, no sampling): `CShMResult.xyz` already holds
+      the ideal shape fitted onto the structure in Å, so compare each ligand's
+      |q_i − ideal_{perm(i)}| with its own 1.5382·√Uiso_i (or a Mahalanobis distance in U_i for the
+      anisotropic version). Report per shape: max ratio and "within thermal ellipsoids yes/no".
+      This uses the structure's own ADPs instead of the CSD-wide r_max.
+    - **Step 2, `--rmax` fallback without ADPs**: same test against the paper's constants (scaled by
+      mean bond length) for CN-6/7; plus an RMSD column alongside CShM, since the paper's criterion
+      is RMSD, not CShM.
+    - **Step 3, Monte Carlo propagation**: generic `thermal::propagate(atoms, n, seed, f)` sampling
+      x_i = μ_i + chol(U_i)·z. CShM with the permutation fixed from the mean-structure search
+      (per sample only Kabsch, `linalg.rs`), optional full re-search to report permutation-flip
+      rate. Outputs mean/σ/P05/P95 and a *thermal floor* (the fitted ideal shape perturbed by the same
+      ADPs). The same hook serves csom (fixed best axis) and odis (ζ, Δ, Σ, Θ). Analytic delta-method
+      propagation is not enough on its own: ∂S/∂q = 0 at a perfect match. Caveats: CShM is biased up
+      under noise (report S(mean) and the sampled mean separately); independent sampling ignores
+      rigid-body correlation (TLS/rigid-bond is a later refinement). Flags `--samples`, `--seed`;
+      new deps `rand`, `rand_distr` (and `rayon`, see C8).
+    - **Output**: σ/P95/floor/ellipsoid columns in the table and CSV only when ADPs are present.
+18. `OPEN` Thermally distinguishable shape library (same paper; SI `ao5c05878_si_001.zip`).
+    - **Source**: `ii - TDPSs_SHAPE_ref_files/*.ref` (SHAPE format: symbol, name, point group, N
+      vertices, centre `0 0 0` last). 12 files: DAC-6 (C2v); DPAC-7 (Cs), DTT-7 (C3v), FPSS-7 (C2v),
+      HECU-7 (C2v), HEOB-7 (Cs), TSPPY-7 (Cs), TrBCSPY-7 (C2v), Δ/Λ-SHEAPR-7 (C2), Δ/Λ-THTB-7 (C2).
+      Prefer these over compendium Tables S12/S13: those are 4 decimals and have typos (S12 prints
+      OC-6 with 0.1 instead of 1.0).
+    - **Full TDPS sets** (from the RMSD CSV headers): CN-6 = OC, TPR, PPY, DAC, HP; CN-7 = COC, CTPR,
+      DTT, ETPY, HECU, HEOB, FPSS, HPY, TSPPY, PBPY, SHEAPR Δ/Λ, THTB Δ/Λ, DPAC, TrBCSPY, HP.
+      cosmochlore already has OC/TPR/PPY/HP-6 (+ JPPY-6) and COC/CTPR/HPY/PBPY/HP-7 (+ JPBPY-7,
+      JETPY-7). Add DAC-6 and the ten new CN-7 files. The paper's ETPY-7 has no `.ref`: check
+      whether it is SHAPE's JETPY-7 before adding anything.
+    - **Precision**: DAC-6 is given to only 4 decimals, and HECU-7 carries ~6e-5 off-axis residue,
+      so the vertices are not exactly symmetric. Import verbatim first so the SHAPE values
+      reproduce, then decide whether to symmetrise to full f64 like B6 (and note it in the yaml).
+    - **Chirality**: cosmochlore's CShM sums all three singular values with no det(R) sign fix, so it
+      allows improper rotations. That matches SHAPE ("does not distinguish between chiral
+      enantiomers"), so Δ and Λ entries would score identically. Either ship one entry per pair, or
+      add a proper-rotations-only mode (flip the smallest singular value when det(UVᵀ) < 0; the B&B
+      nuclear-norm bound stays a valid upper bound) and ship both.
+    - **Regression fixtures** (in the SI `.dat` files, centre first as cosmochlore expects):
+      HABLII Th + 6 C → DAC-6 CShM 1.351, RMSD 0.1209; HOYGEL Eu + I + 6 N → HECU-7 CShM
+      0.607, RMSD 0.0543. HOYGEL's `.dat` has the title `HABLII_0` by copy-paste; the geometry is Eu.
+    - **Validation data**: `iv - TDPSs_RMSD_Spreadsheets` has per-shape RMSDs for 40,845 CN-6 and
+      2,841 CN-7 CSD metal sites. It gives refcodes only, no coordinates, so it is only useful with
+      CSD access (e.g. through Timaeus). The CN-7 header repeats `lambda-SHEAPR-7,alpha-THTB-7`
+      twice where it should be Δ/Λ, and every row has a trailing comma: map columns by position.
+    - **Optional**: a `shapes --clusters` check that runs the pairwise r_max test over the built-in
+      library, so thermally indistinguishable references (the K_n clusters of Figures 7–8;
+      pairwise distances in compendium Tables S18/S19) are flagged in the output.
 
 Tier 0:
 16. `HALF DONE` Trajectory input + auto coordination-sphere extraction. `--center` done; multi-frame `.xyz` and `--cn <n>` cutoff remain.
@@ -187,6 +250,7 @@ Tier 0:
 6. A4, D6 residue, D1, D2, B8, B9, C14 profile — the small residue
 7. Measure 1 (paths/shape maps)
 8. Rest of measure 16, then measure 14 (which retires the all-47 default), then 13
+9. Measures 17–18 (ADPs, TDPS library): 17 step 1 + 18 first, they need no sampling
 
 Repo: [Yluro/cosmochlore](https://github.com/Yluro/cosmochlore). Line refs point at
 `1ea345a` and drift as code changes — verify with grep before trusting a line number.
