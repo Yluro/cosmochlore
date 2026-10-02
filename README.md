@@ -17,7 +17,7 @@ Cosmochlore includes three measures covering a different ways of measuring how d
 - **`odis`** — computes the **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters.
 
 ### Future Features
- - Include Cosmochlore into [SymmetryMeasurements](https://github.com/Yluro/symmetry-measurements/tree/master).
+ - Include Cosmochlore into [Timeo](https://github.com/Yluro/timeo).
  - Automatic point-group detection for `csom` (currently `--pg` selects which of the 47 supported point groups to test, and all of them are tested when it is omitted).
 
 _[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
