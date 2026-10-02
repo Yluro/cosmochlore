@@ -172,7 +172,7 @@ Tier 3 (larger, highest scientific return):
     all-47-groups default is 47x the work of one group; detection is what makes it cheap.
 15. `OPEN` Steric descriptors (%Vbur, cone angle) — Cavallo/Tolman
 17. `OPEN` ADP-aware measures (thermal significance) — Munguba … Simas, *ACS Omega* 2025, 10,
-    47189 (doi 10.1021/acsomega.5c05878). Timaeus can pull each atom's ADPs from Olex2.
+    47189 (doi 10.1021/acsomega.5c05878). Timeo can pull each atom's ADPs from Olex2.
     - **What the paper does**: it is a *library-level* criterion, not per-structure propagation.
       Uiso = tr(U_cart)/3 (eq 6); radius r = √Uiso at 50 % probability coverage (c = 1.5382,
       eq 5 — inferred from their E ≈ 0.12; neither paper nor SI states the formula, the SI only
@@ -184,7 +184,7 @@ Tier 3 (larger, highest scientific return):
       shape P if RMSD(structure, P) < r_max (their HABLII DAC-6 0.121, Eu HECU-7 0.055).
     - **Input**: `Atom` gains `adp: Option<Matrix3<f64>>`. Parse 10-column xyz
       (`label x y z U11 U22 U33 U23 U13 U12`, SHELX/CIF order) or 5-column `Uiso`; ADPs on all atoms
-      or on none; Cholesky check rejects non-positive-definite tensors. Timaeus exports **U_cart
+      or on none; Cholesky check rejects non-positive-definite tensors. Timeo exports **U_cart
       in the xyz frame** (cctbx `adp_utils.u_cif_as_u_cart`), so cosmochlore never needs the cell.
       Plain 4-column files keep byte-identical output.
     - **Step 1, paper-faithful per-vertex test** (cheap, no sampling): `CShMResult.xyz` already holds
@@ -229,7 +229,7 @@ Tier 3 (larger, highest scientific return):
       0.607, RMSD 0.0543. HOYGEL's `.dat` has the title `HABLII_0` by copy-paste; the geometry is Eu.
     - **Validation data**: `iv - TDPSs_RMSD_Spreadsheets` has per-shape RMSDs for 40,845 CN-6 and
       2,841 CN-7 CSD metal sites. It gives refcodes only, no coordinates, so it is only useful with
-      CSD access (e.g. through Timaeus). The CN-7 header repeats `lambda-SHEAPR-7,alpha-THTB-7`
+      CSD access (e.g. through Timeo). The CN-7 header repeats `lambda-SHEAPR-7,alpha-THTB-7`
       twice where it should be Δ/Λ, and every row has a trailing comma: map columns by position.
     - **Optional**: a `shapes --clusters` check that runs the pairwise r_max test over the built-in
       library, so thermally indistinguishable references (the K_n clusters of Figures 7–8;
