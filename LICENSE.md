@@ -1,3 +1,11 @@
+Cosmochlore
+Copyright (C) 2026 José Serrano Guarinos
+
+This program is free software licensed under the GNU General Public License,
+version 3 only. The full license text follows.
+
+------------------------------------------------------------------------
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
