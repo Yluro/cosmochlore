@@ -1,12 +1,12 @@
 """
-Generate src/data/builtin_shapes.rs from every shapes_*.yaml file in a directory.
+Generate src/data/standard_shapes.rs from every shapes_*.yaml file in a directory.
 
 This reads the same YAML files produced by build_yaml_for_folder.py and emits
 plain Rust code that constructs a Vec<ReferenceShape> directly — no YAML
 parsing at runtime for the built-in shape library.
 
 Usage:
-    py generate_builtin_shapes_rs.py src/data/shapes src/data/builtin_shapes.rs
+    py generate_builtin_shapes_rs.py src/data/shapes src/data/standard_shapes.rs
 """
 
 import re
@@ -68,19 +68,22 @@ def parse_yaml_file(path: Path):
     return entries
 
 
-# Named constants worth emitting exactly instead of as truncated decimal literals,
-# keyed by their value rounded to the precision the source YAML files are written at.
-EXACT_CONSTANTS = {
-    round(0.70710678118654752440, 8): "std::f64::consts::FRAC_1_SQRT_2",
-    round(1.41421356237309504880, 8): "std::f64::consts::SQRT_2",
-}
+# Named constants worth emitting exactly instead of as truncated decimal literals.
+# The source YAML files are written at 6 to 8 decimal places, so a value matches a
+# constant when it agrees with it to 6 decimal places.
+EXACT_CONSTANTS = [
+    (0.70710678118654752440, "std::f64::consts::FRAC_1_SQRT_2"),
+    (1.41421356237309504880, "std::f64::consts::SQRT_2"),
+    (1.61803398874989484820, "std::f64::consts::GOLDEN_RATIO"),
+]
+EXACT_CONSTANT_TOLERANCE = 5e-7
 
 
 def rust_component(value: float) -> str:
-    name = EXACT_CONSTANTS.get(round(abs(value), 8))
-    if name is None:
-        return repr(value)
-    return f"-{name}" if value < 0 else name
+    for constant, name in EXACT_CONSTANTS:
+        if abs(abs(value) - constant) < EXACT_CONSTANT_TOLERANCE:
+            return f"-{name}" if value < 0 else name
+    return repr(value)
 
 
 def rust_coord(coord) -> str:
