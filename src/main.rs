@@ -4,6 +4,7 @@ mod csom;
 mod data;
 mod error;
 pub mod geometry;
+mod gidx;
 mod odis;
 mod out;
 mod xyz;
@@ -24,6 +25,7 @@ fn main() -> Result<(), Error> {
         Command::Cshm(cshm_args) => cshm::cshm_main(cshm_args),
         Command::Csom(csom_args) => csom::csom_main(csom_args),
         Command::Odis(odis_args) => odis::main_odis(odis_args),
+        Command::Gidx(gidx_args) => gidx::main_gidx(gidx_args),
     };
 
     if let Err(err) = run {
