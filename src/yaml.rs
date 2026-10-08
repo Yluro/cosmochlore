@@ -147,6 +147,14 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
                         file: file.to_string(),
                         line_no,
                     })?;
+                // Rust parses "nan" and "inf" as floats too, but no shape has them.
+                if !x.is_finite() {
+                    return Err(YamlParseError::NonFiniteCoordinate {
+                        file: file.to_string(),
+                        line_no,
+                        value: part.trim().to_string(),
+                    });
+                }
                 numbers.push(x);
             }
             let xyz = [numbers[0], numbers[1], numbers[2]];
@@ -265,6 +273,12 @@ pub enum YamlParseError {
     UnexpectedCoordinate { file: String, line_no: usize }, // Coordinate appears when Section::Unset
     #[error("bad coordinates in file {file} at line {} ", line_no + 1)]
     BadCoordinate { file: String, line_no: usize }, // wrong coordinate format
+    #[error("non-finite coordinate '{value}' in file {file} at line {}: coordinates must be finite", line_no + 1)]
+    NonFiniteCoordinate {
+        file: String,
+        line_no: usize,
+        value: String,
+    }, // coordinate is NaN or infinite
 }
 
 // TESTS
@@ -385,6 +399,60 @@ TEST-2:
             }
             other => panic!("unexpected result: {:?}", other),
         }
+    }
+
+    #[test]
+    fn non_finite_coordinate_error() {
+        for value in ["nan", "NaN", "inf", "-inf", "Infinity", "-infinity"] {
+            let input = format!(
+                "\
+TEST-2:
+  symmetry: D3h
+  name: Test Trigonal
+  vertices:
+    - [1.0, {value}, 0.0]
+    - [-0.5, 0.87, 0.0]
+    - [-0.5, -0.87, 0.0]
+  center:
+    - [0.0, 0.0, 0.0]
+"
+            );
+            let result = parse_yaml_str(&input, "test.yaml");
+
+            match result {
+                Err(YamlParseError::NonFiniteCoordinate {
+                    file,
+                    line_no,
+                    value: v,
+                }) => {
+                    assert_eq!(file, "test.yaml");
+                    assert_eq!(line_no, 4);
+                    assert_eq!(v, value);
+                }
+                other => panic!("{value}: unexpected result: {:?}", other),
+            }
+        }
+    }
+
+    #[test]
+    fn non_finite_centre_coordinate_error() {
+        let input = "\
+TEST-2:
+  symmetry: D3h
+  name: Test Trigonal
+  vertices:
+    - [1.0, 0.0, 0.0]
+    - [-0.5, 0.87, 0.0]
+    - [-0.5, -0.87, 0.0]
+  center:
+    - [0.0, 0.0, inf]
+";
+        let result = parse_yaml_str(input, "test.yaml");
+
+        assert!(matches!(
+            result,
+            Err(YamlParseError::NonFiniteCoordinate { line_no: 8, .. })
+        ));
     }
 
     #[test]
