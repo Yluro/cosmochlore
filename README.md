@@ -1,6 +1,6 @@
 # Cosmochlore
 
-**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through three complementary analyses: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM) and OctaDist-style octahedral distortion parameters.
+**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through various complementary analyses, including: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM), OctaDist-style octahedral distortion parameters and the τ4/τ4′/τ5/τ6 geometry indices.
 
 It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust, alongside an original implementation of continuous symmetry operation measures inspired by the works of T. J. Sørensen _et al._<sup>3</sup> and the octahedral distortion parameters popularized by [`OctaDist`](https://octadist.github.io/)<sup>4</sup>. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. 
 
@@ -10,14 +10,15 @@ The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.or
 
 ## Features
 
-Cosmochlore includes three measures covering a different ways of measuring how distorted a structure is:
+Cosmochlore includes different ways of measuring how distorted a structure is:
 
 - **`cshm`** — computes the **Continuous Shape Measure (CShM)** between a structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 90 built-in reference polyhedra are included (see [Reference Polyhedra](#reference-polyhedra)), and user-defined ones can be supplied via YAML.
 - **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)). A value of `CSoM = 0` means that the symmetry of a given point group is perfectly conserved in the structure.
 - **`odis`** — computes the **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters.
+- **`gidx`** — computes the **Geometry Indices** τ4 and τ4′ (four-coordinate centres), τ5 (five-coordinate centres) and τ6 (six-coordinate centres).
 
 ### Future Features
- - Include Cosmochlore into [Timeo](https://github.com/Yluro/timeo).
+ - Include Cosmochlore into [Timeo](https://github.com/Yluro/timeo). _Done_
  - Automatic point-group detection for `csom` (currently `--pg` selects which of the 47 supported point groups to test, and all of them are tested when it is omitted).
 
 _[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
@@ -53,6 +54,7 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 | `cshm`  | Continuous shape measures calculation.                 |
 | `csom`  | Continuous symmetry operation measures calculation.    |
 | `odis`  | Octahedral distortion analysis.                        |
+| `gidx`  | Geometry indices (τ4, τ4′, τ5, τ6) calculation.        |
 | `help`  | Print the help or the help of the given subcommand(s). |
 
 ### Arguments:
@@ -99,6 +101,15 @@ _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 | `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                          |
 
 _Note: `odis` requires a centered structure with exactly one central atom and six ligands (7 atoms total in the `.xyz` file)._
+
+#### Optional arguments for `gidx`:
+
+| Flag                 | Value        | Description                                                                                                                                   |
+|----------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Defaults to the first atom (position 1) when omitted. |
+| `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                      |
+
+_Note: `gidx` requires a centered structure with exactly one central atom and four, five or six ligands (5, 6 or 7 atoms total in the `.xyz` file). The indices that apply are chosen from the number of ligands._
 
 
 ### Example usage of `cshm`
@@ -230,6 +241,40 @@ Writing output table to FeHS_csom_table.csv...
 Program finished in 922.3647ms
 ````
 Passing the `-t`/`--table` flag writes the distortion parameters to a `<NAME>_odis_table.csv`. Passing the `-f`/`--full` flag additionally computes the CShM against the ideal octahedron and trigonal prism (`OC-6`, `TPR-6`) and the CSoM against the eight point groups most commonly seen in octahedral distortions (`Oh`, `D4h`, `D3h`, `D3d`, `D2h`, `C4v`, `C3v`, `C2v`).
+
+### Example usage of `gidx`
+
+Given the following `ML5.xyz` file, a five-coordinate copper centre halfway between a trigonal bipyramid and a square pyramid:
+````xyz
+6
+Distorted five-coordinate copper centre (halfway between trigonal bipyramidal and square pyramidal)
+Cu    0.00000    0.00000    0.00000
+N1    0.35000    0.05000    2.00000
+N2   -0.30000   -0.10000   -2.05000
+N3    2.10000    0.00000    0.10000
+N4   -1.78000    1.02000   -0.05000
+N5   -0.56000   -2.08000    0.00000
+````
+
+````cmd
+cosmochlore gidx ML5.xyz -t
+````
+
+Will output:
+
+````output
+Input file: ML5.xyz
+==================================
+ Geometry indices (CN = 5)
+----------------------------------
+ Alpha                150.18  deg
+ Beta                 177.91  deg
+----------------------------------
+ Tau5                  0.462
+==================================
+Writing output table to ML5_gidx_table.csv...
+````
+Passing the `-t`/`--table` flag writes the angles and the indices to a `<NAME>_gidx_table.csv`, with the columns `alpha,beta,tau4,tau4_prime` for four ligands, `alpha,beta,tau5` for five and `alpha1,alpha2,alpha3,tau6` for six.
 
 ## Reference Polyhedra
 The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera _et at._<sup>2</sup>
@@ -448,7 +493,7 @@ The main problem to solve for `csom` is that symmetry element operations depend 
 
 The reported CSoM score is the deviation averaged over all every symmetry operations of a given point group.
 
-## The `odis` algorithm
+## Octahedral distortion parameters
 
 `odis` reports the `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion), `theta` (face-twisting distortion, 0° for a perfect octahedron up to 1170° for the ideal trigonal prism) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid), and `volume`, the coordination polyhedron's volume in Å³ (found by decomposing its eight triangular faces into tetrahedra with the ligand centroid as their common apex).
 
@@ -485,4 +530,8 @@ The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argm
 2. Alvarez, S., Alemany, P., Casanova, D., Cirera, J., Llunell, M., & Avnir, D. (2005). Shape maps and polyhedral interconversion paths in transition metal chemistry. _Coordination Chemistry Reviews_, 249(17–18), 1693–1708. https://doi.org/10.1016/j.ccr.2005.03.031
 3. Nielsen, V. R. M., Le Guennic, B., & Sørensen, T. J. (2024). Evaluation of Point Group Symmetry in Lanthanide(III) Complexes: A New Implementation of a Continuous Symmetry Operation Measure with Autonomous Assignment of the Principal Axis. _The Journal of Physical Chemistry A_, 128(28), 5740–5751. https://doi.org/10.1021/acs.jpca.4c00801
 4. Ketkaew, R., Tantirungrotechai, Y., Harding, P., Chastanet, G., Guionneau, P., Marchivie, M., & Harding, D. J. (2021). OctaDist: a tool for calculating distortion parameters in spin crossover and coordination complexes. _Dalton Transactions_, 50(3), 1086–1096. https://doi.org/10.1039/d0dt03988h
+5. Addison, A. W., Rao, T. N., Reedijk, J., van Rijn, J., & Verschoor, G. C. (1984). Synthesis, structure, and spectroscopic properties of copper(II) compounds containing nitrogen–sulphur donor ligands; the crystal and molecular structure of aqua[1,7-bis(N-methylbenzimidazol-2′-yl)-2,6-dithiaheptane]copper(II) perchlorate. _Journal of the Chemical Society, Dalton Transactions_, (7), 1349–1356. https://doi.org/10.1039/DT9840001349
+6. Yang, L., Powell, D. R., & Houser, R. P. (2007). Structural variation in copper(I) complexes with pyridylmethylamide ligands: structural analysis with a new four-coordinate geometry index, τ4. _Dalton Transactions_, (9), 955–964. https://doi.org/10.1039/B617136B
+7. Okuniewski, A., Rosiak, D., Chojnacki, J., & Becker, B. (2015). Coordination polymers and molecular structures among complexes of mercury(II) halides with selected 1-benzoylthioureas. _Polyhedron_, 90, 47–57. https://doi.org/10.1016/j.poly.2015.01.035
+8. Stoeckli-Evans, H., Shankar, M. G., Kumaravel, R., Subashini, A., Sabari Girisun, T., Ramamurthi, K., Kučeráková, M., Dušek, M., & Crochet, A. (2025). Di-μ3-chlorido-1:2:3κ3Cl;2:3:4κ3Cl-di-μ2-chlorido-1:2κ2Cl;3:4κ2Cl-tetrakis[(4-amino-1,5-dimethyl-2-phenyl-2,3-dihydro-1H-pyrazol-3-one-κ2N4,O)chlorido-cadmium(II)] 1.7-hydrate: a new six-coordinate geometry index, τ6. _Acta Crystallographica Section E_, 81(5), 393–400. https://doi.org/10.1107/S2056989025003123
 
