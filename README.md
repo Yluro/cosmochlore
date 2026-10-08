@@ -456,15 +456,17 @@ Additionally, the `odis` module can run `cshm` against the ideal octahedron/trig
 
 ## Acknowledgements
 
-This project reimplements the shape-measure methodology originally developed for the `SHAPE` program and continued in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) by the Electronic Structure Group at the Universitat de Barcelona. Cosmochlore is an independent, from-scratch implementation and is not affiliated with the original authors.
+This project reimplements several shape and symmetry algorithms found in other programs such as: [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib), [Continuous Symmetry Operation Measure](https://github.com/VRMNielsen/Continous-Symmetry-Operation-Measure-Program) and [OctaDist](https://github.com/OctaDist/OctaDist). Cosmochlore is an independent, from-scratch implementation of all these measurements and is not affiliated with any of the original authors.
+
+The dependencies and parts of the code taken from other libraries are explained under the **License** section.
 
 ## License
 
 **The code, binaries and sample tests are provided as is, with no warranty of any kind.** This program is licensed under the GNU General Public Licence v3.0 (GPL-3.0). See the `LICENSE.md` file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
 
-Parts of the `cshm` module are based on `cosymlib` (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT Licence.
+The branch and bound, the partial asignement method and the model shapes of the `cshm` module are based on `cosymlib` (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT Licence.
 
-Parts of the `csom` module are based on 
+The fibonacci seeding and point group tables of the `csom` module are based on `csom_main.py`, Copyright (c) 2024 Villads R. M. Nielsen, Boris Le Guennic and Thomas Just Sørensen, licensed under the GNU General Public Licence v3.0 (GPL-3.0).
 
 Parts of the `odis` module is are based on the [`OctaDist`](https://octadist.github.io/)<sup>3</sup> algorithm, Copyright (c) 2019-2026  Rangsiman Ketkaew et al., licensed under the GNU General Public Licence v3.0 (GPL-3.0).
 
@@ -472,7 +474,7 @@ The program relies on the [`clap`](https://crates.io/crates/clap) crate for argu
 
 The program relies on the [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) crate for the fast linear algebra computations. Licensed under the Apache 2.0 licence.
 
-The program relies on the [`itertools`](https://crates.io/crates/itertools) crate for combinatorial iteration (used, among other things, to enumerate the vertex-pair angles in `odis`). Dual-licensed under the Apache 2.0 or MIT licences.
+The program relies on the [`itertools`](https://crates.io/crates/itertools) crate for combinatorial iteration. Dual-licensed under the Apache 2.0 or MIT licences.
 
 The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argmin-math`](https://crates.io/crates/argmin-math) crates for the Nelder-Mead optimization of the symmetry axis in `csom`. Dual-licensed under the Apache 2.0 or MIT licences.
 
