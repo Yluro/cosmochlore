@@ -499,6 +499,50 @@ The reported CSoM score is the deviation averaged over all every symmetry operat
 
 Additionally, the `odis` module can run `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions.
 
+## Geometry indices
+
+`gidx` reports the geometry indices of a four-, five- or six-coordinate centre. They locate the centre between ideal geometries (or, for six ligands, measure its distance from the octahedron) from its ligand–centre–ligand angles alone, so bond lengths play no part. The coordination number is the number of ligands in the file: four ligands give τ4 and τ4′, five give τ5, six give τ6, and any other count is an error. For four and five ligands, only the two largest of all the angles between pairs of ligands (6 and 10 of them) are used, the largest as β and the second largest as α (so β ≥ α), and both are reported:
+
+- **τ4**<sup>6</sup> = (360° − (α + β)) / (360° − 2θ), with θ = arccos(−1/3) ≈ 109.47° the tetrahedral angle. It is 0 for a square plane and 1 for a regular tetrahedron; the ideal seesaw (0.64) and trigonal pyramid (0.85) lie in between.
+- **τ4′**<sup>7</sup> = (β − α) / (360° − θ) + (180° − β) / (180° − θ), with the same θ. It has the same limits as τ4, but it also weighs the difference between the two angles, so geometries whose α + β add up the same (the ideal seesaw, 180° and 90°, and a tetrahedron flattened to 135° and 135°) no longer share a value.
+- **τ5**<sup>5</sup> = (β − α) / 60°. It is 0 for a square pyramid, where the two trans angles are equal, and 1 for a trigonal bipyramid, where the axial angle is 180° and the largest equatorial one is 120°.
+- **τ6**<sup>8</sup> = (3 × 180° − (α1 + α2 + α3)) / 180°, where α1 ≥ α2 ≥ α3 are the three principal (trans) angles of the six ligands. It is 0 for an octahedron, where all three are 180°, and 0.75 for a trigonal prism whose trans angles are 135°. The paper draws which angles to use for each ideal geometry (the trans pairs of the octahedron, the top-to-bottom pairs of the prism) and gives no rule for a distorted structure, so `gidx` pairs the six ligands into three disjoint pairs whose angles add up to the most: every ligand is used once, and the result is the three largest angles whenever those do not share a ligand. All three angles are reported.
+
+The papers print θ and 360° − 2θ rounded to 109.5° and 141°; `gidx` uses the exact θ, so an ideal tetrahedron gives exactly 1 for both τ4 and τ4′.
+
+### Geometry indices of the ideal shapes
+
+The values `gidx` gives for the [built-in reference shapes](#reference-polyhedra) with four, five and six vertices (centre at the origin), angles in degrees:
+
+| Symbol    | Shape                     | Symmetry       | α      | β      | τ4    | τ4′   |
+|-----------|---------------------------|----------------|--------|--------|-------|-------|
+| `SP-4`    | Square                    | D<sub>4h</sub> | 180.00 | 180.00 | 0.000 | 0.000 |
+| `T-4`     | Tetrahedron               | T<sub>d</sub>  | 109.47 | 109.47 | 1.000 | 1.000 |
+| `SS-4`    | Seesaw                    | C<sub>2v</sub> | 90.00  | 180.00 | 0.638 | 0.359 |
+| `vTBPY-4` | Vacant trigonal bipyramid | C<sub>3v</sub> | 120.00 | 120.00 | 0.851 | 0.851 |
+
+| Symbol    | Shape                          | Symmetry       | α      | β      | τ5    |
+|-----------|--------------------------------|----------------|--------|--------|-------|
+| `PP-5`    | Pentagon                       | D<sub>5h</sub> | 144.00 | 144.00 | 0.000 |
+| `vOC-5`   | Vacant octahedron              | C<sub>4v</sub> | 180.00 | 180.00 | 0.000 |
+| `TBPY-5`  | Trigonal bipyramid             | D<sub>3h</sub> | 120.00 | 180.00 | 1.000 |
+| `SPY-5`   | Spherical square pyramid       | C<sub>4v</sub> | 151.04 | 151.04 | 0.000 |
+| `JTBPY-5` | Johnson trigonal bipyramid J12 | D<sub>3h</sub> | 120.00 | 180.00 | 1.000 |
+
+| Symbol    | Shape                         | Symmetry       | α1     | α2     | α3     | τ6    |
+|-----------|-------------------------------|----------------|--------|--------|--------|-------|
+| `HP-6`    | Hexagon                       | D<sub>6h</sub> | 180.00 | 180.00 | 180.00 | 0.000 |
+| `PPY-6`   | Pentagonal pyramid            | C<sub>5v</sub> | 144.00 | 144.00 | 90.00  | 0.900 |
+| `OC-6`    | Octahedron                    | O<sub>h</sub>  | 180.00 | 180.00 | 180.00 | 0.000 |
+| `TPR-6`   | Trigonal prism                | D<sub>3h</sub> | 135.58 | 135.58 | 135.58 | 0.740 |
+| `JPPY-6`  | Johnson pentagonal pyramid J2 | C<sub>5v</sub> | 144.00 | 144.00 | 90.00  | 0.900 |
+
+A few things to keep in mind when reading them:
+
+- The indices only see angles, so shapes that share their largest angles share their index: the planar `HP-6` scores like the octahedron (τ6 = 0).
+- The uniform trigonal prism (all edges equal) has trans angles of 135.58°, so its τ6 is 0.740. The 0.75 quoted in the paper<sup>8</sup> is for trans angles of exactly 135°.
+- The paper quotes τ6 = 1.00 for a pentagonal pyramid, but it gets there by summing the five angles between adjacent base vectors (5 × 72° = 360°) instead of three trans angles. That sum is 360° whenever the metal lies in the base plane, however distorted the base is. `gidx` uses three trans angles for every geometry, so the ideal pentagonal pyramid, whose trans angles are 144°, 144° and 90°, reads 0.900.
+
 ## Acknowledgements
 
 This project reimplements several shape and symmetry algorithms found in other programs such as: [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib), [Continuous Symmetry Operation Measure](https://github.com/VRMNielsen/Continous-Symmetry-Operation-Measure-Program) and [OctaDist](https://github.com/OctaDist/OctaDist). Cosmochlore is an independent, from-scratch implementation of all these measurements and is not affiliated with any of the original authors.
