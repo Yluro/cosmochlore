@@ -213,11 +213,20 @@ Tier 2 (moderate effort, distinctive):
       least-squares solve, and for a fixed θ the rotation is Kabsch. Polynator's h, w and φ come back
       out of θ for the report. After re-centring, B loses one rank for polar groups (C_n, C_nv): all
       z-parameters can shift together along the axis. Solve with SVD or a pseudo-inverse.
-    - **Prototype check** (numpy, scratch only; `tests/FeHS.xyz`, centre included, exact
-      permutations): every symmetry family reproduces Polynator 1.7.1 to 1e-5 in S. These are the
-      regression fixtures:
+    - **Reference values**: on `tests/FeHS.xyz` (centre included, exact permutations), every
+      symmetry family reproduces Polynator 1.7.1 to 1e-5 in S. These are the regression fixtures,
+      stored in two files:
+      - `tests/dshm_reference.csv`, written by `generate_dshm_fixtures.py`. That script is a numpy
+        reference implementation that reads `pgs.rs` and the YAML shapes. Per family it gives the
+        frame, dof, anchors, the exhaustive S, and the planned search's S from the parent seed
+        alone and from all seeds.
+      - `tests/polynator_reference.csv`, written by `generate_polynator_fixtures.py`, which runs a
+        local Polynator copy headless (`--polynator DIR`; not redistributed). Its header records
+        the Polynator version and the sha256 of `polynator_main.py`.
 
-      | Family: parent, H (frame) | dof | S, prototype | Polynator model | S, Polynator |
+      The Rust tests read these CSVs instead of hard-coding numbers:
+
+      | Family: parent, H (frame) | dof | S, reference | Polynator model | S, Polynator |
       |---|---|---|---|---|
       | OC-6, Oh | 1 | 2.08926 | octahedron[platonic] | 2.08926 |
       | OC-6, D4h | 2 | 2.08550 | tetragonal_bipyramid[4/mmm] | 2.08550 |
@@ -254,10 +263,12 @@ Tier 2 (moderate effort, distinctive):
          that lies inside the family (its *anchors*). The parent alone is **not enough**. TPR-6 under
          C3v (σv through the vertices), seeded from TPR-6, converged to 10.462 even with all 12
          automorphisms. The family also contains OC-6 (bottom triangle with w → −w), and seeding
-         from OC-6's θ reaches the brute-force minimum, 1.99874. Compute anchor θs offline: fit each
+         from OC-6's θ reaches the brute-force minimum, 1.99874 (the `s_parent_seed` and
+         `s_all_seeds` columns of `tests/dshm_reference.csv`). Compute anchor θs offline: fit each
          built-in shape into each family over all permutations (CN ≤ 8; for larger CN, the runtime
          pipeline from every seed found so far) and keep those with S < 1e-8. Store them in the
-         generated data, and pin them with a test.
+         generated data, and pin them with a test. `generate_dshm_fixtures.py` already does this
+         for CN 6 (its `anchors` column; e.g. OC-6/D3 has HP-6, OC-6 and TPR-6).
       2. *Per seed*: B&B (`find_best_permutation`) of the problem against v(θ_seed) gives P0 in the
          family's vertex order. Refit P0 composed with each automorphism of v(θ_seed), and drop
          duplicates modulo H: about |Aut|/|H| fits (3 for OC-6 → D4h, 4 for → D3d, 6 for → D2d).
@@ -268,14 +279,14 @@ Tier 2 (moderate effort, distinctive):
          FeHS.
       4. *Re-assign*: run the B&B with the fitted v(θ) as a rigid reference. If P changes and S
          drops, refit and repeat. Both steps only ever lower S, so this terminates.
-
-      From CN 12 up, every B&B call in steps 2 and 4 follows item 21's `auto` rule: belt matching
-      plus the capped B&B certificate, instead of the plain `find_best_permutation`.
       5. *Guarantees*, each pinned by a test:
          - S_dyn ≤ S_rigid(anchor) for every anchor.
          - S_dyn(child) ≤ S_dyn(parent) for nested families. Warm-start the child with
            θ = B_child⁺·v_parent.
          - The pipeline equals brute force over all permutations on the CN ≤ 7 fixtures.
+
+      From CN 12 up, every B&B call in steps 2 and 4 follows item 21's `auto` rule: belt matching
+      plus the capped B&B certificate, instead of the plain `find_best_permutation`.
     - **Path families** are nonlinear, with one variable t:
       - Bailar, OC-6 ↔ TPR-6 along D3. This is Polynator's bailar_twist[dynamic]: vertices on the
         unit sphere, twist t, h² = (¼ + ½cos t)/(1¼ + ½cos t).
@@ -283,7 +294,8 @@ Tier 2 (moderate effort, distinctive):
       - The minimal-distortion paths of item 1.
 
       The fit is a golden-section/Brent search over t, with the exact rigid CShM at each step (29
-      steps). Prototype on FeHS: t = 0.82862 rad, identical to Polynator, and the same h, w and twist.
+      steps). On FeHS (the Bailar row of `tests/dshm_reference.csv`): t = 0.82862 rad, identical to
+      Polynator, and the same h, w and twist.
       S is 1.20321 against Polynator's 1.19024. The cause: for these "pseudopolyhedron" models,
       Polynator shifts the ligands by (centre − centroid)/N but leaves the centre where it is
       (`vec_to_correct_centering`, `polynator_main.py:1404`). That is not a rigid translation, so
@@ -381,7 +393,11 @@ Tier 2 (moderate effort, distinctive):
 
       Less noise is *slower* at CN 24, because many near-equivalent branches survive the bound.
       Shapes the structure does not resemble cost the most: the bound is weak at high S.
-    - **Algorithm** (all steps checked in a numpy prototype, scratch only):
+      The structures are committed as `tests/belt/<SHAPE>_<NN>.xyz` (NN = noise in %), written by
+      `generate_belt_fixtures.py` with a fixed seed. The node counts came from a temporary
+      instrumented build, so 21b's node counter reproduces them, not the script.
+    - **Algorithm** (steps 1–5 are implemented in numpy in `generate_belt_fixtures.py`, as the
+      reference for the Rust port):
       1. *Reference belts*, once per shape and cacheable. Candidate axes: vertex directions, sums
          of vertex pairs (C2 axes through edge midpoints) and normals of vertex triples (centres
          of planar rings; the C5 of PPR-10 is only found this way). Take the axis with the fewest
@@ -407,7 +423,9 @@ Tier 2 (moderate effort, distinctive):
          `best_perm`, `best_rot_matrix`), under a node budget. If the search completes, the value is
          exact. If the budget runs out, report the belt value as **not proven**. It is always a
          valid upper bound, since it is a real permutation's S.
-    - **Prototype results**:
+    - **Reference results** (`tests/belt_reference.csv`: per structure and built-in shape of its
+      CN, the layers, `s_belt`, cosmochlore's exact `s_exact` with an `exact_status` of ok, timeout
+      or skipped, and the generating permutation's `s_oracle`):
       - **Structure vs its own shape**: the belt matching found the optimum every time, from CN 6 to
         60 (FeHS, PPR-10, JCPPR-11, IC-12, COC-12, DD-20, TCU-24, TOC-24). For TCOC-48 and TIC-60
         it equals the generating permutation, which bounds the optimum. Python time was 0.1–0.5 s
@@ -465,10 +483,15 @@ Tier 2 (moderate effort, distinctive):
       - Scan directions reuse `csom::seeding::fibonacci_hemisphere`, after it moves to a neutral
         module (`CSM_PLAN.md` P0.3).
     - **Tests** (no wall-clock asserts, E3):
-      - Reference belts give the layer sizes listed above.
-      - For every built-in shape ≥ 10 vertices, perturbed with a tiny deterministic generator (no
-        `rand` dependency): belt S equals the certified exact S, with `exact` true.
-      - On all CN ≤ 12 fixtures and shapes, belt S ≥ exact S, i.e. it is always an upper bound.
+      - Reference belts give the layer sizes in the `layers` column of `tests/belt_reference.csv`.
+      - On every `tests/belt/*.xyz` structure against its own shape, belt S equals the certified
+        exact S (with `exact` true), and matches `s_exact` (3 decimals) or, above CN 24, does not
+        exceed `s_oracle`. No `rand` dependency is needed: the structures are committed.
+      - Every row of `tests/belt_reference.csv` with `exact_status = ok` satisfies belt S ≥
+        `s_exact` − 5e-4, i.e. the belt value is always an upper bound.
+      - The Rust port misses no more often than the reference. Count rows where S > `s_exact` +
+        5e-4, with the certificate off, and compare with the same count for `s_belt`. It need not
+        match `s_belt` row by row, since scan directions and tie-breaking may differ.
       - A completed certificate equals plain B&B.
       - Node counts are asserted for the certified CN 20 and 24 cases.
       - CLI: `-m` defaults to `auto`; `auto` and `--match exact` give byte-identical output on the
