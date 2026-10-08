@@ -2,6 +2,7 @@ use crate::cshm::types::CShMResult;
 use crate::csom::prepare::strip_all_labels;
 use crate::csom::types::CsomResult;
 use crate::data::elements::covalent_radius;
+use crate::gidx::GidxResult;
 use crate::odis::OdisResult;
 use nalgebra::{Matrix3, Vector3};
 use std::fs::File;
