@@ -88,7 +88,14 @@ fn parse_xyz_contents(content: &str, center: Option<usize>) -> Result<Structure,
         let mut coords: Vector3<f64> = Vector3::zeros(); // Create array [0.0, 0.0, 0.0]
         for (j, part) in parts[1..4].iter().enumerate() {
             coords[j] = match part.parse::<f64>() {
-                Ok(n) => n,
+                Ok(n) if n.is_finite() => n,
+                // Rust parses "nan" and "inf" as floats too, but no structure has them.
+                Ok(_) => {
+                    return Err(XyzParseError::NonFiniteCoordinate {
+                        line_no: i + 3,
+                        value: part.to_string(),
+                    });
+                }
                 Err(source) => {
                     return Err(XyzParseError::BadCoordinate {
                         line_no: i + 3,
@@ -155,6 +162,8 @@ pub enum XyzParseError {
         line_no: usize,
         source: std::num::ParseFloatError,
     }, // Coordinates are not floats.
+    #[error("non-finite coordinate '{value}' in line {line_no}: coordinates must be finite")]
+    NonFiniteCoordinate { line_no: usize, value: String }, // Coordinate is NaN or infinite.
     #[error("too few atoms: expected at least 3, found {0}")]
     TooFewAtoms(usize), // File contains two atoms or fewer.
     #[error("incorrect number of atoms, expected {header}, found {count}")]
@@ -241,6 +250,24 @@ mod tests {
                 source: _
             })
         ));
+    }
+
+    #[test]
+    fn non_finite_coordinate_error() {
+        for value in ["nan", "NaN", "inf", "-inf", "Infinity", "-infinity"] {
+            let input = format!(
+                "5\ncomment\nC 0.0 0.0 0.0\nH1 0.5 {value} 0.9\nH2 0.2 0.8 -0.6\nH3 0.3 -0.9 -0.4\nH4 0.3 -0.5 1.2 "
+            );
+            let result = parse_xyz_contents(&input, Some(0));
+
+            assert!(
+                matches!(
+                    &result,
+                    Err(XyzParseError::NonFiniteCoordinate { line_no: 4, value: v }) if v == value
+                ),
+                "{value}: {result:?}"
+            );
+        }
     }
 
     #[test]
