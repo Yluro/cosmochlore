@@ -26,6 +26,8 @@ pub enum Command {
     Csom(CsomArgs),
     /// Octahedral Distortion Analysis
     Odis(OdisArgs),
+    /// Geometry Indices for four-, five- and six-coordinate centres (tau4, tau4', tau5, tau6)
+    Gidx(GidxArgs),
 }
 
 #[derive(Args, Debug)]
@@ -163,6 +165,21 @@ pub struct OdisArgs {
     /// Full analysis of the octahedron. Including CShM and CSoM values.
     #[arg(short = 'f', long = "full")]
     pub full: bool,
+
+    /// Write the output table to a .csv file.
+    #[arg(short = 't', long = "table")]
+    pub table: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct GidxArgs {
+    /// Path or name of the .xyz file containing the atom labels and coordinates of the problem shape.
+    pub name: String,
+
+    /// Position (1-based) of the atom in the .xyz table that is the centre of the structure.
+    /// Defaults to the first atom (position 1) when omitted.
+    #[arg(short = 'c', long = "center", value_parser = parse_center_position)]
+    pub center: Option<usize>,
 
     /// Write the output table to a .csv file.
     #[arg(short = 't', long = "table")]
