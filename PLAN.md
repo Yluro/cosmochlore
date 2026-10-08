@@ -155,7 +155,16 @@ Tier 1 (cheap, high value, reuses existing machinery):
    Fitting a structure *to* a path (the path coordinate plus the deviation from the path) is a
    one-variable dynamic shape: do it as 19c.
 2. `SHIPPED` Θ face-twist + octahedral volume — Ketkaew 2021
-3. `OPEN` τ4/τ4'/τ5 geometry indices for CN=4,5 — Addison 1984 et al.
+3. `SHIPPED` τ4/τ4'/τ5/τ6 geometry indices for CN=4,5,6 — Addison 1984, Yang 2007, Okuniewski 2015,
+   Stoeckli-Evans 2025. The `gidx` command (`src/gidx/`, `mod.rs` + `calc.rs`, laid out like `odis`): τ4 and τ4'
+   for four ligands, τ5 for five, τ6 for six, plus the angles they are built from (two largest for CN 4/5; for
+   CN 6 the three trans angles, chosen as the disjoint pairing of the ligands with the greatest angle sum, since the
+   paper leaves the choice open). Pinned on the ideal built-in shapes and on `tests/ML4.xyz`, `tests/ML5.xyz` and
+   `tests/FeHS.xyz`; the README lists the values for every 4-, 5- and 6-vertex ideal shape. Uses the exact tetrahedral
+   angle arccos(−1/3) rather than the papers' rounded 109.5°/141°, so an ideal tetrahedron gives exactly 1. The
+   paper's 1.00 for a pentagonal pyramid sums the five adjacent base angles (5 × 72°) rather than three trans angles;
+   gidx uses three trans angles for every geometry (ideal shape: 0.900). The paper's own Cd centres (τ6 0.27, τ5 0.31)
+   are reproduced from its SI: `tests/CdONCl4.xyz`, `tests/CdONCl3.xyz`.
 4. `OPEN` Classic distortion params (⟨λ⟩, σ², Baur D, ECoN) — Robinson 1971 et al.
 5. `OPEN` Bond-valence sum — Brown & Altermatt 1985
 6. `OPEN` Gyration-tensor descriptors (asphericity, κ²) — reuses `linalg.rs`
