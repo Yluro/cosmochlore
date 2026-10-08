@@ -206,6 +206,58 @@ pub fn print_odis_table(result: &OdisResult, file: &str) {
     println!("{}", "=".repeat(34));
 }
 
+fn print_gidx_angle(label: &str, angle: f64) {
+    println!("{:<16}{:>12.2}  {:<12}", label, angle, "deg");
+}
+
+fn print_gidx_index(label: &str, index: f64) {
+    println!("{:<16}{:>12.3}  {:<12}", label, index, "");
+}
+
+pub fn print_gidx_table(result: &GidxResult, file: &str) {
+    println!("Input file: {}", file);
+    println!("{}", "=".repeat(34));
+    match *result {
+        GidxResult::Four {
+            alpha,
+            beta,
+            tau4,
+            tau4_prime,
+        } => {
+            println!(" Geometry indices (CN = 4)");
+            println!("{}", "-".repeat(34));
+            print_gidx_angle(" Alpha", alpha);
+            print_gidx_angle(" Beta", beta);
+            println!("{}", "-".repeat(34));
+            print_gidx_index(" Tau4", tau4);
+            print_gidx_index(" Tau4'", tau4_prime);
+        }
+        GidxResult::Five { alpha, beta, tau5 } => {
+            println!(" Geometry indices (CN = 5)");
+            println!("{}", "-".repeat(34));
+            print_gidx_angle(" Alpha", alpha);
+            print_gidx_angle(" Beta", beta);
+            println!("{}", "-".repeat(34));
+            print_gidx_index(" Tau5", tau5);
+        }
+        GidxResult::Six {
+            alpha1,
+            alpha2,
+            alpha3,
+            tau6,
+        } => {
+            println!(" Geometry indices (CN = 6)");
+            println!("{}", "-".repeat(34));
+            print_gidx_angle(" Alpha 1", alpha1);
+            print_gidx_angle(" Alpha 2", alpha2);
+            print_gidx_angle(" Alpha 3", alpha3);
+            println!("{}", "-".repeat(34));
+            print_gidx_index(" Tau6", tau6);
+        }
+    }
+    println!("{}", "=".repeat(34));
+}
+
 pub fn print_csom_table(results: &[CsomResult], file: &str) {
     println!("\nInput file: {}", file);
     println!("{}", "=".repeat(20));
@@ -240,6 +292,54 @@ pub fn write_odis_csv(result: OdisResult, file_name: &str) -> Result<(), std::io
         result.tau,
         result.mu
     )?;
+
+    Ok(())
+}
+
+/// Writes the geometry indices (the angles they are built from and the indices for the
+/// coordination number) to a `<file>_gidx_table.csv` file.
+pub fn write_gidx_csv(result: &GidxResult, file_name: &str) -> Result<(), std::io::Error> {
+    let out_name = file_name
+        .strip_suffix(".xyz")
+        .unwrap_or(file_name)
+        .to_owned()
+        + "_gidx_table.csv";
+    let mut file = File::create(&out_name)?;
+
+    println!("Writing output table to {}...", out_name);
+
+    match *result {
+        GidxResult::Four {
+            alpha,
+            beta,
+            tau4,
+            tau4_prime,
+        } => {
+            writeln!(file, "alpha,beta,tau4,tau4_prime")?;
+            writeln!(
+                file,
+                "{:.2},{:.2},{:.4},{:.4}",
+                alpha, beta, tau4, tau4_prime
+            )?;
+        }
+        GidxResult::Five { alpha, beta, tau5 } => {
+            writeln!(file, "alpha,beta,tau5")?;
+            writeln!(file, "{:.2},{:.2},{:.4}", alpha, beta, tau5)?;
+        }
+        GidxResult::Six {
+            alpha1,
+            alpha2,
+            alpha3,
+            tau6,
+        } => {
+            writeln!(file, "alpha1,alpha2,alpha3,tau6")?;
+            writeln!(
+                file,
+                "{:.2},{:.2},{:.2},{:.4}",
+                alpha1, alpha2, alpha3, tau6
+            )?;
+        }
+    }
 
     Ok(())
 }
