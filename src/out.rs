@@ -7,6 +7,23 @@ use crate::odis::OdisResult;
 use nalgebra::{Matrix3, Vector3};
 use std::fs::File;
 use std::io::Write;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Set by `--silent`; suppresses everything the program prints to stdout.
+static SILENT: AtomicBool = AtomicBool::new(false);
+
+pub fn set_silent(silent: bool) {
+    SILENT.store(silent, Ordering::Relaxed);
+}
+
+/// `println!` that does nothing when `--silent` is active.
+macro_rules! say {
+    ($($arg:tt)*) => {
+        if !SILENT.load(Ordering::Relaxed) {
+            println!($($arg)*);
+        }
+    };
+}
 
 /// Escapes a CSV field per RFC 4180: wraps it in double quotes, doubling any embedded quotes,
 /// whenever it contains a comma, a quote or a newline.
@@ -33,6 +50,10 @@ fn format_matrix3(m: &Matrix3<f64>) -> String {
     )
 }
 
+pub fn say_finished(elapsed: std::time::Duration) {
+    say!("Program finished in {:?}", elapsed);
+}
+
 pub fn welcome_msg() {
     let msg: &str = {
         r"
@@ -44,23 +65,23 @@ pub fn welcome_msg() {
  |_|\_\____/|_____/|_|  |_|\____/ \_____|_|  |_|______\____/|_|  \_\
 "
     };
-    println!("{}", msg);
-    println!("{}", env!("CARGO_PKG_DESCRIPTION"));
-    println!("Version: {}", env!("CARGO_PKG_VERSION"));
-    println!("Authors: {}", env!("CARGO_PKG_AUTHORS"));
-    println!("Repository: {}", env!("CARGO_PKG_REPOSITORY"));
+    say!("{}", msg);
+    say!("{}", env!("CARGO_PKG_DESCRIPTION"));
+    say!("Version: {}", env!("CARGO_PKG_VERSION"));
+    say!("Authors: {}", env!("CARGO_PKG_AUTHORS"));
+    say!("Repository: {}", env!("CARGO_PKG_REPOSITORY"));
 }
 
 pub fn print_cshm_table(results: &[CShMResult], file: &str) {
-    println!("\nInput file: {}", file);
+    say!("\nInput file: {}", file);
 
     let name_width = results.iter().map(|r| r.name.len()).max().unwrap() + 2;
     let symbol_width = results.iter().map(|r| r.symbol.len()).max().unwrap() + 2;
     let symm_width = "Symmetry".len() + 2;
     let total_width = symbol_width + name_width + symm_width + 7 + 4;
 
-    println!("{}", "=".repeat(total_width));
-    println!(
+    say!("{}", "=".repeat(total_width));
+    say!(
         " {:<sw$} {:<nw$} {:<syw$} {:<7}",
         "Symbol",
         "Shape",
@@ -70,10 +91,10 @@ pub fn print_cshm_table(results: &[CShMResult], file: &str) {
         nw = name_width,
         syw = symm_width
     );
-    println!("{}", "-".repeat(total_width));
+    say!("{}", "-".repeat(total_width));
 
     for result in results {
-        println!(
+        say!(
             " {:<sw$} {:<nw$} {:<syw$} {:<7.3}",
             result.symbol,
             result.name,
@@ -90,9 +111,9 @@ pub fn print_cshm_table(results: &[CShMResult], file: &str) {
         .map(|r| r.cshm)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
-    println!("{}", "-".repeat(total_width));
+    say!("{}", "-".repeat(total_width));
     if min_s > 10.0 {
-        println!(
+        say!(
             "Only extremely distorted geometries were found for this shape. Make sure the .xyz file is correct."
         )
     }
@@ -108,7 +129,7 @@ pub fn write_cshm_csv(results: &[CShMResult], file_name: &str) -> Result<(), std
         + "_cshm_table.csv";
     let mut file = File::create(&out_name)?;
 
-    println!("Writing output table to {}...", out_name);
+    say!("Writing output table to {}...", out_name);
 
     writeln!(file, "Symbol,Name,Symmetry,CShM").expect("Unable to write to file.");
     for r in results {
@@ -139,7 +160,7 @@ pub fn write_cshm_reconstructed_xyz(
         + "_ideal.xyz";
     let mut file = File::create(&out_name)?;
 
-    println!(
+    say!(
         "Writing idealised polyhedra coordinates to table to {}...",
         out_name
     );
@@ -173,7 +194,7 @@ pub fn write_cshm_reconstructed_xyz(
 }
 
 pub fn print_crab() {
-    println!(
+    say!(
         r"
      /\
     ( /   @ @    ()
@@ -187,36 +208,38 @@ pub fn print_crab() {
 }
 
 pub fn print_odis_table(result: &OdisResult, file: &str) {
-    println!("\nInput file: {}", file);
-    println!("{}", "=".repeat(34));
-    println!(" Octahedral distortion parameters");
-    println!("{}", "-".repeat(34));
-    println!(
+    say!("\nInput file: {}", file);
+    say!("{}", "=".repeat(34));
+    say!(" Octahedral distortion parameters");
+    say!("{}", "-".repeat(34));
+    say!(
         "{:<16}{:>12.4}  {:<12}",
-        " Mean d(M-X)", result.d_mean, "Ang"
+        " Mean d(M-X)",
+        result.d_mean,
+        "Ang"
     );
-    println!("{:<16}{:>12.4}  {:<12}", " Zeta", result.zeta, "Ang");
-    println!("{:<16}{:>12.6}  {:<12}", " Delta", result.delta, "");
-    println!("{:<16}{:>12.2}  {:<12}", " Sigma", result.sigma, "deg");
-    println!("{:<16}{:>12.2}  {:<12}", " Theta", result.theta, "deg");
-    println!("{:<16}{:>12.4}  {:<12}", " Volume", result.vol, "Ang^3");
-    println!("{}", "-".repeat(34));
-    println!("{:<16}{:>12.2}  {:<12}", " Tau", result.tau, "deg");
-    println!("{:<16}{:>12.2}  {:<12}", " Mu", result.mu, "Ang");
-    println!("{}", "=".repeat(34));
+    say!("{:<16}{:>12.4}  {:<12}", " Zeta", result.zeta, "Ang");
+    say!("{:<16}{:>12.6}  {:<12}", " Delta", result.delta, "");
+    say!("{:<16}{:>12.2}  {:<12}", " Sigma", result.sigma, "deg");
+    say!("{:<16}{:>12.2}  {:<12}", " Theta", result.theta, "deg");
+    say!("{:<16}{:>12.4}  {:<12}", " Volume", result.vol, "Ang^3");
+    say!("{}", "-".repeat(34));
+    say!("{:<16}{:>12.2}  {:<12}", " Tau", result.tau, "deg");
+    say!("{:<16}{:>12.2}  {:<12}", " Mu", result.mu, "Ang");
+    say!("{}", "=".repeat(34));
 }
 
 fn print_gidx_angle(label: &str, angle: f64) {
-    println!("{:<16}{:>12.2}  {:<12}", label, angle, "deg");
+    say!("{:<16}{:>12.2}  {:<12}", label, angle, "deg");
 }
 
 fn print_gidx_index(label: &str, index: f64) {
-    println!("{:<16}{:>12.3}  {:<12}", label, index, "");
+    say!("{:<16}{:>12.3}  {:<12}", label, index, "");
 }
 
 pub fn print_gidx_table(result: &GidxResult, file: &str) {
-    println!("Input file: {}", file);
-    println!("{}", "=".repeat(34));
+    say!("Input file: {}", file);
+    say!("{}", "=".repeat(34));
     match *result {
         GidxResult::Four {
             alpha,
@@ -224,20 +247,20 @@ pub fn print_gidx_table(result: &GidxResult, file: &str) {
             tau4,
             tau4_prime,
         } => {
-            println!(" Geometry indices (CN = 4)");
-            println!("{}", "-".repeat(34));
+            say!(" Geometry indices (CN = 4)");
+            say!("{}", "-".repeat(34));
             print_gidx_angle(" Alpha", alpha);
             print_gidx_angle(" Beta", beta);
-            println!("{}", "-".repeat(34));
+            say!("{}", "-".repeat(34));
             print_gidx_index(" Tau4", tau4);
             print_gidx_index(" Tau4'", tau4_prime);
         }
         GidxResult::Five { alpha, beta, tau5 } => {
-            println!(" Geometry indices (CN = 5)");
-            println!("{}", "-".repeat(34));
+            say!(" Geometry indices (CN = 5)");
+            say!("{}", "-".repeat(34));
             print_gidx_angle(" Alpha", alpha);
             print_gidx_angle(" Beta", beta);
-            println!("{}", "-".repeat(34));
+            say!("{}", "-".repeat(34));
             print_gidx_index(" Tau5", tau5);
         }
         GidxResult::Six {
@@ -245,28 +268,56 @@ pub fn print_gidx_table(result: &GidxResult, file: &str) {
             alpha2,
             alpha3,
             tau6,
+            gammas,
+            tau6_prime,
         } => {
-            println!(" Geometry indices (CN = 6)");
-            println!("{}", "-".repeat(34));
+            say!(" Geometry indices (CN = 6)");
+            say!("{}", "-".repeat(34));
             print_gidx_angle(" Alpha 1", alpha1);
             print_gidx_angle(" Alpha 2", alpha2);
             print_gidx_angle(" Alpha 3", alpha3);
-            println!("{}", "-".repeat(34));
+            for (k, gamma) in gammas.iter().enumerate() {
+                print_gidx_angle(&format!(" Gamma {}", k + 1), *gamma);
+            }
+            say!("{}", "-".repeat(34));
             print_gidx_index(" Tau6", tau6);
+            print_gidx_index(" Tau6'", tau6_prime);
+        }
+        GidxResult::Eight {
+            faces,
+            dihedral_a,
+            dihedral_b,
+            tau8_prime,
+            cube_delta,
+        } => {
+            say!(" Geometry indices (CN = 8)");
+            say!("{}", "-".repeat(34));
+            for (k, face) in faces.iter().enumerate() {
+                print_gidx_angle(&format!(" Theta {}", k + 1), face.theta);
+                print_gidx_angle(&format!(" Phi {}", k + 1), face.phi);
+            }
+            print_gidx_angle(" Dihedral A", dihedral_a);
+            print_gidx_angle(" Dihedral B", dihedral_b);
+            say!("{}", "-".repeat(34));
+            for (k, face) in faces.iter().enumerate() {
+                print_gidx_index(&format!(" Tau8 (face {})", k + 1), face.tau8);
+            }
+            print_gidx_index(" Tau8'", tau8_prime);
+            print_gidx_index(" Tau8'-Tau8", cube_delta);
         }
     }
-    println!("{}", "=".repeat(34));
+    say!("{}", "=".repeat(34));
 }
 
 pub fn print_csom_table(results: &[CsomResult], file: &str) {
-    println!("\nInput file: {}", file);
-    println!("{}", "=".repeat(20));
-    println!(" {:<12} {:<10}", "Point group", "CSoM");
-    println!("{}", "-".repeat(20));
+    say!("\nInput file: {}", file);
+    say!("{}", "=".repeat(20));
+    say!(" {:<12} {:<10}", "Point group", "CSoM");
+    say!("{}", "-".repeat(20));
     for result in results {
-        println!(" {:<12} {:<10.3}", result.point_group, result.deviation);
+        say!(" {:<12} {:<10.3}", result.point_group, result.deviation);
     }
-    println!("{}", "-".repeat(20));
+    say!("{}", "-".repeat(20));
 }
 
 pub fn write_odis_csv(result: OdisResult, file_name: &str) -> Result<(), std::io::Error> {
@@ -277,7 +328,7 @@ pub fn write_odis_csv(result: OdisResult, file_name: &str) -> Result<(), std::io
         + "_odis_table.csv";
     let mut file = File::create(&out_name)?;
 
-    println!("Writing output table to {}...", out_name);
+    say!("Writing output table to {}...", out_name);
 
     writeln!(file, "d_mean,zeta,delta,sigma,theta,vol,tau,mu")?;
     writeln!(
@@ -306,7 +357,7 @@ pub fn write_gidx_csv(result: &GidxResult, file_name: &str) -> Result<(), std::i
         + "_gidx_table.csv";
     let mut file = File::create(&out_name)?;
 
-    println!("Writing output table to {}...", out_name);
+    say!("Writing output table to {}...", out_name);
 
     match *result {
         GidxResult::Four {
@@ -331,12 +382,52 @@ pub fn write_gidx_csv(result: &GidxResult, file_name: &str) -> Result<(), std::i
             alpha2,
             alpha3,
             tau6,
+            gammas,
+            tau6_prime,
         } => {
-            writeln!(file, "alpha1,alpha2,alpha3,tau6")?;
             writeln!(
                 file,
-                "{:.2},{:.2},{:.2},{:.4}",
-                alpha1, alpha2, alpha3, tau6
+                "alpha1,alpha2,alpha3,tau6,gamma1,gamma2,gamma3,gamma4,gamma5,tau6_prime"
+            )?;
+            writeln!(
+                file,
+                "{:.2},{:.2},{:.2},{:.4},{:.2},{:.2},{:.2},{:.2},{:.2},{:.4}",
+                alpha1,
+                alpha2,
+                alpha3,
+                tau6,
+                gammas[0],
+                gammas[1],
+                gammas[2],
+                gammas[3],
+                gammas[4],
+                tau6_prime
+            )?;
+        }
+        GidxResult::Eight {
+            faces,
+            dihedral_a,
+            dihedral_b,
+            tau8_prime,
+            cube_delta,
+        } => {
+            writeln!(
+                file,
+                "theta1,phi1,tau8_1,theta2,phi2,tau8_2,dihedral_a,dihedral_b,tau8_prime,cube_delta"
+            )?;
+            writeln!(
+                file,
+                "{:.2},{:.2},{:.4},{:.2},{:.2},{:.4},{:.2},{:.2},{:.4},{:.4}",
+                faces[0].theta,
+                faces[0].phi,
+                faces[0].tau8,
+                faces[1].theta,
+                faces[1].phi,
+                faces[1].tau8,
+                dihedral_a,
+                dihedral_b,
+                tau8_prime,
+                cube_delta
             )?;
         }
     }
@@ -354,7 +445,7 @@ pub fn write_csom_csv(results: &[CsomResult], file_name: &str) -> Result<(), std
         + "_csom_table.csv";
     let mut file = File::create(&out_name)?;
 
-    println!("Writing output table to {}...", out_name);
+    say!("Writing output table to {}...", out_name);
 
     writeln!(file, "PointGroup,Dev,Rotation Matrix")?;
     for r in results {
@@ -400,7 +491,7 @@ pub fn write_csom_details_csv(
         let out_name = format!("{}_{}_details.csv", stem, result.point_group);
         let mut file = File::create(&out_name)?;
 
-        println!("Writing operation details to {}...", out_name);
+        say!("Writing operation details to {}...", out_name);
 
         writeln!(file, "name,op_matrix,dev,pairing")?;
         for op in &result.operations {
@@ -432,7 +523,7 @@ pub fn write_csom_operated_xyz(
         let out_name = format!("{}_{}_operated.xyz", stem, result.point_group);
         let mut file = File::create(&out_name)?;
 
-        println!("Writing operated coordinates to {}...", out_name);
+        say!("Writing operated coordinates to {}...", out_name);
 
         // The identity isn't stored among `result.operations` (the point-group tables in
         // data/pgs.rs omit E -- it trivially gives zero deviation for any structure), so write
@@ -523,7 +614,7 @@ pub fn write_csom_merged_mol2(
         let out_name = format!("{}_{}_merged.mol2", stem, result.point_group);
         let mut file = File::create(&out_name)?;
 
-        println!("Writing merged mol2 to {}...", out_name);
+        say!("Writing merged mol2 to {}...", out_name);
 
         // Each block (the original "E" structure, then one per symmetry operation) as
         // (substructure name, that block's atom coordinates recovered to the original frame).

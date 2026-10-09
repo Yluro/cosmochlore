@@ -19,6 +19,8 @@ use std::time::Instant;
 fn main() -> Result<(), Error> {
     let main_start = Instant::now();
     let args = Cli::parse();
+
+    out::set_silent(args.silent);
     welcome_msg();
 
     let run = match args.command {
@@ -34,7 +36,7 @@ fn main() -> Result<(), Error> {
     }
 
     let main_time = main_start.elapsed();
-    println!("Program finished in {:?}", main_time);
+    out::say_finished(main_time);
     //if args.crab {print_crab()}
     run
 }

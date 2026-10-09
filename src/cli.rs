@@ -16,6 +16,10 @@ fn parse_center_position(s: &str) -> Result<usize, String> {
 pub struct Cli {
     #[clap(subcommand)]
     pub command: Command,
+
+    /// Suppress all stdout output (banner, tables, progress messages). Errors still go to stderr.
+    #[clap(short = 's', long = "silent")]
+    pub silent: bool,
 }
 
 #[derive(Subcommand, Debug)]
