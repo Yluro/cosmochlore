@@ -1,6 +1,6 @@
 # Cosmochlore
 
-**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through various complementary analyses, including: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM), OctaDist-style octahedral distortion parameters and the τ4/τ4′/τ5/τ6 geometry indices.
+**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through various complementary analyses, including: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM), OctaDist-style octahedral distortion parameters and the geometry indices.
 
 It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust, alongside an original implementation of continuous symmetry operation measures inspired by the works of T. J. Sørensen _et al._<sup>3</sup> and the octahedral distortion parameters popularized by [`OctaDist`](https://octadist.github.io/)<sup>4</sup>. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. 
 
@@ -15,7 +15,7 @@ Cosmochlore includes different ways of measuring how distorted a structure is:
 - **`cshm`** — computes the **Continuous Shape Measure (CShM)** between a structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 90 built-in reference polyhedra are included (see [Reference Polyhedra](#reference-polyhedra)), and user-defined ones can be supplied via YAML.
 - **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)). A value of `CSoM = 0` means that the symmetry of a given point group is perfectly conserved in the structure.
 - **`odis`** — computes the **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters.
-- **`gidx`** — computes the **Geometry Indices** τ4 and τ4′ (four-coordinate centres), τ5 (five-coordinate centres) and τ6 (six-coordinate centres).
+- **`gidx`** — computes the **Geometry Indices** τ4 and τ4′ (four-coordinate centres), τ5 (five-coordinate centres) and τ6 and its complement τ6′ (six-coordinate centres).
 
 ### Future Features
  - Include Cosmochlore into [Timeo](https://github.com/Yluro/timeo). _Done_
@@ -54,7 +54,7 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 | `cshm`  | Continuous shape measures calculation.                 |
 | `csom`  | Continuous symmetry operation measures calculation.    |
 | `odis`  | Octahedral distortion analysis.                        |
-| `gidx`  | Geometry indices (τ4, τ4′, τ5, τ6) calculation.        |
+| `gidx`  | Geometry indices (CN = 4,5,6,8) calculation.           |
 | `help`  | Print the help or the help of the given subcommand(s). |
 
 ### Arguments:
@@ -274,7 +274,7 @@ Input file: ML5.xyz
 ==================================
 Writing output table to ML5_gidx_table.csv...
 ````
-Passing the `-t`/`--table` flag writes the angles and the indices to a `<NAME>_gidx_table.csv`, with the columns `alpha,beta,tau4,tau4_prime` for four ligands, `alpha,beta,tau5` for five and `alpha1,alpha2,alpha3,tau6` for six.
+Passing the `-t`/`--table` flag writes the angles and the indices to a `<NAME>_gidx_table.csv`, with the columns `alpha,beta,tau4,tau4_prime` for four ligands, `alpha,beta,tau5` for five and `alpha1,alpha2,alpha3,tau6,gamma1,gamma2,gamma3,gamma4,gamma5,tau6_prime` for six.
 
 ## Reference Polyhedra
 The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera _et at._<sup>2</sup>
@@ -501,12 +501,13 @@ Additionally, the `odis` module can run `cshm` against the ideal octahedron/trig
 
 ## Geometry indices
 
-`gidx` reports the geometry indices of a four-, five- or six-coordinate centre. They locate the centre between ideal geometries (or, for six ligands, measure its distance from the octahedron) from its ligand–centre–ligand angles alone, so bond lengths play no part. The coordination number is the number of ligands in the file: four ligands give τ4 and τ4′, five give τ5, six give τ6, and any other count is an error. For four and five ligands, only the two largest of all the angles between pairs of ligands (6 and 10 of them) are used, the largest as β and the second largest as α (so β ≥ α), and both are reported:
+`gidx` reports the geometry indices of a four-, five- or six-coordinate centre. They locate the centre between ideal geometries (or, for six ligands, measure its distance from the octahedron) from its ligand–centre–ligand angles alone, so bond lengths play no part. The coordination number is the number of ligands in the file: four ligands give τ4 and τ4′, five give τ5, six give τ6 and τ6′, and any other count is an error. For four and five ligands, only the two largest of all the angles between pairs of ligands (6 and 10 of them) are used, the largest as β and the second largest as α (so β ≥ α), and both are reported:
 
 - **τ4**<sup>6</sup> = (360° − (α + β)) / (360° − 2θ), with θ = arccos(−1/3) ≈ 109.47° the tetrahedral angle. It is 0 for a square plane and 1 for a regular tetrahedron; the ideal seesaw (0.64) and trigonal pyramid (0.85) lie in between.
 - **τ4′**<sup>7</sup> = (β − α) / (360° − θ) + (180° − β) / (180° − θ), with the same θ. It has the same limits as τ4, but it also weighs the difference between the two angles, so geometries whose α + β add up the same (the ideal seesaw, 180° and 90°, and a tetrahedron flattened to 135° and 135°) no longer share a value.
 - **τ5**<sup>5</sup> = (β − α) / 60°. It is 0 for a square pyramid, where the two trans angles are equal, and 1 for a trigonal bipyramid, where the axial angle is 180° and the largest equatorial one is 120°.
 - **τ6**<sup>8</sup> = (3 × 180° − (α1 + α2 + α3)) / 180°, where α1 ≥ α2 ≥ α3 are the three principal (trans) angles of the six ligands. It is 0 for an octahedron, where all three are 180°, and 0.75 for a trigonal prism whose trans angles are 135°. The paper draws which angles to use for each ideal geometry (the trans pairs of the octahedron, the top-to-bottom pairs of the prism) and gives no rule for a distorted structure, so `gidx` pairs the six ligands into three disjoint pairs whose angles add up to the most: every ligand is used once, and the result is the three largest angles whenever those do not share a ligand. All three angles are reported.
+- **τ6′** = (5 × 90° − (γ1 + γ2 + γ3 + γ4 + γ5)) / 90°, where γ1 ≤ … ≤ γ5 are the five smallest of the 15 ligand–centre–ligand angles, which may share a ligand. It is cosmochlore's own complement to τ6 and is not part of the paper<sup>8</sup>. It is 0 for an octahedron, whose cis angles are all 90°, 0.456 for the prism with equal edges and 1 for a pentagonal pyramid, whose five base angles are 72°. It measures how tightly the ligands pack, so it also grows for chelates with small bite angles, and it can exceed 1 (a planar hexagon gives 1.667). The five base angles of a real pentagonal pyramid add up to about 360° however distorted the base is, so (1 + τ6′) / 2 is the value the paper quotes for such a centre. All five angles are reported.
 
 The papers print θ and 360° − 2θ rounded to 109.5° and 141°; `gidx` uses the exact θ, so an ideal tetrahedron gives exactly 1 for both τ4 and τ4′.
 
@@ -539,9 +540,10 @@ The values `gidx` gives for the [built-in reference shapes](#reference-polyhedra
 
 A few things to keep in mind when reading them:
 
-- The indices only see angles, so shapes that share their largest angles share their index: the planar `HP-6` scores like the octahedron (τ6 = 0).
-- The uniform trigonal prism (all edges equal) has trans angles of 135.58°, so its τ6 is 0.740. The 0.75 quoted in the paper<sup>8</sup> is for trans angles of exactly 135°.
-- The paper quotes τ6 = 1.00 for a pentagonal pyramid, but it gets there by summing the five angles between adjacent base vectors (5 × 72° = 360°) instead of three trans angles. That sum is 360° whenever the metal lies in the base plane, however distorted the base is. `gidx` uses three trans angles for every geometry, so the ideal pentagonal pyramid, whose trans angles are 144°, 144° and 90°, reads 0.900.
+- The indices only see angles, so shapes that share their largest angles share their index.
+- The uniform trigonal prism (all edges equal) has trans angles of 135.58°, so its τ6 is 0.740. The 0.75 quoted in the paper<sup>8</sup> is for trans angles of exactly 135°. 
+
+_Note: The paper quotes τ6 = 1.00 for a pentagonal pyramid, but it gets there by summing the five angles between adjacent base vectors (5 × 72° = 360°) instead of three trans angles. `gidx` takes three trans angles for τ6, so the ideal pentagonal pyramid, whose trans angles are 144°, 144° and 90°, reads 0.900 there and 1.000 in τ6′, which uses those five base angles._
 
 ## Acknowledgements
 
