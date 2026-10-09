@@ -3,7 +3,7 @@
 Revision 4, reviewed at `1ea345a`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 32/52 fixed, 3 partly, 3 moot, 3 non-issue, 11 open (1 of them new: C17).
+Totals: 32/53 fixed, 3 partly, 3 moot, 3 non-issue, 12 open (2 of them new: C17, D10).
 Steps 1–3 of the order of work landed after this review (B10, D7, E2, E5, E6, E7, E8 — see those entries); the
 `cargo fmt` pass in `e163603` moved every line reference below, so grep before trusting one.
 All 56 tests pass. Working tree clean apart from untracked run output in `tests/` and `.idea/`
@@ -108,6 +108,25 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
   import cycle. `yaml.rs` stays top-level for future non-shape inputs (user point groups).
   The test-only `structure_from_shape` helper moved to `cshm/test_utils.rs` with the other test
   scaffolding. Pure move: all cshm/csom/odis outputs byte-identical. `src/cshm/shape_lookup.rs`, `generate_builtin_shapes_rs.py`
+- D10 `OPEN` — replace the free `print_*_table` / `write_*_csv` functions in `src/out.rs` with a
+  table struct and a CSV-writer struct. Today every subcommand has its own near-identical
+  printer (`print_cshm_table`, `print_odis_table`, `print_gidx_table`, `print_csom_table`: same
+  `=`/`-` rules, same column formatting) and its own CSV function, and the rules and the
+  "Writing ... to" messages are copied between them.
+  - **Table**: build rows (label, value, unit) and section breaks, then render once; width and
+    number formatting live in one place. `GidxResult` and `OdisResult` supply their rows, so
+    adding a CN or a measure no longer means a new `println!` block.
+  - **CSV writer**: header + row API on top of `csv_field`, one place that creates the file and
+    reports the path.
+  - **`--silent`**: both structs own a plain `silent: bool`, set at construction from
+    `args.silent` and passed to the few call sites in each `*_main`. This retires the
+    stopgap in `out.rs` (the `SILENT` `AtomicBool`, `set_silent()` and the `say!` macro that
+    replaced `println!` throughout) and the `set_silent` call in `main.rs`. Until then `-s`
+    (top-level, before the subcommand) silences banner, tables, progress lines and the
+    "Program finished" line; errors stay on stderr and CSV/xyz files are still written.
+  - **Test**: stdout is empty under `--silent` for every subcommand; non-silent output is
+    byte-identical before and after the refactor.
+  - Do it before measures 19b/21c add more writers (`dshm` CSV/xyz). `src/out.rs`
 
 ## E · Build, tests, CI
 
@@ -155,7 +174,27 @@ Tier 1 (cheap, high value, reuses existing machinery):
    Fitting a structure *to* a path (the path coordinate plus the deviation from the path) is a
    one-variable dynamic shape: do it as 19c.
 2. `SHIPPED` Θ face-twist + octahedral volume — Ketkaew 2021
-3. `OPEN` τ4/τ4'/τ5 geometry indices for CN=4,5 — Addison 1984 et al.
+3. `SHIPPED` τ4/τ4'/τ5/τ6/τ6'/τ8/τ8' geometry indices for CN=4,5,6,8 — Addison 1984, Yang 2007, Okuniewski 2015,
+   Stoeckli-Evans 2025. The `gidx` command (`src/gidx/`: `mod.rs`, `tests.rs` and `calc/` with one file per index, `tau4`, `tau5`, `tau6`, `tau8`): τ4 and τ4'
+   for four ligands, τ5 for five, τ6 for six, plus the angles they are built from (two largest for CN 4/5; for
+   CN 6 the three trans angles, chosen as the disjoint pairing of the ligands with the greatest angle sum, since the
+   paper leaves the choice open). Pinned on the ideal built-in shapes and on `tests/ML4.xyz`, `tests/ML5.xyz` and
+   `tests/FeHS.xyz`; the README lists the values for every 4-, 5- and 6-vertex ideal shape. Uses the exact tetrahedral
+   angle arccos(−1/3) rather than the papers' rounded 109.5°/141°, so an ideal tetrahedron gives exactly 1. The
+   paper's 1.00 for a pentagonal pyramid sums the five adjacent base angles (5 × 72°) rather than three trans angles;
+   gidx uses three trans angles for every geometry (ideal shape: 0.900). The paper's own Cd centres (τ6 0.27, τ5 0.31)
+   are reproduced from its SI: `tests/CdONCl4.xyz`, `tests/CdONCl3.xyz`.
+   τ6' is cosmochlore's own complement to τ6 (not in the paper): (5×90° − sum of the five smallest angles)/90°, so 0 for
+   OC, 0.456 for the equal-edge prism, 1 for a pentagonal pyramid, 5/3 for a hexagon. Five angles rather than three
+   because the five base angles of a real pyramid sum to ~360° (three smallest read 1.31/1.18 on VAPSAG/CIJBII,
+   five read 1.044/0.995); (1+τ6')/2 is the paper's pyramid value. Literature sites (CSD, one Cd each) in
+   `tests/cd6/`: IQATAY Cd1-4, ULESAH, VAPSAG, CIJBII.
+   τ8 (valence, from the two square-face diagonals) and τ8' (dihedral, from the A and B planes), Turnbull, Wetmore &
+   Gerken, Chem. Eur. J. 2021, 27, 11335. Procedure of their SI 2.1.1/2.2.1; face 2 is the complement of face 1 (a tie in
+   the third-largest angle sent the second face into the first). The SI's rounded 129.8/97.1/65.5 are Kepert's hard-sphere
+   polyhedra: exact values 129.8208/97.0714 (root of 12w^3-7w^2-2w+1, w = cos^2 tA) and arccos(sqrt2-1) = 65.5302 are used.
+   Reproduces the SI's Table S10 for 8 of its computed structures (`tests/tau8/`) within 0.01; the dpb chelate (1.10 vs
+   1.22) and one dpe state are not explained. Delta = tau8' - tau8 (larger tau8, as the SI does for its BTP examples) is output as `cube_delta`.
 4. `OPEN` Classic distortion params (⟨λ⟩, σ², Baur D, ECoN) — Robinson 1971 et al.
 5. `OPEN` Bond-valence sum — Brown & Altermatt 1985
 6. `OPEN` Gyration-tensor descriptors (asphericity, κ²) — reuses `linalg.rs`
@@ -597,7 +636,8 @@ Tier 0:
 4. C17, then C3 — resolve the point group once; make grouping deterministic and drop the
    per-call sort (both contained, both measurable with the 0.22 s baseline)
 5. C5 (score seeds, refine best 2-3) — needs the CI gate from step 1 first
-6. A4, D6 residue, D1, D2, B8, B9, C14 profile — the small residue
+6. A4, D6 residue, D1, D2, B8, B9, C14 profile — the small residue; D10 (table/CSV writer
+   structs, drops the `--silent` global) alongside, before any new subcommand adds writers
 7. Measure 1 (paths/shape maps)
 8. Rest of measure 16, then measure 14 (which retires the all-47 default), then 13
 9. Measures 17–18 (ADPs, TDPS library): 17 step 1 + 18 first, they need no sampling

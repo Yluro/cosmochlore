@@ -1,5 +1,6 @@
 use crate::cshm::shape_lookup::ShapeLookupError;
 use crate::csom::types::CsomError;
+use crate::gidx::GidxError;
 use crate::odis::OdisError;
 use crate::xyz::XyzParseError;
 use crate::yaml::YamlParseError;
@@ -17,6 +18,8 @@ pub enum Error {
     Csom(#[from] CsomError),
     #[error(transparent)]
     Odis(#[from] OdisError),
+    #[error(transparent)]
+    Gidx(#[from] GidxError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }

@@ -4,8 +4,9 @@ use std::f64::consts::PI;
 
 /// Calculates the correlation matrix H of two given sets of points.
 /// Returns H = Sum (P^T x Q).
+///
+/// Expects centered and normalized points.
 pub fn correlation_matrix(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> Matrix3<f64> {
-    // Expects centered and normalized points.
     let mut h = Matrix3::<f64>::zeros();
     for (p, q) in reference.iter().zip(problem.iter()) {
         h += p * q.transpose();
