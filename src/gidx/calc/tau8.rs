@@ -41,14 +41,14 @@ pub(super) fn eight_coordinate(vectors: &[Vector3<f64>]) -> Result<GidxResult, G
     let (face_1, a_1, b_1) = square_face(&between, first);
     let (face_2, a_2, b_2) = square_face(&between, second);
 
-    let delta_a = paired_dihedral(vectors, &between, [a_1[0], a_1[1], a_2[0], a_2[1]], false)?;
-    let delta_b = paired_dihedral(vectors, &between, [b_1[0], b_1[1], b_2[0], b_2[1]], true)?;
+    let dihedral_a = paired_dihedral(vectors, &between, [a_1[0], a_1[1], a_2[0], a_2[1]], false)?;
+    let dihedral_b = paired_dihedral(vectors, &between, [b_1[0], b_1[1], b_2[0], b_2[1]], true)?;
 
-    let tau8_prime = calc_tau8_prime(delta_a, delta_b);
+    let tau8_prime = calc_tau8_prime(dihedral_a, dihedral_b);
     Ok(GidxResult::Eight {
         faces: [face_1, face_2],
-        delta_a,
-        delta_b,
+        dihedral_a,
+        dihedral_b,
         tau8_prime,
         cube_delta: calc_cube_delta(face_1.tau8, face_2.tau8, tau8_prime),
     })
@@ -165,8 +165,8 @@ pub(in crate::gidx) fn calc_tau8(theta: f64, phi: f64) -> f64 {
 }
 
 /// Turnbull et al. (2021): 1 for the dodecahedron and the cube, 0 for the antiprism.
-pub(in crate::gidx) fn calc_tau8_prime(delta_a: f64, delta_b: f64) -> f64 {
-    1.0 - (180.0 - (delta_a + delta_b)).abs() / (180.0 - 2.0 * SA_DIHEDRAL)
+pub(in crate::gidx) fn calc_tau8_prime(dihedral_a: f64, dihedral_b: f64) -> f64 {
+    1.0 - (180.0 - (dihedral_a + dihedral_b)).abs() / (180.0 - 2.0 * SA_DIHEDRAL)
 }
 
 /// Δ = tau8' − tau8 with the larger tau8, as in the SI: 1 for a cube, 0 for the ideal
