@@ -1,6 +1,6 @@
 # Cosmochlore
 
-**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through three complementary analyses: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM) and OctaDist-style octahedral distortion parameters.
+**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through various complementary analyses, including: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM), OctaDist-style octahedral distortion parameters and the geometry indices.
 
 It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust, alongside an original implementation of continuous symmetry operation measures inspired by the works of T. J. Sørensen _et al._<sup>3</sup> and the octahedral distortion parameters popularized by [`OctaDist`](https://octadist.github.io/)<sup>4</sup>. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. 
 
@@ -10,14 +10,15 @@ The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.or
 
 ## Features
 
-Cosmochlore includes three measures covering a different ways of measuring how distorted a structure is:
+Cosmochlore includes different ways of measuring how distorted a structure is:
 
 - **`cshm`** — computes the **Continuous Shape Measure (CShM)** between a structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 90 built-in reference polyhedra are included (see [Reference Polyhedra](#reference-polyhedra)), and user-defined ones can be supplied via YAML.
 - **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)). A value of `CSoM = 0` means that the symmetry of a given point group is perfectly conserved in the structure.
 - **`odis`** — computes the **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters.
+- **`gidx`** — computes the **Geometry Indices** τ4 and τ4′ (four-coordinate centres), τ5 (five-coordinate centres), τ6 and its complement τ6′ (six-coordinate centres) and τ8 and τ8′ (eight-coordinate centres).
 
 ### Future Features
- - Include Cosmochlore into [Timeo](https://github.com/Yluro/timeo).
+ - Include Cosmochlore into [Timeo](https://github.com/Yluro/timeo). _Done_
  - Automatic point-group detection for `csom` (currently `--pg` selects which of the 47 supported point groups to test, and all of them are tested when it is omitted).
 
 _[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
@@ -53,6 +54,7 @@ cosmochlore <COMMAND> <NAME> [OPTIONS]
 | `cshm`  | Continuous shape measures calculation.                 |
 | `csom`  | Continuous symmetry operation measures calculation.    |
 | `odis`  | Octahedral distortion analysis.                        |
+| `gidx`  | Geometry indices (CN = 4,5,6,8) calculation.           |
 | `help`  | Print the help or the help of the given subcommand(s). |
 
 ### Arguments:
@@ -99,6 +101,15 @@ _Oh..., I lost my crab here. 🦀 Thanks for finding it!_
 | `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                          |
 
 _Note: `odis` requires a centered structure with exactly one central atom and six ligands (7 atoms total in the `.xyz` file)._
+
+#### Optional arguments for `gidx`:
+
+| Flag                 | Value        | Description                                                                                                                                   |
+|----------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Defaults to the first atom (position 1) when omitted. |
+| `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                      |
+
+_Note: `gidx` requires a centered structure with exactly one central atom and four, five, six or eight ligands (5, 6, 7 or 9 atoms total in the `.xyz` file). The indices that apply are chosen from the number of ligands._
 
 
 ### Example usage of `cshm`
@@ -230,6 +241,40 @@ Writing output table to FeHS_csom_table.csv...
 Program finished in 922.3647ms
 ````
 Passing the `-t`/`--table` flag writes the distortion parameters to a `<NAME>_odis_table.csv`. Passing the `-f`/`--full` flag additionally computes the CShM against the ideal octahedron and trigonal prism (`OC-6`, `TPR-6`) and the CSoM against the eight point groups most commonly seen in octahedral distortions (`Oh`, `D4h`, `D3h`, `D3d`, `D2h`, `C4v`, `C3v`, `C2v`).
+
+### Example usage of `gidx`
+
+Given the following `ML5.xyz` file, a five-coordinate copper centre halfway between a trigonal bipyramid and a square pyramid:
+````xyz
+6
+Distorted five-coordinate copper centre (halfway between trigonal bipyramidal and square pyramidal)
+Cu    0.00000    0.00000    0.00000
+N1    0.35000    0.05000    2.00000
+N2   -0.30000   -0.10000   -2.05000
+N3    2.10000    0.00000    0.10000
+N4   -1.78000    1.02000   -0.05000
+N5   -0.56000   -2.08000    0.00000
+````
+
+````cmd
+cosmochlore gidx ML5.xyz -t
+````
+
+Will output:
+
+````output
+Input file: ML5.xyz
+==================================
+ Geometry indices (CN = 5)
+----------------------------------
+ Alpha                150.18  deg
+ Beta                 177.91  deg
+----------------------------------
+ Tau5                  0.462
+==================================
+Writing output table to ML5_gidx_table.csv...
+````
+Passing the `-t`/`--table` flag writes the angles and the indices to a `<NAME>_gidx_table.csv`, with the columns `alpha,beta,tau4,tau4_prime` for four ligands, `alpha,beta,tau5` for five and `alpha1,alpha2,alpha3,tau6,gamma1,gamma2,gamma3,gamma4,gamma5,tau6_prime` for six and `theta1,phi1,tau8_1,theta2,phi2,tau8_2,dihedral_a,dihedral_b,tau8_prime,cube_delta` for eight.
 
 ## Reference Polyhedra
 The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera _et at._<sup>2</sup>
@@ -448,11 +493,90 @@ The main problem to solve for `csom` is that symmetry element operations depend 
 
 The reported CSoM score is the deviation averaged over all every symmetry operations of a given point group.
 
-## The `odis` algorithm
+## Octahedral distortion parameters
 
 `odis` reports the `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion), `theta` (face-twisting distortion, 0° for a perfect octahedron up to 1170° for the ideal trigonal prism) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid), and `volume`, the coordination polyhedron's volume in Å³ (found by decomposing its eight triangular faces into tetrahedra with the ligand centroid as their common apex).
 
 Additionally, the `odis` module can run `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions.
+
+## Geometry indices
+
+`gidx` reports the geometry indices of a four-, five-, six- or eight-coordinate centre. They locate the centre between ideal geometries (or, for six ligands, measure its distance from the octahedron) from its ligand–centre–ligand angles alone, so bond lengths play no part. The coordination number is the number of ligands in the file: four ligands give τ4 and τ4′, five give τ5, six give τ6 and τ6′, eight give τ8 and τ8′, and any other count is an error. For four and five ligands, only the two largest of all the angles between pairs of ligands (6 and 10 of them) are used, the largest as β and the second largest as α (so β ≥ α), and both are reported:
+
+- **τ4**<sup>6</sup> = (360° − (α + β)) / (360° − 2θ), with θ = arccos(−1/3) ≈ 109.47° the tetrahedral angle. It is 0 for a square plane and 1 for a regular tetrahedron; the ideal seesaw (0.64) and trigonal pyramid (0.85) lie in between.
+- **τ4′**<sup>7</sup> = (β − α) / (360° − θ) + (180° − β) / (180° − θ), with the same θ. It has the same limits as τ4, but it also weighs the difference between the two angles, so geometries whose α + β add up the same (the ideal seesaw, 180° and 90°, and a tetrahedron flattened to 135° and 135°) no longer share a value.
+- **τ5**<sup>5</sup> = (β − α) / 60°. It is 0 for a square pyramid, where the two trans angles are equal, and 1 for a trigonal bipyramid, where the axial angle is 180° and the largest equatorial one is 120°.
+- **τ6**<sup>8</sup> = (3 × 180° − (α1 + α2 + α3)) / 180°, where α1 ≥ α2 ≥ α3 are the three principal (trans) angles of the six ligands. It is 0 for an octahedron, where all three are 180°, and 0.75 for a trigonal prism whose trans angles are 135°. The paper draws which angles to use for each ideal geometry (the trans pairs of the octahedron, the top-to-bottom pairs of the prism) and gives no rule for a distorted structure, so `gidx` pairs the six ligands into three disjoint pairs whose angles add up to the most: every ligand is used once, and the result is the three largest angles whenever those do not share a ligand. All three angles are reported.
+- **τ6′** = (5 × 90° − (γ1 + γ2 + γ3 + γ4 + γ5)) / 90°, where γ1 ≤ … ≤ γ5 are the five smallest of the 15 ligand–centre–ligand angles, which may share a ligand. It is cosmochlore's own complement to τ6 and is not part of the paper<sup>8</sup>. It is 0 for an octahedron, whose cis angles are all 90°, 0.456 for the prism with equal edges and 1 for a pentagonal pyramid, whose five base angles are 72°. It measures how tightly the ligands pack, so it also grows for chelates with small bite angles, and it can exceed 1 (a planar hexagon gives 1.667). The five base angles of a real pentagonal pyramid add up to about 360° however distorted the base is, so (1 + τ6′) / 2 is the value the paper quotes for such a centre. All five angles are reported.
+- **τ8**<sup>9</sup> = |θ − φ| / (129.82° − 97.07°), where θ and φ are the angles that the two diagonals of a "square face" of the eight ligands subtend at the centre. It is 0 for the square antiprism and the cube, whose diagonals are equal, and 1 for the trigonal dodecahedron, whose diagonals differ most. As in the paper, the face holding the first ligand is found from the ligand across it (the one at the third largest of its seven angles) and the two ligands closest to both, and the other four ligands make the second face. Each face gives a τ8 and both are reported: two faces that disagree (about 1 and 0) point to a bicapped trigonal prism.
+- **τ8′**<sup>9</sup> = 1 − |180° − (δA + δB)| / (180° − 2 × 65.53°), where δA and δB are the dihedral angles between the two planes through the centre and each pair of A ligands, and of B ligands. The larger diagonal of a face joins its two A ligands and the smaller one its two B ligands; the first A ligand is paired with the A at the smallest angle to it, and the first B with the B at the largest. It is 1 for the trigonal dodecahedron (δA = δB = 90°) and 0 for the square antiprism (δA = δB = 65.53°). The cube also reads 1, so τ8′ separates the antiprism from the other two and τ8 the cube from the dodecahedron. Both dihedral angles are reported. The paper's Δ = τ8′ − τ8 (`cube_delta`) is output too, with the larger τ8 of the two faces as in its bicapped-prism examples: it is 1 for a cube and 0 for the ideal dodecahedron and antiprism, so it signals cubic character.
+
+The papers print θ and 360° − 2θ rounded to 109.5° and 141°; `gidx` uses the exact θ, so an ideal tetrahedron gives exactly 1 for both τ4 and τ4′.
+
+The same goes for τ8 and τ8′. The paper's 129.8°, 97.1° and 65.5° (and the 32.7° and 49.0° made from them) are rounded values of the hard-sphere polyhedra of Kepert<sup>10</sup>. In his dodecahedron every edge but the four between the upper and lower B sites has one length, which puts the A and B sites at 36.85° and 69.46° from the S4 axis and makes the face diagonals subtend arccos(−cos²36.85°) = 129.8208° and arccos(−cos²69.46°) = 97.0714°. In his antiprism all edges are equal and the planes close to arccos(√2 − 1) = 65.5302° (its face diagonals subtend 118.53°, which the paper prints as 118.6°). `gidx` uses these exact values, so the ideal polyhedra give exactly 1 or 0.
+
+### Geometry indices of the ideal shapes
+
+The values `gidx` gives for the [built-in reference shapes](#reference-polyhedra) with four, five and six vertices (centre at the origin), angles in degrees:
+
+| Symbol    | Shape                     | Symmetry       | α      | β      | τ4    | τ4′   |
+|-----------|---------------------------|----------------|--------|--------|-------|-------|
+| `SP-4`    | Square                    | D<sub>4h</sub> | 180.00 | 180.00 | 0.000 | 0.000 |
+| `T-4`     | Tetrahedron               | T<sub>d</sub>  | 109.47 | 109.47 | 1.000 | 1.000 |
+| `SS-4`    | Seesaw                    | C<sub>2v</sub> | 90.00  | 180.00 | 0.638 | 0.359 |
+| `vTBPY-4` | Vacant trigonal bipyramid | C<sub>3v</sub> | 120.00 | 120.00 | 0.851 | 0.851 |
+
+| Symbol    | Shape                          | Symmetry       | α      | β      | τ5    |
+|-----------|--------------------------------|----------------|--------|--------|-------|
+| `PP-5`    | Pentagon                       | D<sub>5h</sub> | 144.00 | 144.00 | 0.000 |
+| `vOC-5`   | Vacant octahedron              | C<sub>4v</sub> | 180.00 | 180.00 | 0.000 |
+| `TBPY-5`  | Trigonal bipyramid             | D<sub>3h</sub> | 120.00 | 180.00 | 1.000 |
+| `SPY-5`   | Spherical square pyramid       | C<sub>4v</sub> | 151.04 | 151.04 | 0.000 |
+| `JTBPY-5` | Johnson trigonal bipyramid J12 | D<sub>3h</sub> | 120.00 | 180.00 | 1.000 |
+
+| Symbol    | Shape                         | Symmetry       | τ6    | τ6′   |
+|-----------|-------------------------------|----------------|-------|-------|
+| `OC-6`    | Octahedron                    | O<sub>h</sub>  | 0.000 | 0.000 |
+| `TPR-6`   | Trigonal prism                | D<sub>3h</sub> | 0.740 | 0.456 |
+| `PPY-6`   | Pentagonal pyramid            | C<sub>5v</sub> | 0.900 | 1.000 |
+| `JPPY-6`  | Johnson pentagonal pyramid J2 | C<sub>5v</sub> | 0.900 | 1.000 |
+| `HP-6`    | Hexagon                       | D<sub>6h</sub> | 0.000 | 1.667 |
+
+Slightly distorted versions of the same shapes are found in the crystal structures below, one six-coordinate cadmium each (coordinates from their CIF files; "Paper τ6" is the value the paper<sup>8</sup> gives for the site):
+
+| Structure          | Closest ideal shape | Paper τ6 | τ6    | τ6′   |
+|--------------------|---------------------|----------|-------|-------|
+| `IQATAY` Cd1       | Octahedron          | 0        | 0.000 | 0.120 |
+| `IQATAY` Cd2       | Octahedron          | 0.06     | 0.059 | 0.188 |
+| `IQATAY` Cd3       | Octahedron          | 0.16     | 0.159 | 0.305 |
+| `IQATAY` Cd4       | Octahedron          | 0.17     | 0.173 | 0.293 |
+| Title compound Cd2 | Octahedron          | 0.27     | 0.270 | 0.471 |
+| `ULESAH` Cd1       | Trigonal prism      | 0.73     | 0.734 | 0.511 |
+| `VAPSAG` Cd1       | Pentagonal pyramid  | 1.02     | 0.820 | 1.044 |
+| `CIJBII` Cd1       | Pentagonal pyramid  | 1.0      | 0.682 | 0.995 |
+
+For the two pyramids the paper's value is (1 + τ6′) / 2 (1.022 and 0.998), see above.
+
+| Symbol                                                   | Shape                                    | Symmetry       | τ8            | τ8′   | Δ      |
+|----------------------------------------------------------|------------------------------------------|----------------|---------------|-------|--------|
+| `SAPR-8`                                                 | Square antiprism                         | D<sub>4d</sub> | 0.000         | 0.000 | 0.000  |
+| `TDD-8`                                                  | Triangular dodecahedron                  | D<sub>2d</sub> | 1.000         | 1.000 | 0.000  |
+| `CU-8`                                                   | Cube                                     | O<sub>h</sub>  | 0.000         | 1.000 | 1.000  |
+| `BTPR-8`                                                 | Biaugmented trigonal prism               | C<sub>2v</sub> | 1.167 / 0.000 | 0.408 | −0.758 |
+| `JBTPR-8`                                                | Johnson-Biaugmented trigonal prism (J50) | C<sub>2v</sub> | 1.167 / 0.000 | 0.408 | −0.758 |
+| `JSD-8`                                                  | Snub disphenoid (J84)                    | D<sub>2d</sub> | 1.222         | 1.000 | −0.222 |
+| [WF<sub>4</sub>(PH<sub>3</sub>)<sub>4</sub>]<sup>+</sup> | DFT structure from the paper<sup>9</sup> | D<sub>2</sub>  | 0.356         | 0.406 | 0.049  |
+
+Δ = τ8′ − τ8 (the larger τ8 of the two faces). The two values of τ8 for the biaugmented trigonal prism are those of its two square faces. The last row is the DFT-optimised structure of the paper's supporting information (donor atoms only, `tests/tau8/WF4_PH3_4_D2.xyz`), in between the dodecahedron and the antiprism; its two faces give the same τ8.
+
+A few things to keep in mind when reading them:
+
+- The indices only see angles, so shapes that share their largest angles share their index.
+- τ8 and τ8′ are defined for the dodecahedron, antiprism, cube and bicapped-prism family. For other eight-vertex shapes τ8′ can be negative (`ETBPY-8`: −0.533) or undefined: a plane through the centre and two exactly opposite ligands does not exist, and `gidx` reports an error (`JGBF-8`, `HBPY-8`).
+- For some chelates the supporting information's numbers differ from this procedure: it lists τ8 = 1.22 for [WF<sub>4</sub>(dpb)<sub>2</sub>]<sup>+</sup> (D<sub>2d</sub>) where `gidx` gives 1.10 from the coordinates in the same file, and 0.05 and 0.02 for the C<sub>2</sub> state of [WF<sub>4</sub>(dpe)<sub>2</sub>]<sup>+</sup> where it gives 0.06 and 0.05. I could not trace the difference.
+- The uniform trigonal prism (all edges equal) has trans angles of 135.58°, so its τ6 is 0.740. The 0.75 quoted in the paper<sup>8</sup> is for trans angles of exactly 135°. 
+
+_Note: The paper quotes τ6 = 1.00 for a pentagonal pyramid, but it gets there by summing the five angles between adjacent base vectors (5 × 72° = 360°) instead of three trans angles. `gidx` takes three trans angles for τ6, so the ideal pentagonal pyramid, whose trans angles are 144°, 144° and 90°, reads 0.900 there and 1.000 in τ6′, which uses those five base angles._
 
 ## Acknowledgements
 
@@ -485,4 +609,10 @@ The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argm
 2. Alvarez, S., Alemany, P., Casanova, D., Cirera, J., Llunell, M., & Avnir, D. (2005). Shape maps and polyhedral interconversion paths in transition metal chemistry. _Coordination Chemistry Reviews_, 249(17–18), 1693–1708. https://doi.org/10.1016/j.ccr.2005.03.031
 3. Nielsen, V. R. M., Le Guennic, B., & Sørensen, T. J. (2024). Evaluation of Point Group Symmetry in Lanthanide(III) Complexes: A New Implementation of a Continuous Symmetry Operation Measure with Autonomous Assignment of the Principal Axis. _The Journal of Physical Chemistry A_, 128(28), 5740–5751. https://doi.org/10.1021/acs.jpca.4c00801
 4. Ketkaew, R., Tantirungrotechai, Y., Harding, P., Chastanet, G., Guionneau, P., Marchivie, M., & Harding, D. J. (2021). OctaDist: a tool for calculating distortion parameters in spin crossover and coordination complexes. _Dalton Transactions_, 50(3), 1086–1096. https://doi.org/10.1039/d0dt03988h
+5. Addison, A. W., Rao, T. N., Reedijk, J., van Rijn, J., & Verschoor, G. C. (1984). Synthesis, structure, and spectroscopic properties of copper(II) compounds containing nitrogen–sulphur donor ligands; the crystal and molecular structure of aqua[1,7-bis(N-methylbenzimidazol-2′-yl)-2,6-dithiaheptane]copper(II) perchlorate. _Journal of the Chemical Society, Dalton Transactions_, (7), 1349–1356. https://doi.org/10.1039/DT9840001349
+6. Yang, L., Powell, D. R., & Houser, R. P. (2007). Structural variation in copper(I) complexes with pyridylmethylamide ligands: structural analysis with a new four-coordinate geometry index, τ4. _Dalton Transactions_, (9), 955–964. https://doi.org/10.1039/B617136B
+7. Okuniewski, A., Rosiak, D., Chojnacki, J., & Becker, B. (2015). Coordination polymers and molecular structures among complexes of mercury(II) halides with selected 1-benzoylthioureas. _Polyhedron_, 90, 47–57. https://doi.org/10.1016/j.poly.2015.01.035
+8. Stoeckli-Evans, H., Shankar, M. G., Kumaravel, R., Subashini, A., Sabari Girisun, T., Ramamurthi, K., Kučeráková, M., Dušek, M., & Crochet, A. (2025). Di-μ3-chlorido-1:2:3κ3Cl;2:3:4κ3Cl-di-μ2-chlorido-1:2κ2Cl;3:4κ2Cl-tetrakis[(4-amino-1,5-dimethyl-2-phenyl-2,3-dihydro-1H-pyrazol-3-one-κ2N4,O)chlorido-cadmium(II)] 1.7-hydrate: a new six-coordinate geometry index, τ6. _Acta Crystallographica Section E_, 81(5), 393–400. https://doi.org/10.1107/S2056989025003123
+9. Turnbull, D., Wetmore, S. D., & Gerken, M. (2021). Stabilisation of [W<sup>V</sup>F<sub>4</sub>]<sup>+</sup> by N- and P-Donor Ligands: d<sup>1</sup> Second-Order Jahn–Teller Effects in Octacoordinate Complexes. _Chemistry – A European Journal_, 27(44), 11335–11343. https://doi.org/10.1002/chem.202100863
+10. Kepert, D. L. (1978). Aspects of the stereochemistry of eight-coordination. In _Progress in Inorganic Chemistry_, Vol. 24 (pp. 179–249). John Wiley & Sons, New York.
 
