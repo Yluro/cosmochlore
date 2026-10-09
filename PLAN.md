@@ -155,7 +155,7 @@ Tier 1 (cheap, high value, reuses existing machinery):
    Fitting a structure *to* a path (the path coordinate plus the deviation from the path) is a
    one-variable dynamic shape: do it as 19c.
 2. `SHIPPED` Θ face-twist + octahedral volume — Ketkaew 2021
-3. `SHIPPED` τ4/τ4'/τ5/τ6 geometry indices for CN=4,5,6 — Addison 1984, Yang 2007, Okuniewski 2015,
+3. `SHIPPED` τ4/τ4'/τ5/τ6/τ6' geometry indices for CN=4,5,6 — Addison 1984, Yang 2007, Okuniewski 2015,
    Stoeckli-Evans 2025. The `gidx` command (`src/gidx/`, `mod.rs` + `calc.rs`, laid out like `odis`): τ4 and τ4'
    for four ligands, τ5 for five, τ6 for six, plus the angles they are built from (two largest for CN 4/5; for
    CN 6 the three trans angles, chosen as the disjoint pairing of the ligands with the greatest angle sum, since the
@@ -165,6 +165,11 @@ Tier 1 (cheap, high value, reuses existing machinery):
    paper's 1.00 for a pentagonal pyramid sums the five adjacent base angles (5 × 72°) rather than three trans angles;
    gidx uses three trans angles for every geometry (ideal shape: 0.900). The paper's own Cd centres (τ6 0.27, τ5 0.31)
    are reproduced from its SI: `tests/CdONCl4.xyz`, `tests/CdONCl3.xyz`.
+   τ6' is cosmochlore's own complement to τ6 (not in the paper): (5×90° − sum of the five smallest angles)/90°, so 0 for
+   OC, 0.456 for the equal-edge prism, 1 for a pentagonal pyramid, 5/3 for a hexagon. Five angles rather than three
+   because the five base angles of a real pyramid sum to ~360° (three smallest read 1.31/1.18 on VAPSAG/CIJBII,
+   five read 1.044/0.995); (1+τ6')/2 is the paper's pyramid value. Literature sites (CSD, one Cd each) in
+   `tests/cd6/`: IQATAY Cd1-4, ULESAH, VAPSAG, CIJBII.
 4. `OPEN` Classic distortion params (⟨λ⟩, σ², Baur D, ECoN) — Robinson 1971 et al.
 5. `OPEN` Bond-valence sum — Brown & Altermatt 1985
 6. `OPEN` Gyration-tensor descriptors (asphericity, κ²) — reuses `linalg.rs`
