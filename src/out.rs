@@ -35,6 +35,265 @@ fn csv_field(s: &str) -> String {
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// D10: `Table` and `CsvWriter`. Not wired in yet; the free `print_*_table` / `write_*_csv`
+// functions below still do the actual work. Both structs own their `silent` flag, so they do
+// not touch the `SILENT` static.
+// ---------------------------------------------------------------------------------------------
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Align {
+    Left,
+    Right,
+}
+
+/// How wide a [`Table`] column is.
+#[allow(dead_code)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Width {
+    /// Exactly this many characters.
+    Fixed(usize),
+    /// The longest cell of the column (header excluded) plus this much padding.
+    Fit(usize),
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub struct Column {
+    header: String,
+    width: Width,
+    align: Align,
+    /// Spaces printed before the column.
+    gap: usize,
+}
+
+#[allow(dead_code)]
+impl Column {
+    /// A left-aligned column preceded by one space.
+    pub fn new(header: &str, width: Width) -> Self {
+        Column {
+            header: header.to_string(),
+            width,
+            align: Align::Left,
+            gap: 1,
+        }
+    }
+
+    pub fn right(mut self) -> Self {
+        self.align = Align::Right;
+        self
+    }
+
+    pub fn gap(mut self, gap: usize) -> Self {
+        self.gap = gap;
+        self
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+enum Line {
+    /// A full-width rule made of this character (`=` or `-`).
+    Rule(char),
+    /// Free text, printed as is.
+    Text(String),
+    /// The column headers.
+    Header,
+    /// One cell per column; cells are formatted by the caller.
+    Row(Vec<String>),
+}
+
+/// A text table built line by line and rendered once, so column widths, rules and number
+/// formatting live in one place. Two shapes use it:
+/// - column tables (cshm, csom): `Column`s with headers, one `row` per result;
+/// - property tables (odis, gidx): three columns (label, value, unit), one `row` per measure.
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub struct Table {
+    silent: bool,
+    columns: Vec<Column>,
+    rule_width: Option<usize>,
+    lines: Vec<Line>,
+}
+
+#[allow(dead_code)]
+impl Table {
+    pub fn new(silent: bool, columns: Vec<Column>) -> Self {
+        Table {
+            silent,
+            columns,
+            rule_width: None,
+            lines: Vec::new(),
+        }
+    }
+
+    /// The label / value / unit layout of the odis and gidx tables.
+    pub fn properties(silent: bool) -> Self {
+        Table::new(
+            silent,
+            vec![
+                Column::new("", Width::Fixed(16)).gap(0),
+                Column::new("", Width::Fixed(12)).right().gap(0),
+                Column::new("", Width::Fixed(12)).gap(2),
+            ],
+        )
+    }
+
+    /// Forces the width of the rules instead of deriving it from the columns.
+    pub fn rule_width(mut self, width: usize) -> Self {
+        self.rule_width = Some(width);
+        self
+    }
+
+    pub fn rule(mut self, ch: char) -> Self {
+        self.lines.push(Line::Rule(ch));
+        self
+    }
+
+    pub fn text(mut self, text: impl Into<String>) -> Self {
+        self.lines.push(Line::Text(text.into()));
+        self
+    }
+
+    pub fn header(mut self) -> Self {
+        self.lines.push(Line::Header);
+        self
+    }
+
+    pub fn row<S: AsRef<str>>(mut self, cells: &[S]) -> Self {
+        assert_eq!(cells.len(), self.columns.len(), "one cell per column");
+        self.lines.push(Line::Row(
+            cells.iter().map(|c| c.as_ref().to_string()).collect(),
+        ));
+        self
+    }
+
+    /// A property row: `label`, `value` printed with `decimals` places, `unit` (may be empty).
+    /// The label is indented by one space like the section titles.
+    pub fn value(self, label: &str, value: f64, decimals: usize, unit: &str) -> Self {
+        self.row(&[
+            format!(" {label}"),
+            format!("{value:.decimals$}"),
+            unit.to_string(),
+        ])
+    }
+
+    fn widths(&self) -> Vec<usize> {
+        self.columns
+            .iter()
+            .enumerate()
+            .map(|(i, col)| match col.width {
+                Width::Fixed(w) => w,
+                Width::Fit(pad) => {
+                    let longest = self
+                        .lines
+                        .iter()
+                        .filter_map(|l| match l {
+                            Line::Row(cells) => Some(cells[i].len()),
+                            _ => None,
+                        })
+                        .max()
+                        .unwrap_or(0);
+                    longest + pad
+                }
+            })
+            .collect()
+    }
+
+    fn format_cells<'a>(&self, cells: impl Iterator<Item = &'a str>, widths: &[usize]) -> String {
+        let mut out = String::new();
+        for ((col, &w), cell) in self.columns.iter().zip(widths).zip(cells) {
+            out.push_str(&" ".repeat(col.gap));
+            match col.align {
+                Align::Left => out.push_str(&format!("{cell:<w$}")),
+                Align::Right => out.push_str(&format!("{cell:>w$}")),
+            }
+        }
+        out
+    }
+
+    /// The table as text, one `\n`-terminated line per entry.
+    pub fn render(&self) -> String {
+        let widths = self.widths();
+        let rule_width = self.rule_width.unwrap_or_else(|| {
+            widths.iter().sum::<usize>() + self.columns.iter().map(|c| c.gap).sum::<usize>()
+        });
+
+        let mut out = String::new();
+        for line in &self.lines {
+            match line {
+                Line::Rule(ch) => out.push_str(&ch.to_string().repeat(rule_width)),
+                Line::Text(text) => out.push_str(text),
+                Line::Header => out.push_str(
+                    &self.format_cells(self.columns.iter().map(|c| c.header.as_str()), &widths),
+                ),
+                Line::Row(cells) => {
+                    out.push_str(&self.format_cells(cells.iter().map(String::as_str), &widths))
+                }
+            }
+            out.push('\n');
+        }
+        out
+    }
+
+    /// Prints the table to stdout unless `--silent`.
+    pub fn print(&self) {
+        if !self.silent {
+            print!("{}", self.render());
+        }
+    }
+}
+
+/// `<file>` without a trailing `.xyz`, the stem every output file name is built from.
+#[allow(dead_code)]
+pub fn output_stem(file_name: &str) -> &str {
+    file_name.strip_suffix(".xyz").unwrap_or(file_name)
+}
+
+/// Creates an output file and reports it ("Writing {what} to {path}...") unless `silent`.
+#[allow(dead_code)]
+pub fn create_output(path: &str, what: &str, silent: bool) -> Result<File, std::io::Error> {
+    let file = File::create(path)?;
+    if !silent {
+        println!("Writing {what} to {path}...");
+    }
+    Ok(file)
+}
+
+/// Writes a CSV file one record at a time, escaping every field with [`csv_field`].
+#[allow(dead_code)]
+pub struct CsvWriter {
+    file: File,
+}
+
+#[allow(dead_code)]
+impl CsvWriter {
+    /// Creates `path` and reports it as "Writing {what} to {path}..." unless `silent`.
+    pub fn create(path: &str, what: &str, silent: bool) -> Result<Self, std::io::Error> {
+        Ok(CsvWriter {
+            file: create_output(path, what, silent)?,
+        })
+    }
+
+    /// Creates `<file stem>_<suffix>.csv`, e.g. `("a.xyz", "cshm_table")` -> `a_cshm_table.csv`.
+    pub fn create_for(
+        file_name: &str,
+        suffix: &str,
+        what: &str,
+        silent: bool,
+    ) -> Result<Self, std::io::Error> {
+        let path = format!("{}_{}.csv", output_stem(file_name), suffix);
+        Self::create(&path, what, silent)
+    }
+
+    /// Writes one record; fields are pre-formatted by the caller (number precision lives there).
+    pub fn record<S: AsRef<str>>(&mut self, fields: &[S]) -> Result<(), std::io::Error> {
+        let line: Vec<String> = fields.iter().map(|f| csv_field(f.as_ref())).collect();
+        writeln!(self.file, "{}", line.join(","))
+    }
+}
+
 fn format_matrix3(m: &Matrix3<f64>) -> String {
     format!(
         "[{:.4} {:.4} {:.4}; {:.4} {:.4} {:.4}; {:.4} {:.4} {:.4}]",
@@ -694,6 +953,80 @@ mod tests {
     #[test]
     fn csv_field_doubles_embedded_quotes() {
         assert_eq!(csv_field("6\" wide"), "\"6\"\" wide\"");
+    }
+
+    #[test]
+    fn property_table_matches_the_odis_layout() {
+        let table = Table::properties(false)
+            .rule_width(34)
+            .rule('=')
+            .text(" Octahedral distortion parameters")
+            .rule('-')
+            .value("Mean d(M-X)", 2.0, 4, "Ang")
+            .value("Delta", 0.5, 6, "")
+            .rule('=')
+            .render();
+        let expected = format!(
+            "{}\n Octahedral distortion parameters\n{}\n{:<16}{:>12.4}  {:<12}\n{:<16}{:>12.6}  {:<12}\n{}\n",
+            "=".repeat(34),
+            "-".repeat(34),
+            " Mean d(M-X)",
+            2.0,
+            "Ang",
+            " Delta",
+            0.5,
+            "",
+            "=".repeat(34),
+        );
+        assert_eq!(table, expected);
+    }
+
+    #[test]
+    fn column_table_matches_the_cshm_layout() {
+        let table = Table::new(
+            false,
+            vec![
+                Column::new("Symbol", Width::Fit(2)),
+                Column::new("Shape", Width::Fit(2)),
+                Column::new("Symmetry", Width::Fixed(10)),
+                Column::new("CShM", Width::Fixed(7)),
+            ],
+        )
+        .rule('=')
+        .header()
+        .rule('-')
+        .row(&["OC-6", "Octahedron", "Oh", &format!("{:.3}", 0.0)])
+        .render();
+        let (sw, nw) = (6, 12);
+        let expected = format!(
+            "{}\n {:<sw$} {:<nw$} {:<10} {:<7}\n{}\n {:<sw$} {:<nw$} {:<10} {:<7.3}\n",
+            "=".repeat(sw + nw + 10 + 7 + 4),
+            "Symbol",
+            "Shape",
+            "Symmetry",
+            "CShM",
+            "-".repeat(sw + nw + 10 + 7 + 4),
+            "OC-6",
+            "Octahedron",
+            "Oh",
+            0.0,
+        );
+        assert_eq!(table, expected);
+    }
+
+    #[test]
+    fn csv_writer_escapes_fields_and_reports_nothing_when_silent() {
+        let path = std::env::temp_dir().join("cosmochlore_csv_writer_test.csv");
+        let path = path.to_str().unwrap();
+        let mut csv = CsvWriter::create(path, "test table", true).unwrap();
+        csv.record(&["a", "b"]).unwrap();
+        csv.record(&["x, y", "6\" wide"]).unwrap();
+        drop(csv);
+        assert_eq!(
+            std::fs::read_to_string(path).unwrap(),
+            "a,b\n\"x, y\",\"6\"\" wide\"\n"
+        );
+        std::fs::remove_file(path).unwrap();
     }
 
     fn labels(symbols: &[&str]) -> Vec<String> {
