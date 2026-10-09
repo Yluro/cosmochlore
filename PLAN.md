@@ -3,7 +3,7 @@
 Revision 4, reviewed at `1ea345a`. Status legend: `FIXED` `PARTLY` `MOOT` `OPEN`
 `NON-ISSUE` `NEW`. Update statuses in place as items land; don't append new sections.
 
-Totals: 32/52 fixed, 3 partly, 3 moot, 3 non-issue, 11 open (1 of them new: C17).
+Totals: 32/53 fixed, 3 partly, 3 moot, 3 non-issue, 12 open (2 of them new: C17, D10).
 Steps 1–3 of the order of work landed after this review (B10, D7, E2, E5, E6, E7, E8 — see those entries); the
 `cargo fmt` pass in `e163603` moved every line reference below, so grep before trusting one.
 All 56 tests pass. Working tree clean apart from untracked run output in `tests/` and `.idea/`
@@ -108,6 +108,103 @@ csom whole-process on `FeHS.xyz -p Oh D4h` went 3.86 s -> 0.22 s with identical 
   import cycle. `yaml.rs` stays top-level for future non-shape inputs (user point groups).
   The test-only `structure_from_shape` helper moved to `cshm/test_utils.rs` with the other test
   scaffolding. Pure move: all cshm/csom/odis outputs byte-identical. `src/cshm/shape_lookup.rs`, `generate_builtin_shapes_rs.py`
+- D10 `NEW` — output code is written per measure, twice. `src/out.rs` is 658 lines and ~280 of them are the
+  `print_*_table` / `write_*_csv` pairs for cshm, csom (summary and details), odis and gidx. Each pair lists the same
+  fields twice (the gidx pair `match`es `GidxResult` twice), `print_cshm_table` works its column widths out by hand,
+  and the `strip_suffix(".xyz")` + `File::create` + "Writing … to" preamble is pasted into all 8 writers (the table
+  CSVs, `*_details.csv`, and the xyz/mol2 writers). Every measure still to come (Part II items 4–6, ...) would add two
+  more functions. Replace the pairs with a `Table` that a measure fills from its result and that `out` prints, plus a
+  `CsvWriter` (new `src/csv.rs`) that writes it, or any other CSV a measure builds itself. Brief for an implementing
+  agent: the decisions below are settled, the bodies are yours.
+  - **Prerequisite**: the `gidx` branch merged (it adds the fourth measure and its `print_gidx_table` /
+    `write_gidx_csv`). If you have to start earlier, skip the gidx step in phase 2 and do it when the branch lands.
+  - **Layout (decided; the CSV split is the user's call)**: `src/out.rs` becomes `src/out/mod.rs` (banner, crab,
+    the xyz/mol2 writers, `format_matrix3`, `create_output`) plus `src/out/table.rs` (the screen side); the rename is
+    its own commit. All CSV writing moves to a new top-level `src/csv.rs` holding `CsvWriter`, which any measure can
+    call on its own and which `Table` uses for its CSV. `csv_field` and its three tests move there. `table.rs` and
+    `csv.rs` import no measure type. Each measure directory gets a `report.rs` with free functions
+    `<measure>_table(&Result) -> Table`: the one place its columns are listed, and where a new measure puts its own.
+    No `tabled` / `comfy-table` / `csv` crate: the screen style (`=` / `-` rules, no box drawing) is custom and
+    `csv_field` already does RFC 4180.
+  - **`CsvWriter` (decided)**: `CsvWriter<W: Write>` in `src/csv.rs`, generic over the sink so tests write into a
+    `Vec<u8>` and never touch the disk. `CsvWriter::new(out: W)`, `.header(&[&str])`, `.row(&[Field])` and
+    `.into_inner()`, each write returning `io::Result`. `Field::{Text(&str), Num(f64, usize)}` carries its own
+    decimals. Text and headers go through `csv_field`; the line ending stays `\n`. It does not create files and does
+    not depend on `out`: a caller opens the file with `out::create_output` and hands it over, so `csv` and `out` never
+    import each other in a cycle (`out::table` imports `csv`, nothing else does). A measure whose CSV isn't a `Table`
+    (a future per-frame or trajectory CSV) uses `CsvWriter` directly.
+  - **Types (decided)**:
+    - `Table { title: Option<String>, layout: Layout, columns: Vec<Column>, rows: Vec<Vec<Cell>>, notes: Vec<String> }`
+      with a small builder: `Table::grid(columns)` + `.row(cells)`, `Table::record(title)` + `.field(...)` +
+      `.rule()`, and `.note(...)`.
+    - `Cell::{Text(String), Num(f64)}`. A number is formatted by its column's precision (`decimals` on screen,
+      `csv_decimals` in the CSV), so callers do no formatting; in the CSV a `Cell` becomes a `csv::Field`.
+    - `Column { header, csv_header: Option, unit: Option, decimals, csv_decimals: Option, show: Show, align }` with
+      `Show::{Both, ScreenOnly, CsvOnly}`.
+    - `Layout::Grid` (headers over rows: cshm, csom, csom details) and `Layout::Record` (label | value | unit, with
+      rules between groups: odis, gidx). A record is a one-row table: transposed on screen, and in the CSV a header
+      row plus that row, as today.
+    - `render(&self) -> String` (screen, pure so tests don't capture stdout); `print(&self, input_file: &str)` writes
+      `"\nInput file: …"` then `render`; `to_csv(&self, w: &mut CsvWriter<impl Write>) -> io::Result<()>` writes the
+      visible-in-CSV columns (header row, then the rows; a Record is one row); `write_csv(&self, input_file: &str,
+      suffix: &str) -> io::Result<()>` is `create_output` + `CsvWriter::new` + `to_csv`.
+    - Why `csv_decimals`: the screen is rounded for reading and the CSV keeps more digits, already in three places:
+      odis Tau 54.42 → 54.4157 and Mu 0.17 → 0.1720, gidx tau6 0.302 → 0.3023 (the angles are 2 decimals on both).
+    - Why `show` and `csv_header`: the csom rotation matrix is in the CSV only; cshm prints `Shape` but writes
+      `Name`, and csom prints `Point group` but writes `PointGroup`.
+    - Widths come from the content. The closing rule belongs to the layout: Grid ends with `-`, Record with `=`, as
+      now; don't unify them. An empty grid prints its header and does not panic. Notes are screen-only: `cshm_table`
+      adds "Only extremely distorted geometries were found …" itself when the minimum CShM is above 10.
+  - **Output files (decided)**: `out::create_output(input: &str, suffix: &str, what: &str) -> io::Result<File>`
+    strips `.xyz`, appends the suffix, creates the file and prints `Writing {what} to {path}...`. All eight writers use
+    it, the xyz/mol2 ones included; `write_csv` calls it with `_<measure>_table.csv`. File names do not change, so
+    `.gitignore` (E7) needs nothing.
+  - **Output changes allowed** (list them in the PR description; nothing else may move): (a) rule and column widths
+    come from the content: odis and gidx are fixed at 34 today (the `Ang^3` line is 35 visible characters), csom at
+    20; (b) no trailing spaces on screen lines (each line is padded to the last column's width today); (c) gidx gets
+    the blank line before `Input file:` that the other three print; (d) "Writing idealised polyhedra coordinates to
+    table to" loses the stray "to table". Every number on screen and every byte of every file written stays identical.
+  - **Phase 0, baseline (before touching code)**: copy `tests/FeHS.xyz`, `ML4.xyz` and `ML5.xyz` to an empty temp dir
+    and run these from there with a release build of the base commit, keeping stdout and every file written:
+    `odis FeHS.xyz -t`, `gidx ML4.xyz -t`, `gidx ML5.xyz -t`, `gidx FeHS.xyz -t`, `cshm FeHS.xyz -s 2 3 -t -i`,
+    `csom FeHS.xyz -p Oh D4h -t -f -o`. Measured at `c508159`; pin these in the `report.rs` tests:
+
+        FeHS_odis_table.csv   d_mean,zeta,delta,sigma,theta,vol,tau,mu
+                              2.1623,0.3622,0.001007,82.29,306.81,12.9644,54.4157,0.1720
+        ML4_gidx_table.csv    alpha,beta,tau4,tau4_prime
+                              113.23,144.34,0.7262,0.6298
+        ML5_gidx_table.csv    alpha,beta,tau5
+                              150.18,177.91,0.4621
+        FeHS_gidx_table.csv   alpha1,alpha2,alpha3,tau6
+                              162.81,161.60,161.17,0.3023
+        FeHS_cshm_table.csv   Symbol,Name,Symmetry,CShM
+                              OC-6,Octahedron,Oh,2.089
+                              TPR-6,Trigonal prism,D3h,11.079
+        FeHS_csom_table.csv   PointGroup,Dev,Rotation Matrix   (Dev at 3 decimals, matrix `[a b c; d e f; g h i]`
+                              Oh,5.380,[0.5685 0.2917 ...]      at 4; the optimiser's last digit can move, so test
+                              D4h,5.611,[0.9795 -0.0143 ...]    the format on a hand-built `CsomResult`)
+
+  - **Phases** (one PR each; every PR passes `cargo test`, `cargo clippy --all-targets -- -D warnings` and
+    `cargo fmt --check`, and its baseline diff is clean apart from (a)–(d)):
+    1. The `out/` rename commit; `csv.rs` with `CsvWriter`, `Field` and `csv_field` (tests: header, text escaping,
+       decimals, a row of mixed fields, into a `Vec<u8>`); `table.rs` with unit tests (alignment, widths, `Show`,
+       `csv_decimals`, a `Text` cell holding a comma, an empty grid); `create_output`; **odis** converted
+       (`odis/report.rs`), the old `print_odis_table` / `write_odis_csv` deleted. odis goes first because CI builds
+       with `-D warnings` and an unused `Table` or `CsvWriter` is dead code.
+    2. **gidx** (`gidx/report.rs`, one `match` on `GidxResult` instead of two); delete its pair. Needs `gidx` merged.
+    3. **cshm**, **csom** summary and **csom details** (one table per point group; `format_pairing` moves to
+       `csom/report.rs`); delete the remaining pairs. Add a test that a user shape named `My Shape, Custom` goes
+       through `cshm_table` → `to_csv` quoted.
+    4. Route `write_cshm_reconstructed_xyz`, `write_csom_operated_xyz` and `write_csom_merged_mol2` through
+       `create_output`; `*_ideal.xyz`, `*_operated.xyz`, `*_merged.mol2` and `*_details.csv` byte-identical to baseline.
+    5. Regenerate the README example blocks (E5: they are verbatim release-binary output on `tests/FeHS.xyz`, so
+       (a)–(c) change them); mark D10 `FIXED` with the before/after line counts of `out/`.
+  - **Do not** fix A4 (`odis --full` writes the cshm/csom CSVs without `--table`) here: keep each driver's
+    `if args.table` conditions exactly as they are, so A4 stays a separate one-line change afterwards.
+  - **Done when**: no `print_*_table` / `write_*_csv` is left in `out/`, `table.rs` and `csv.rs` import no measure
+    type, no CSV line is built with `writeln!` outside `csv.rs`, `grep -rc 'strip_suffix(".xyz")' src` finds it once
+    (inside `create_output`), and the table code is roughly 150 lines in `table.rs` plus ~60 in `csv.rs` plus 15–25
+    per `report.rs`, against ~280 in `out.rs` now.
 
 ## E · Build, tests, CI
 
@@ -597,7 +694,8 @@ Tier 0:
 4. C17, then C3 — resolve the point group once; make grouping deterministic and drop the
    per-call sort (both contained, both measurable with the 0.22 s baseline)
 5. C5 (score seeds, refine best 2-3) — needs the CI gate from step 1 first
-6. A4, D6 residue, D1, D2, B8, B9, C14 profile — the small residue
+6. A4, D6 residue, D1, D2, B8, B9, C14 profile — the small residue — and D10 (`Table`), which should land
+   before the next Part II measure so that measure only ever writes one `<measure>_table()`
 7. Measure 1 (paths/shape maps)
 8. Rest of measure 16, then measure 14 (which retires the all-47 default), then 13
 9. Measures 17–18 (ADPs, TDPS library): 17 step 1 + 18 first, they need no sampling
