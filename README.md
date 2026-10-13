@@ -501,19 +501,49 @@ Additionally, the `odis` module can run `cshm` against the ideal octahedron/trig
 
 ## Geometry indices
 
-`gidx` reports the geometry indices of a four-, five-, six- or eight-coordinate centre. They locate the centre between ideal geometries (or, for six ligands, measure its distance from the octahedron) from its ligand–centre–ligand angles alone, so bond lengths play no part. The coordination number is the number of ligands in the file: four ligands give τ4 and τ4′, five give τ5, six give τ6 and τ6′, eight give τ8 and τ8′, and any other count is an error. For four and five ligands, only the two largest of all the angles between pairs of ligands (6 and 10 of them) are used, the largest as β and the second largest as α (so β ≥ α), and both are reported:
+`gidx` reports the geometry indices of a four-, five-, six- or eight-coordinate centre from its ligand–centre–ligand angles alone, so bond lengths play no part. The coordination number is the number of ligands in the file (any other count is an error): four ligands give τ4 and τ4′, five give τ5, six give τ6 and τ6′, and eight give τ8 and τ8′. The angles each index is built from are reported too.
 
-- **τ4**<sup>6</sup> = (360° − (α + β)) / (360° − 2θ), with θ = arccos(−1/3) ≈ 109.47° the tetrahedral angle. It is 0 for a square plane and 1 for a regular tetrahedron; the ideal seesaw (0.64) and trigonal pyramid (0.85) lie in between.
-- **τ4′**<sup>7</sup> = (β − α) / (360° − θ) + (180° − β) / (180° − θ), with the same θ. It has the same limits as τ4, but it also weighs the difference between the two angles, so geometries whose α + β add up the same (the ideal seesaw, 180° and 90°, and a tetrahedron flattened to 135° and 135°) no longer share a value.
-- **τ5**<sup>5</sup> = (β − α) / 60°. It is 0 for a square pyramid, where the two trans angles are equal, and 1 for a trigonal bipyramid, where the axial angle is 180° and the largest equatorial one is 120°.
-- **τ6**<sup>8</sup> = (3 × 180° − (α1 + α2 + α3)) / 180°, where α1 ≥ α2 ≥ α3 are the three principal (trans) angles of the six ligands. It is 0 for an octahedron, where all three are 180°, and 0.75 for a trigonal prism whose trans angles are 135°. The paper draws which angles to use for each ideal geometry (the trans pairs of the octahedron, the top-to-bottom pairs of the prism) and gives no rule for a distorted structure, so `gidx` pairs the six ligands into three disjoint pairs whose angles add up to the most: every ligand is used once, and the result is the three largest angles whenever those do not share a ligand. All three angles are reported.
-- **τ6′** = (5 × 90° − (γ1 + γ2 + γ3 + γ4 + γ5)) / 90°, where γ1 ≤ … ≤ γ5 are the five smallest of the 15 ligand–centre–ligand angles, which may share a ligand. It is cosmochlore's own complement to τ6 and is not part of the paper<sup>8</sup>. It is 0 for an octahedron, whose cis angles are all 90°, 0.456 for the prism with equal edges and 1 for a pentagonal pyramid, whose five base angles are 72°. It measures how tightly the ligands pack, so it also grows for chelates with small bite angles, and it can exceed 1 (a planar hexagon gives 1.667). The five base angles of a real pentagonal pyramid add up to about 360° however distorted the base is, so (1 + τ6′) / 2 is the value the paper quotes for such a centre. All five angles are reported.
-- **τ8**<sup>9</sup> = |θ − φ| / (129.82° − 97.07°), where θ and φ are the angles that the two diagonals of a "square face" of the eight ligands subtend at the centre. It is 0 for the square antiprism and the cube, whose diagonals are equal, and 1 for the trigonal dodecahedron, whose diagonals differ most. As in the paper, the face holding the first ligand is found from the ligand across it (the one at the third largest of its seven angles) and the two ligands closest to both, and the other four ligands make the second face. Each face gives a τ8 and both are reported: two faces that disagree (about 1 and 0) point to a bicapped trigonal prism.
-- **τ8′**<sup>9</sup> = 1 − |180° − (δA + δB)| / (180° − 2 × 65.53°), where δA and δB are the dihedral angles between the two planes through the centre and each pair of A ligands, and of B ligands. The larger diagonal of a face joins its two A ligands and the smaller one its two B ligands; the first A ligand is paired with the A at the smallest angle to it, and the first B with the B at the largest. It is 1 for the trigonal dodecahedron (δA = δB = 90°) and 0 for the square antiprism (δA = δB = 65.53°). The cube also reads 1, so τ8′ separates the antiprism from the other two and τ8 the cube from the dodecahedron. Both dihedral angles are reported. The paper's Δ = τ8′ − τ8 (`cube_delta`) is output too, with the larger τ8 of the two faces as in its bicapped-prism examples: it is 1 for a cube and 0 for the ideal dodecahedron and antiprism, so it signals cubic character.
+### Four and five ligands
 
-The papers print θ and 360° − 2θ rounded to 109.5° and 141°; `gidx` uses the exact θ, so an ideal tetrahedron gives exactly 1 for both τ4 and τ4′.
+Only the two largest of all the angles between pairs of ligands are used, the largest as β and the second largest as α (so β ≥ α). θ = arccos(−1/3) ≈ 109.47° is the tetrahedral angle.
 
-The same goes for τ8 and τ8′. The paper's 129.8°, 97.1° and 65.5° (and the 32.7° and 49.0° made from them) are rounded values of the hard-sphere polyhedra of Kepert<sup>10</sup>. In his dodecahedron every edge but the four between the upper and lower B sites has one length, which puts the A and B sites at 36.85° and 69.46° from the S4 axis and makes the face diagonals subtend arccos(−cos²36.85°) = 129.8208° and arccos(−cos²69.46°) = 97.0714°. In his antiprism all edges are equal and the planes close to arccos(√2 − 1) = 65.5302° (its face diagonals subtend 118.53°, which the paper prints as 118.6°). `gidx` uses these exact values, so the ideal polyhedra give exactly 1 or 0.
+**τ4**<sup>6</sup> is 0 for a square plane and 1 for a regular tetrahedron; the ideal seesaw (0.64) and trigonal pyramid (0.85) lie in between.
+
+$$\tau_4 = \frac{360^\circ - (\alpha + \beta)}{360^\circ - 2\theta}$$
+
+**τ4′**<sup>7</sup> has the same limits, but it also weighs the difference between the two angles, so geometries with the same α + β (the ideal seesaw and a tetrahedron flattened to 135° and 135°) no longer share a value.
+
+$$\tau_4' = \frac{\beta - \alpha}{360^\circ - \theta} + \frac{180^\circ - \beta}{180^\circ - \theta}$$
+
+**τ5**<sup>5</sup> is 0 for a square pyramid and 1 for a trigonal bipyramid.
+
+$$\tau_5 = \frac{\beta - \alpha}{60^\circ}$$
+
+### Six ligands
+
+**τ6**<sup>8</sup> uses the three principal (trans) angles α1 ≥ α2 ≥ α3. It is 0 for an octahedron and 0.75 for a trigonal prism with trans angles of 135°. The paper gives no rule for picking them in a distorted structure, so `gidx` pairs the six ligands into three disjoint pairs whose angles add up to the most (the three largest angles whenever those do not share a ligand).
+
+$$\tau_6 = \frac{3 \times 180^\circ - (\alpha_1 + \alpha_2 + \alpha_3)}{180^\circ}$$
+
+**τ6′** is cosmochlore's own complement to τ6 and is not part of the paper<sup>8</sup>. It uses the five smallest of the 15 ligand–centre–ligand angles, γ1 ≤ … ≤ γ5, which may share a ligand. It is 0 for an octahedron (cis angles of 90°), 0.456 for the equal-edge trigonal prism and 1 for a pentagonal pyramid (base angles of 72°). It measures how tightly the ligands pack, so it also grows for chelates with small bite angles, and it can exceed 1 (a planar hexagon gives 1.667). The five base angles of a real pentagonal pyramid add up to about 360° however distorted the base is, so (1 + τ6′) / 2 is the value the paper quotes for such a centre.
+
+$$\tau_6' = \frac{5 \times 90^\circ - \sum_{i=1}^{5} \gamma_i}{90^\circ}$$
+
+### Eight ligands
+
+**τ8**<sup>9</sup> is 0 for the square antiprism and the cube, and 1 for the trigonal dodecahedron. θ and φ are the angles that the two diagonals of a "square face" of the eight ligands subtend at the centre. As in the paper, the face holding the first ligand is found from the ligand across it (the one at the third largest of its seven angles) and the two ligands closest to both; the other four ligands make the second face. Each face gives a τ8 and both are reported: two faces that disagree (about 1 and 0) point to a bicapped trigonal prism.
+
+$$\tau_8 = \frac{|\theta - \phi|}{129.82^\circ - 97.07^\circ}$$
+
+**τ8′**<sup>9</sup> is 1 for the trigonal dodecahedron and 0 for the square antiprism. The cube also reads 1, so τ8′ separates the antiprism from the other two and τ8 the cube from the dodecahedron. δA and δB are the dihedral angles between the planes through the centre and each pair of A ligands, and of B ligands. The larger diagonal of a face joins its two A ligands and the smaller one its two B ligands; the first A ligand is paired with the A at the smallest angle to it, and the first B with the B at the largest.
+
+$$\tau_8' = 1 - \frac{|180^\circ - (\delta_A + \delta_B)|}{180^\circ - 2 \times 65.53^\circ}$$
+
+The paper's Δ = τ8′ − τ8 (`cube_delta`) is output too, with the larger τ8 of the two faces: it is 1 for a cube and 0 for the ideal dodecahedron and antiprism.
+
+### Exact constants
+
+The papers print rounded constants; `gidx` uses the exact ones, so the ideal polyhedra give exactly 0 or 1. For τ4 and τ4′ these are θ and 360° − 2θ (printed 109.5° and 141°). For τ8 and τ8′, the paper's 129.8°, 97.1° and 65.5° come from the hard-sphere polyhedra of Kepert<sup>10</sup>: in his dodecahedron the A and B sites sit at 36.85° and 69.46° from the S4 axis, so the face diagonals subtend arccos(−cos²36.85°) = 129.8208° and arccos(−cos²69.46°) = 97.0714°. In his antiprism all edges are equal and the planes close to arccos(√2 − 1) = 65.5302°.
 
 ### Geometry indices of the ideal shapes
 
