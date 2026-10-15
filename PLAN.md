@@ -85,6 +85,7 @@ Shipped: 2 (Θ + octahedral volume), 3 (`gidx`), part of 16 (`--center`) — see
 | 6 | Gyration-tensor descriptors | 1 |
 | 7 | Planarity / pyramidalisation | 1 |
 | 20 | Polynator by-products (δ, shape-free values, per-vertex deviations, hull volume) | 1 |
+| 22 | Nearest symmetric structure for `csom` (`--ideal`) | 1 |
 | 8 | Bailar / Ray-Dutt twist angles | 2 |
 | 9 | Zabrodsky-Avnir CSM | 2 |
 | 10 | Continuous chirality measure | 2 |
@@ -127,6 +128,71 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
       (`odis` only has the octahedral volume). Quickhull is enough for n ≤ 60.
     - Ranking with a parameter penalty (Polynator's "variable tax": δ + 1.5 per free variable, used
       only to order the list, never reported). Only matters once 19 mixes models with different dof.
+- **22 ·** Nearest symmetric structure for `csom` (`--ideal`): the folding/unfolding average of the
+    paired images (Salomon & Avnir; `CSM_PLAN.md` §2.2). Every input already exists:
+    `CsomOperationResult` holds `image` and `pairing`, and `CsomResult` holds `rotation`, `scale` and
+    `centroid`.
+    - **Math**: work in the refined, normalised frame, with points q_i. For each table operation g,
+      π_g is `pairing`, so the operation is scored on Σ_i |q_i − g q_{π_g(i)}|². Let G be {E} plus
+      the table. `pgs.rs` leaves E out of every table except `E`'s own, and π_E = id. Don't count E
+      twice. The nearest structure is Q̄_i = (1/|G|) Σ_{g∈G} g q_{π_g(i)}. If the π_g form a group
+      action, (T_g Q)_i = g q_{π_g(i)} is an orthogonal representation, and (1/|G|) Σ T_g is the
+      orthogonal projector onto the G-symmetric configurations. Q̄ is then exactly G-symmetric, and
+      d² := 100·Σ|q_i − Q̄_i|²/D = CSoM·(|G|−1)/(2|G|). Here D is the `sds_dev` denominator, the same
+      for every operation, and CSoM is the code's average over the |G|−1 non-identity operations.
+      The factor is 1/4 for C2, Ci and Cs and 47/96 for Oh. For `E`, Q̄ = Q and d² = 0. Checked in
+      Python on a noisy C3v structure: CSoM 1.045089, d² 0.435454, Q̄ symmetric to 5e-16.
+    - **Consistency**: the group-action condition is π_{gh}(i) = π_h(π_g(i)) for all g, h ∈ G and
+      all i. The swapped order π_g(π_h(i)) is wrong (checked numerically on C3v). Each operation
+      runs its own Hungarian matching, so nothing enforces this. It holds for near-symmetric
+      structures but can fail for strongly distorted ones or with `--ignore`. When it fails, the
+      average is not symmetric, and CSoM·(|G|−1)/(2|G|) is only a lower bound on the distance to
+      the nearest symmetric structure.
+      - Check: build the Cayley table once per group. For each g, h, find the k with
+        max|M_k − M_g M_h| < 1e-8 (the product may be E). The tables are exact f64 and closed
+        (`check_pointgroup_tables.py`), so a missing product is a table bug: return a `CsomError`
+        and don't fall back. Cost: |G|² products (14 400 for Ih), then O(|G|²·N) comparisons.
+      - On failure: warn, naming the group and the first failing pair (g, h). Write no file for
+        that group and carry on with the others. Never write a non-symmetric "ideal". For any
+        input, the true nearest structure is `csm --ideal` (`CSM_PLAN.md` P3.1).
+    - **Where**: new `src/csom/ideal.rs` with
+      `nearest_structure(points, operations, pg) -> Result<Nearest, CsomError>`. Suggested shape:
+      `Nearest = Symmetric { points, d2 } | Inconsistent { g, h }`, with points in the refined,
+      normalised frame. Call it in `calc_csom` where `operations` are built, since `rotated_points`
+      is in scope there. Store `nearest: Option<Nearest>` in `CsomResult`, `None` when operations
+      aren't computed. `odis` passes `with_operations = false`, so `odis` is untouched.
+    - **CLI**: long-only `--ideal`. On `CsomArgs`, `-i` already means `--iterations`. Don't take it,
+      even though `cshm` uses `-i/--ideal`. Use
+      `with_operations = args.full || args.operated || args.ideal`.
+    - **Output**: one `<stem>_<PG>_ideal.xyz` per group, like `--operated`. `.gitignore`'s
+      `*_ideal.xyz` already covers it, and the name can't collide with `cshm`'s `<stem>_ideal.xyz`.
+      Atoms stay in file order with their own labels. Map back to the input frame as
+      `out.rs` does for `--operated`: Rᵀ Q̄_i / scale + centroid. Comment line:
+      `<PG> ideal csom = <S> d2 = <d²>`, 3 decimals as in `--operated`. The pinned centre atom has
+      π_g(0) = 0 and sits at the origin, so it is written at its input position. With `--ignore`,
+      Q̄_i can average atoms of different elements. Still write it under atom i's label, and say so
+      in the README.
+    - **Naming**: don't call d² the CSM in output or the README (`CSM_PLAN.md` §0 rule 1). When the
+      pairings are consistent and the axis search found the global minimum, d² equals the
+      Zabrodsky–Avnir CSM for the same centre. Add that cross-check test once `csm` ships.
+    - **README**: in the `csom` section, add the flag row and output name. State the measure with
+      the normalisation the code uses: S_G(Q) = min_R (1/(|G|−1)) Σ_{Ô∈G, Ô≠E} S_Ô(RQ), and S_E = 0.
+      Then state d² = S_G·(|G|−1)/(2|G|). Equivalently, d² is exactly half of the average over all
+      |G| operations with E included.
+    - **Tests** (`src/csom/tests.rs`):
+      1. `tests/ideal_water.xyz` (C2v, Cs, C2) and `tests/ideal_benzene.xyz` (`-n`; D6h, C6, C2v):
+         Q̄ = Q to 1e-10 and d² < 1e-10.
+      2. Distorted inputs (`FeCl6.xyz`, `La03.xyz`) for C2, Ci, Cs, C3v, D4h and Oh, wherever the
+         pairings are consistent. Assert d² = CSoM·(|G|−1)/(2|G|) to 1e-9 relative. Also assert
+         `point_group_dev(Q̄)` < 1e-10 at the identity rotation, since Q̄ is already in the refined
+         frame.
+      3. `E`: Q̄ = Q exactly and d² = 0. This guards against counting E twice.
+      4. Inconsistent: find a seeded random structure that fails the check (e.g. 8 random points
+         against Oh) and pin it as a fixture. Assert `Inconsistent` and that no file is written.
+      5. Composition order: a non-abelian case (C3v) where the swapped rule π_g∘π_h gives a
+         different answer, so a check written in the wrong order fails the test.
+      6. Output of `csom` without `--ideal`, and of `cshm` and `odis`, stays byte-identical
+         (as in D8/D9).
 
 
 ### Tier 2 — moderate effort, distinctive
