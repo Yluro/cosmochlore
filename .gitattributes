@@ -8,6 +8,10 @@ generate_polynator_fixtures.py export-ignore
 generate_belt_fixtures.py export-ignore
 src/data/shapes/*.yaml export-ignore
 PLAN.md export-ignore
+SHIPPED.md export-ignore
+CSM_PLAN.md export-ignore
+AGENTS.md export-ignore
+CLAUDE.md export-ignore
 .gitattributes export-ignore
 .github export-ignore
 .claude export-ignore

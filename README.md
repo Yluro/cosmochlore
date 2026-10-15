@@ -1,648 +1,94 @@
 # Cosmochlore
 
-**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust toolkit for quantifying how closely a molecular structure (or any set of 3-dimensional points) matches an idealized reference geometry, through various complementary analyses, including: Continuous Shape Measures (CShM), Continuous Symmetry Operation Measures (CSoM), OctaDist-style octahedral distortion parameters and the geometry indices.
+**COSMO**chlo**R**e (**Co**ntinuous **S**hape/**S**ymmetry **M**easurements & **O**ctahedral distortion, in **R**ust) is a fast, pure-Rust command line tool that quantifies how closely a molecular structure (or any set of 3D points) matches an idealised reference geometry.
 
-It is a from-scratch command line interface (CLI) tool that reimplements the shape-measure engine found in [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) and `SHAPE`<sup>1</sup> 2.1 in Rust, alongside an original implementation of continuous symmetry operation measures inspired by the works of T. J. Sørensen _et al._<sup>3</sup> and the octahedral distortion parameters popularized by [`OctaDist`](https://octadist.github.io/)<sup>4</sup>. Cosmochlore accurately reproduces `SHAPE`'s 2.1 results using a pruned branch-and-bound algorithm for significantly faster performance on larger coordination numbers. 
+**Documentation: https://yluro.github.io/cosmochlore-docs**. It covers installation, usage, every command's options and examples, the reference shapes and point groups, and the theory behind each measure.
 
-Cosmochlore's error handling will always tell the user if something went wrong at run-time, the program will never silently crash or give you a number without you knowing something went wrong.
+| Command | Measures                                                                                                  |
+|---------|-----------------------------------------------------------------------------------------------------------|
+| `cshm`  | Continuous Shape Measures (CShM) against 92 built-in reference polyhedra or user-defined YAML shapes.    |
+| `csom`  | Continuous Symmetry Operation Measures (CSoM) against 47 point groups.                                    |
+| `odis`  | OctaDist-style octahedral distortion parameters of six-coordinate centres.                                |
+| `gidx`  | Geometry indices τ4, τ4′, τ5, τ6, τ6′, τ8 and τ8′ of four-, five-, six- and eight-coordinate centres.     |
 
-The name of the tool comes from the mineral [Kosmochlor](https://en.wikipedia.org/wiki/Kosmochlor), a rare chromium clinopyroxene found in iron meteorites and as an accessory mineral to various other chromium-containing pyroxenes.
+## Quick start
 
-## Features
-
-Cosmochlore includes different ways of measuring how distorted a structure is:
-
-- **`cshm`** — computes the **Continuous Shape Measure (CShM)** between a structure and one or more idealized reference shapes. A value of `CShM = 0` means a perfect match; larger values indicate greater distortion from the ideal geometry. 90 built-in reference polyhedra are included (see [Reference Polyhedra](#reference-polyhedra)), and user-defined ones can be supplied via YAML.
-- **`csom`** — computes the **Continuous Symmetry Operation Measure (CSoM)**: how far a structure is from possessing a given point group's symmetry operations, searching over all orientations for the best fit (see [The `csom` algorithm](#the-csom-algorithm)). A value of `CSoM = 0` means that the symmetry of a given point group is perfectly conserved in the structure.
-- **`odis`** — computes the **Octahedral Distortion** analysis for six-coordinate centres: `OctaDist`-style bond-length and angular distortion parameters.
-- **`gidx`** — computes the **Geometry Indices** τ4 and τ4′ (four-coordinate centres), τ5 (five-coordinate centres), τ6 and its complement τ6′ (six-coordinate centres) and τ8 and τ8′ (eight-coordinate centres).
-
-### Future Features
- - Include Cosmochlore into [Timeo](https://github.com/Yluro/timeo). _Done_
- - Automatic point-group detection for `csom` (currently `--pg` selects which of the 47 supported point groups to test, and all of them are tested when it is omitted).
-
-_[See you in 25 years...](https://www.youtube.com/watch?v=BL57-9171pk)_
-
-## Installation
-**Build from source:**
-````bash
-git clone https://github.com/Yluro/cosmochlore
-cd cosmochlore
-cargo build --release
-````
-`cargo` will compile the source code taking into account your system's architecture. The easiest way to get `cargo` is to install the latest stable release of [Rust](https://rust-lang.org/) using [`rustup`](https://rustup.rs/).
-
-The compiled binary will be at `target/release/cosmochlore`. By cloning the current main branch of the repository you will get access to experimental versions of Cosmochlore.
-
-### Precompiled binary downloads:
-
-Precompiled binaries for the most common operating systems are available in this repository's [releases](https://github.com/Yluro/cosmochlore/releases).
-
-_Note: It is strongly recommended to place the cosmochlore executable in the systems `PATH`._
-
-## Usage
-
-Cosmochlore is a CLI tool. It can be called by the general syntax:
+Precompiled binaries are on the [releases page](https://github.com/Yluro/cosmochlore/releases). To build from source with a stable [Rust](https://rustup.rs/) toolchain:
 
 ```bash
-cosmochlore <COMMAND> <NAME> [OPTIONS]
-```
-### Commands
-
-| Command | Description                                            |
-|---------|--------------------------------------------------------|
-| `cshm`  | Continuous shape measures calculation.                 |
-| `csom`  | Continuous symmetry operation measures calculation.    |
-| `odis`  | Octahedral distortion analysis.                        |
-| `gidx`  | Geometry indices (CN = 4,5,6,8) calculation.           |
-| `help`  | Print the help or the help of the given subcommand(s). |
-
-### Arguments:
-| Flag     | Description                                                                      |
-|----------|----------------------------------------------------------------------------------|
-| `<NAME>` | **Required**. Path to the input `.xyz` file containing the structure to analyze. |
-
-#### Optional arguments for `cshm`:
-
-| Flag                 | Value              | Description                                                                                                                                                                                                                              |
-|----------------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `-n` <br> `--nc`     | None               | Indicates the structure does **not** include an explicit central atom (i.e. only ligand/vertex coordinates are given). If a structure contains a central atom, Cosmochlore assumes it is in the first position of the `.xyz` file.       |
-| `-c` <br> `--center` | `<POSITION>`       | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted.                                                  |
-| `-s` <br> `--sh`     | `<SHAPES>...`      | Restrict the comparison to specific [built-in reference shapes](#reference-polyhedra) by index, for the detected vertex count. If omitted, all applicable built-in shapes are used. Specified indices should be separated by whitespace. |
-| `-r` <br> `--ref`    | `<USER_SHAPES>...` | Path to the `reference.yaml` files that contain user-defined shapes to include in the CShM calculation. Specified files should be separated by whitespace.                                                                               |
-| `-t` <br> `--table`  | None               | Write a `name_cshm_table.csv` file containing the output of the calculation.                                                                                                                                                             |
-| `-i` <br> `--ideal`  | None               | Write a `name_ideal.xyz` file containing the reconstructed idealised structures for **all** the selected reference shapes.                                                                                                               |
-
-_Oh..., I lost my crab here. 🦀 Thanks for finding it!_
-
-#### Optional arguments for `csom`:
-
-| Flag                     | Value                                       | Description                                                                                                                                                                                                                                                               |
-|--------------------------|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `-n` `--nc`              | None                                        | Treat the structure as non-centered (see `cshm`'s `-n`).                                                                                                                                                                                                                  |
-| `-c` <br> `--center`     | `<POSITION>`                                | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Cannot be used together with `-n`/`--nc`. Defaults to the first atom (position 1) when omitted.                                                                                   |
-| `-p` <br> `--pg`         | `<POINT_GROUPS>...`                         | Point groups to measure the structure against, in Schoenflies notation, separated by whitespace (_e.g._ `-p Oh D4h C2v`) — see [Supported point groups](#supported-point-groups) below for the full list. If omitted, every supported point group (all 47) is analysed.                |
-| `-m` <br> `--mode`       | `auto` \| `first` \| `centroid` \| `manual` | Centering mode. `auto` (default) centers on the first atom if the structure has an explicit centre, or on the centroid otherwise.                                                                                                                                         |
-| `-u` <br> `--vector`     | `<X> <Y> <Z>`                               | Centering vector, required when `--mode manual` is used.                                                                                                                                                                                                                  |
-| `-t` <br> `--table`      | None                                        | Write a `name_csom_table.csv` summary file (point group, deviation, refined rotation matrix).                                                                                                                                                                             |
-| `-f` <br> `--full`       | None                                        | Write a `name_<PG>_details.csv` file per analysed point group, listing every individual symmetry operation's matrix and deviation.                                                                                                                                        |
-| `-o` <br> `--operated`   | None                                        | Write, per analysed point group, a `name_<PG>_operated.xyz` file with every symmetry-operated image of the structure at the minimum-deviation orientation, plus a `name_<PG>_merged.mol2` overlaying all of those images in one 3D structure for viewers such as Mercury. Bonds in the `.mol2` join atoms closer than 1.3 times the sum of their covalent radii, plus the centre atom to every ligand. |
-| `-s` <br> `--seeds`      | `<N>`                                       | Number of candidate symmetry-axis directions, spread over a Fibonacci hemisphere, used to seed the axis search; each is refined at every in-plane orientation the point group tells apart. Defaults to `20`. _It is recommended not to change this parameter._           |
-| `-i` <br> `--iterations` | `<N>`                                       | Maximum number of Nelder-Mead iterations used to refine each seed. Defaults to `200`. _It is recommended not to change this parameter._                                                                                                                                   |
-| `-T` <br> `--tolerance`  | `<TOLERANCE>`                               | Convergence tolerance of the Nelder-Mead refinement (the standard deviation of the deviations across the simplex). Defaults to `1e-6`. _It is recommended not to change this parameter._                                                                                  |
-| `-g` <br> `--ignore`     | None                                        | Ignore atom labels when searching for the best atom-to-atom permutation: every atom is treated as interchangeable regardless of element/label, instead of only matching atoms that share a label.                                                                         |
-
-#### Optional arguments for `odis`:
-
-| Flag                 | Value        | Description                                                                                                                                       |
-|----------------------|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Defaults to the first atom (position 1) when omitted.     |
-| `-f` <br> `--full`   | None         | Full analysis of the octahedron, including CShM (against `OC-6`/`TPR-6`) and CSoM (against the common octahedral distortion point groups) values. |
-| `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                          |
-
-_Note: `odis` requires a centered structure with exactly one central atom and six ligands (7 atoms total in the `.xyz` file)._
-
-#### Optional arguments for `gidx`:
-
-| Flag                 | Value        | Description                                                                                                                                   |
-|----------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `-c` <br> `--center` | `<POSITION>` | Position (1-based) of the atom in the `.xyz` table that is the centre of the structure. Defaults to the first atom (position 1) when omitted. |
-| `-t` <br> `--table`  | None         | Write the output table to a `.csv` file.                                                                                                      |
-
-_Note: `gidx` requires a centered structure with exactly one central atom and four, five, six or eight ligands (5, 6, 7 or 9 atoms total in the `.xyz` file). The indices that apply are chosen from the number of ligands._
-
-
-### Example usage of `cshm`
-Given the following `FeHS.xyz` file:
-````xyz
-7
-High-spin iron(ii) complex
-Fe6 4.93013 10.3906 12.9236
-N004 6.21021 10.6927 14.7824
-N006 4.99632 8.50231 13.9489
-N008 6.81046 10.0777 11.7691
-N00B 5.46476 12.2907 12.1187
-N00C 3.30099 11.3236 13.8608
-N00D 3.74774 9.47633 11.4653
-````
-Running:
-
-````cmd
-cosmochlore cshm FeHS.xyz --ref ebcT-6.yaml -t -i
-````
-
-Will output:
-
-````output
-Input file: FeHS.xyz
-============================================================
- Symbol   Shape                           Symmetry   CShM   
-------------------------------------------------------------
- HP-6     Hexagon                         D6h        33.210 
- PPY-6    Pentagonal pyramid              C5v        23.050 
- OC-6     Octahedron                      Oh         2.089  
- TPR-6    Trigonal prism                  D3h        11.079 
- JPPY-6   Johnson pentagonal pyramid J2   C5v        27.050 
- ebcT-6   Edge-bicapped tetrahedron       D2d        14.277 
-------------------------------------------------------------
-Writing output table to FeHS_cshm_table.csv...
-Writing idealised polyhedra coordinates to table to FeHS_ideal.xyz...
-Program finished in 6.8154ms
-````
-The output of the calculation is saved in the file `FeHS_cshm_table.csv` by passing the `-t`/`--table` flag.
-
-````csv
-Symbol,Name,Symmetry,CShM
-HP-6,Hexagon,D6h,33.210
-PPY-6,Pentagonal pyramid,C5v,23.050
-OC-6,Octahedron,Oh,2.089
-TPR-6,Trigonal prism,D3h,11.079
-JPPY-6,Johnson pentagonal pyramid J2,C5v,27.050
-ebcT-6,Edge-bicapped tetrahedron,D2d,14.277
-````
-
-The `FeHS_ideal.xyz` file was produced by calling the `-i`/`--ideal` flag. The coordinates of the ideal octahedron placed in the correct position of the structure can be extracted from it.
-
-<img width="411" height="355" alt="ideal reference octahedron superimposed with the problem shape" src="https://github.com/user-attachments/assets/490458e7-a4a5-4c0b-b82d-3444ace939e6" />
-
-_Note that ebcT-6 is a non-standard reference shape included by passing the `--ref` flag. See more below._
-
-### Example usage of `csom`
-Running the same `FeHS.xyz` structure against the ideal octahedron symmetry `Oh` and the dihedral point group `D4h`:
-
-````cmd
-cosmochlore csom FeHS.xyz -p Oh D4h -t
-````
-
-Will output:
-
-````output
-Input file: FeHS.xyz
-========================
- Point group  Deviation 
-------------------------
- Oh           5.380     
- D4h          5.611     
-------------------------
-Writing output table to FeHS_csom_table.csv...
-Program finished in 597.8122ms
-````
-
-Passing the `-t`/`--table` flag writes the point group / deviation / rotation matrix summary to `FeHS_csom_table.csv`. Passing `-f`/`--full` additionally writes, for every point group requested, a `FeHS_<PG>_details.csv` file breaking the deviation down by individual symmetry operation (_e.g._ `FeHS_Oh_details.csv` lists every one of `Oh`'s 48 operations separately).
-
-### Example usage of `odis`
-
-````cmd
-cosmochlore odis FeHS.xyz -t --full
-````
-
-Will output:
-
-````output
-Input file: FeHS.xyz
-==================================
- Octahedral distortion parameters
-----------------------------------
- Mean d(M-X)          2.1623  Ang         
- Zeta                 0.3622  Ang         
- Delta              0.001007              
- Sigma                 82.29  deg         
- Theta                306.81  deg         
- Volume              12.9644  Ang^3       
-----------------------------------
- Tau                   54.42  deg         
- Mu                     0.17  Ang         
-==================================
-Writing output table to FeHS_odis_table.csv...
-
-Input file: FeHS.xyz
-============================================
- Symbol  Shape            Symmetry   CShM   
---------------------------------------------
- OC-6    Octahedron       Oh         2.089  
- TPR-6   Trigonal prism   D3h        11.079 
---------------------------------------------
-Writing output table to FeHS_cshm_table.csv...
-
-Input file: FeHS.xyz
-========================
- Point group  Deviation 
-------------------------
- Oh           5.380     
- D4h          5.611     
- D3h          17.716    
- D3d          5.691     
- D2h          5.948     
- C4v          4.947     
- C3v          5.198     
- C2v          2.420     
-------------------------
-Writing output table to FeHS_csom_table.csv...
-Program finished in 922.3647ms
-````
-Passing the `-t`/`--table` flag writes the distortion parameters to a `<NAME>_odis_table.csv`. Passing the `-f`/`--full` flag additionally computes the CShM against the ideal octahedron and trigonal prism (`OC-6`, `TPR-6`) and the CSoM against the eight point groups most commonly seen in octahedral distortions (`Oh`, `D4h`, `D3h`, `D3d`, `D2h`, `C4v`, `C3v`, `C2v`).
-
-### Example usage of `gidx`
-
-Given the following `ML5.xyz` file, a five-coordinate copper centre halfway between a trigonal bipyramid and a square pyramid:
-````xyz
-6
-Distorted five-coordinate copper centre (halfway between trigonal bipyramidal and square pyramidal)
-Cu    0.00000    0.00000    0.00000
-N1    0.35000    0.05000    2.00000
-N2   -0.30000   -0.10000   -2.05000
-N3    2.10000    0.00000    0.10000
-N4   -1.78000    1.02000   -0.05000
-N5   -0.56000   -2.08000    0.00000
-````
-
-````cmd
-cosmochlore gidx ML5.xyz -t
-````
-
-Will output:
-
-````output
-Input file: ML5.xyz
-==================================
- Geometry indices (CN = 5)
-----------------------------------
- Alpha                150.18  deg
- Beta                 177.91  deg
-----------------------------------
- Tau5                  0.462
-==================================
-Writing output table to ML5_gidx_table.csv...
-````
-Passing the `-t`/`--table` flag writes the angles and the indices to a `<NAME>_gidx_table.csv`, with the columns `alpha,beta,tau4,tau4_prime` for four ligands, `alpha,beta,tau5` for five and `alpha1,alpha2,alpha3,tau6,gamma1,gamma2,gamma3,gamma4,gamma5,tau6_prime` for six and `theta1,phi1,tau8_1,theta2,phi2,tau8_2,dihedral_a,dihedral_b,tau8_prime,cube_delta` for eight.
-
-## Reference Polyhedra
-The geometries of 90 reference polyhedra are internally defined in Cosmochlore. This list was integrally derived from the `SHAPE` 2.1 list of reference polyhedra and has been discussed in numerous articles by Alemany, Llunell, Alvarez, Avnir, Cirera _et at._<sup>2</sup>
-
-<table>
-<thead>
-<tr>
-<th>Vertices</th>
-<th>Index</th>
-<th>Label</th>
-<th>Shape</th>
-<th>Symmetry</th>
-</tr>
-</thead>
-<tbody>
-<tr><td rowspan="3">2</td><td>0</td><td>L-2</td><td>Linear</td><td>D<sub>∞h</sub></td></tr>
-<tr><td>1</td><td>vT-2</td><td>Divacant tetrahedron (V-shape, 109.47º)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>2</td><td>vOC-2</td><td>Tetravacant octahedron (L-shape, 90º)</td><td>C<sub>2v</sub></td></tr>
-
-<tr><td rowspan="4">3</td><td>0</td><td>TP-3</td><td>Trigonal planar</td><td>D<sub>3h</sub></td></tr>
-<tr><td>1</td><td>vT-3</td><td>Pyramid‡ (vacant tetrahedron)</td><td>C<sub>3v</sub></td></tr>
-<tr><td>2</td><td>fac-vOC-3</td><td>Trivacant octahedron</td><td>C<sub>3v</sub></td></tr>
-<tr><td>3</td><td>mer-vOC-3</td><td>Trivacant octahedron (T-shape)</td><td>C<sub>2v</sub></td></tr>
-
-<tr><td rowspan="4">4</td><td>0</td><td>SP-4</td><td>Square</td><td>D<sub>4h</sub></td></tr>
-<tr><td>1</td><td>T-4</td><td>Tetrahedron</td><td>T<sub>d</sub></td></tr>
-<tr><td>2</td><td>SS-4</td><td>Seesaw or sawhorse‡ (cis-divacant octahedron)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>3</td><td>vTBPY-4</td><td>Axially vacant trigonal bipyramid</td><td>C<sub>3v</sub></td></tr>
-
-<tr><td rowspan="5">5</td><td>0</td><td>PP-5</td><td>Pentagon</td><td>D<sub>5h</sub></td></tr>
-<tr><td>1</td><td>vOC-5</td><td>Vacant octahedron‡ (Johnson square pyramid, J1)</td><td>C<sub>4v</sub></td></tr>
-<tr><td>2</td><td>TBPY-5</td><td>Trigonal bipyramid</td><td>D<sub>3h</sub></td></tr>
-<tr><td>3</td><td>SPY-5</td><td>Square pyramid§</td><td>C<sub>4v</sub></td></tr>
-<tr><td>4</td><td>JTBPY-5</td><td>Johnson trigonal bipyramid (J12)</td><td>D<sub>3h</sub></td></tr>
-
-<tr><td rowspan="5">6</td><td>0</td><td>HP-6</td><td>Hexagon</td><td>D<sub>6h</sub></td></tr>
-<tr><td>1</td><td>PPY-6</td><td>Pentagonal pyramid</td><td>C<sub>5v</sub></td></tr>
-<tr><td>2</td><td>OC-6</td><td>Octahedron</td><td>O<sub>h</sub></td></tr>
-<tr><td>3</td><td>TPR-6</td><td>Trigonal prism</td><td>D<sub>3h</sub></td></tr>
-<tr><td>4</td><td>JPPY-5</td><td>Johnson pentagonal pyramid (J2)</td><td>C<sub>5v</sub></td></tr>
-
-<tr><td rowspan="7">7</td><td>0</td><td>HP-7</td><td>Heptagon</td><td>D<sub>7h</sub></td></tr>
-<tr><td>1</td><td>HPY-7</td><td>Hexagonal pyramid</td><td>C<sub>6v</sub></td></tr>
-<tr><td>2</td><td>PBPY-7</td><td>Pentagonal bipyramid</td><td>D<sub>5h</sub></td></tr>
-<tr><td>3</td><td>COC-7</td><td>Capped octahedron*</td><td>C<sub>3v</sub></td></tr>
-<tr><td>4</td><td>CTPR-7</td><td>Capped trigonal prism*</td><td>C<sub>2v</sub></td></tr>
-<tr><td>5</td><td>JPBPY-7</td><td>Johnson pentagonal bipyramid (J13)</td><td>D<sub>5h</sub></td></tr>
-<tr><td>6</td><td>JETPY-7</td><td>Elongated triangular pyramid (J7)</td><td>C<sub>3v</sub></td></tr>
-
-<tr><td rowspan="13">8</td><td>0</td><td>OP-8</td><td>Octagon</td><td>D<sub>8h</sub></td></tr>
-<tr><td>1</td><td>HPY-8</td><td>Heptagonal pyramid</td><td>C<sub>7v</sub></td></tr>
-<tr><td>2</td><td>HBPY-8</td><td>Hexagonal bipyramid</td><td>D<sub>6h</sub></td></tr>
-<tr><td>3</td><td>CU-8</td><td>Cube</td><td>O<sub>h</sub></td></tr>
-<tr><td>4</td><td>SAPR-8</td><td>Square antiprism</td><td>D<sub>4d</sub></td></tr>
-<tr><td>5</td><td>TDD-8</td><td>Triangular dodecahedron</td><td>D<sub>2d</sub></td></tr>
-<tr><td>6</td><td>JGBF-8</td><td>Johnson-Gyrobifastigium (J26)</td><td>D<sub>2d</sub></td></tr>
-<tr><td>7</td><td>JETBPY-8</td><td>Johnson-Elongated triangular bipyramid (J14)</td><td>D<sub>3h</sub></td></tr>
-<tr><td>8</td><td>JBTPR-8</td><td>Johnson-Biaugmented trigonal prism (J50)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>9</td><td>BTPR-8</td><td>Biaugmented trigonal prism</td><td>C<sub>2v</sub></td></tr>
-<tr><td>10</td><td>JSD-8</td><td>Snub disphenoid (J84)</td><td>D<sub>2d</sub></td></tr>
-<tr><td>11</td><td>TT-8</td><td>Triakis tetrahedron</td><td>T<sub>d</sub></td></tr>
-<tr><td>12</td><td>ETBPY-8</td><td>Elongated trigonal bipyramid (see 8)</td><td>D<sub>3h</sub></td></tr>
-
-<tr><td rowspan="13">9</td><td>0</td><td>EP-9</td><td>Enneagon</td><td>D<sub>9h</sub></td></tr>
-<tr><td>1</td><td>OPY-9</td><td>Octagonal pyramid</td><td>C<sub>8v</sub></td></tr>
-<tr><td>2</td><td>HBPY-9</td><td>Heptagonal bipyramid</td><td>D<sub>7h</sub></td></tr>
-<tr><td>3</td><td>JTC-9</td><td>Triangular cupola (J3) = trivacant cuboctahedron</td><td>C<sub>3v</sub></td></tr>
-<tr><td>4</td><td>JCCU-9</td><td>Capped cube (Elongated square pyramid, J8)</td><td>C<sub>4v</sub></td></tr>
-<tr><td>5</td><td>CCU-9</td><td>Capped cube</td><td>C<sub>4v</sub></td></tr>
-<tr><td>6</td><td>JCSAPR-9</td><td>Capped sq. antiprism (Gyroelongated square pyramid J10)</td><td>C<sub>4v</sub></td></tr>
-<tr><td>7</td><td>CSAPR-9</td><td>Capped square antiprism</td><td>C<sub>4v</sub></td></tr>
-<tr><td>8</td><td>JTCTPR-9</td><td>Tricapped trigonal prism (J51)</td><td>D<sub>3h</sub></td></tr>
-<tr><td>9</td><td>TCTPR-9</td><td>Tricapped trigonal prism</td><td>D<sub>3h</sub></td></tr>
-<tr><td>10</td><td>JTDIC-9</td><td>Tridiminished icosahedron (J63)</td><td>C<sub>3v</sub></td></tr>
-<tr><td>11</td><td>HH-9</td><td>Hula-hoop</td><td>C<sub>2v</sub></td></tr>
-<tr><td>12</td><td>MFF-9</td><td>Muffin</td><td>C<sub>s</sub></td></tr>
-
-<tr><td rowspan="13">10</td><td>0</td><td>DP-10</td><td>Decagon</td><td>D<sub>10h</sub></td></tr>
-<tr><td>1</td><td>EPY-10</td><td>Enneagonal pyramid</td><td>C<sub>9v</sub></td></tr>
-<tr><td>2</td><td>OBPY-10</td><td>Octagonal bipyramid</td><td>D<sub>8h</sub></td></tr>
-<tr><td>3</td><td>PPR-10</td><td>Pentagonal prism</td><td>D<sub>5h</sub></td></tr>
-<tr><td>4</td><td>PAPR-10</td><td>Pentagonal antiprism</td><td>D<sub>5d</sub></td></tr>
-<tr><td>5</td><td>JBCCU-10</td><td>Bicapped cube (Elongated square bipyramid J15)</td><td>D<sub>4h</sub></td></tr>
-<tr><td>6</td><td>JBCSAPR-10</td><td>Bicapped square antiprism (Gyroelongated square bipyramid J17)</td><td>D<sub>4d</sub></td></tr>
-<tr><td>7</td><td>JMBIC-10</td><td>Metabidiminished icosahedron (J62)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>8</td><td>JATDI-10</td><td>Augmented tridiminished icosahedron (J64)</td><td>C<sub>3v</sub></td></tr>
-<tr><td>9</td><td>JSPC-10</td><td>Sphenocorona (J87)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>10</td><td>SDD-10</td><td>Staggered dodecahedron (2:6:2)#</td><td>D<sub>2</sub></td></tr>
-<tr><td>11</td><td>TD-10</td><td>Tetradecahedron (2:6:2)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>12</td><td>HD-10</td><td>Hexadecahedron (2:6:2, or 1:4:4:1)</td><td>D<sub>4h</sub></td></tr>
-
-<tr><td rowspan="7">11</td><td>0</td><td>HP-11</td><td>Hendecagon</td><td>D<sub>11h</sub></td></tr>
-<tr><td>1</td><td>DPY-11</td><td>Decagonal pyramid</td><td>C<sub>10v</sub></td></tr>
-<tr><td>2</td><td>EBPY-11</td><td>Enneagonal bipyramid</td><td>D<sub>9h</sub></td></tr>
-<tr><td>3</td><td>JCPPR-11</td><td>Capped pent. prism (Elongated pentagonal pyramid J9)</td><td>C<sub>5v</sub></td></tr>
-<tr><td>4</td><td>JCPAPR-11</td><td>Capped pent. antiprism (Gyroelongated pentagonal pyramid J11)</td><td>C<sub>5v</sub></td></tr>
-<tr><td>5</td><td>JAPPR-11</td><td>Augmented pentagonal prism (J52)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>6</td><td>JASPC-11</td><td>Augmented sphenocorona (J87)</td><td>C<sub>s</sub></td></tr>
-
-<tr><td rowspan="13">12</td><td>0</td><td>DP-12</td><td>Dodecagon</td><td>D<sub>12h</sub></td></tr>
-<tr><td>1</td><td>HPY-12</td><td>Hendecagonal pyramid</td><td>C<sub>11v</sub></td></tr>
-<tr><td>2</td><td>DBPY-12</td><td>Decagonal bipyramid</td><td>D<sub>10h</sub></td></tr>
-<tr><td>3</td><td>HPR-12</td><td>Hexagonal prism</td><td>D<sub>6h</sub></td></tr>
-<tr><td>4</td><td>HAPR-12</td><td>Hexagonal antiprism</td><td>D<sub>6d</sub></td></tr>
-<tr><td>5</td><td>TT-12</td><td>Truncated tetrahedron</td><td>T<sub>d</sub></td></tr>
-<tr><td>6</td><td>COC-12</td><td>Cuboctahedron</td><td>O<sub>h</sub></td></tr>
-<tr><td>7</td><td>ACOC-12</td><td>Anticuboctahedron (Triangular orthobicupola J27)</td><td>D<sub>3h</sub></td></tr>
-<tr><td>8</td><td>IC-12</td><td>Icosahedron</td><td>I<sub>h</sub></td></tr>
-<tr><td>9</td><td>JSC-12</td><td>Square cupola (J4)</td><td>C<sub>4v</sub></td></tr>
-<tr><td>10</td><td>JEPBPY-12</td><td>Elongated pentagonal bipyramid (J16)</td><td>D<sub>6h</sub></td></tr>
-<tr><td>11</td><td>JBAPPR-12</td><td>Biaugmented pentagonal prism (J53)</td><td>C<sub>2v</sub></td></tr>
-<tr><td>12</td><td>JSPMC-12</td><td>Sphenomegacorona (J88)</td><td>C<sub>s</sub></td></tr>
-
-<tr><td>20</td><td>0</td><td>DD-20</td><td>Dodecahedron†</td><td>I<sub>h</sub></td></tr>
-<tr><td rowspan="2">24</td><td>0</td><td>TCU-24</td><td>Truncated cube</td><td>O<sub>h</sub></td></tr>
-<tr><td>1</td><td>TOC-24</td><td>Truncated octahedron</td><td>O<sub>h</sub></td></tr>
-<tr><td>48</td><td>0</td><td>TCOC-48</td><td>Truncated cuboctahedron</td><td>O<sub>h</sub></td></tr>
-<tr><td>60</td><td>0</td><td>TIC-60</td><td>Truncated icosahedron (fullerene)</td><td>I<sub>h</sub></td></tr>
-</tbody>
-</table>
-
-_Be noted that the index of each shape differs from `SHAPE`'s 2.1 by 1. 
-I have a certain suspicion that the original numbering starting from one is due to  Fortran arrays being [silly](https://xkcd.com/163/)._
-
-### User defined polyhedra 
-
-The user can include custom polyhedra into the calculation by pointing to `shape.yaml` files. The shapes specified must have the same number of vertices as the problem shape. 
-The syntax for writing these files is as follows:
-```yaml
-symbol:
-  name: 
-  symmetry:
-  vertices:
-    - [ coord_x,  coord_y, coord_z]
-    - [ ...
-  centre:
-    - [ coord_x, coord_y, coord_z]
-
-```
-Cosmochlore's YAML parser is somewhat flexible when specifying the key names. It accepts the following synonyms:
-| Key | Synonyms | Value type |
-| --- | --- | --- |
-| `symbol` | None | `name` |
-| `name` | None | `name` |
-| `symmetry` | `symm` | `name` |
-| `vertices` | `ligands` | `[x, y, z]` |
-| `centre` | `center`, `metal` | `[x, y, z]` |
-
-**Example .yaml file:**
-```yaml
-ebcT-6:
-  name: Edge-bicapped tetrahedron
-  symm: D2d
-  vertices:
-    - [0.5000,   0.5000,  -0.6495]
-    - [1.0000,   1.0000,   0.0000]
-    - [1.0000,   0.0000,   1.0000]
-    - [0.0000,   1.0000,   1.0000]
-    - [0.5000,   0.5000,   1.6495]
-    - [0.0000,   0.0000,   0.0000]
-  centre:
-    - [ 0.5000,   0.5000,   0.5000 ]
-
-fvCU-6:
-  name: Face-divacant cube
-  symm: C2v
-  vertices:
-#    - [ 1.000000000000,  0.000000000000, -0.707106780000]
-    - [ 0.000000000000,  1.000000000000, -0.707106780000]
-#    - [-1.000000000000,  0.000000000000, -0.707106780000]
-    - [-0.000000000000, -1.000000000000, -0.707106780000]
-    - [ 1.000000000000,  0.000000000000,  0.707106780000]
-    - [ 0.000000000000,  1.000000000000,  0.707106780000]
-    - [-1.000000000000,  0.000000000000,  0.707106780000]
-    - [-0.000000000000, -1.000000000000,  0.707106780000]
-  center:
-    - [ 0.000000000000,  0.000000000000,  0.000000000000]
-```
-As per the example, a single `reference.yaml` file can contain multiple reference polyhedra. 
-Comments are also supported by the YAML parser, every line that starts with `#` will be ignored.
-
-## Supported point groups
-
-The `csom -p/--pg` flag accepts any of the following 47 point groups, given in Schoenflies notation (all of them are analysed when the flag is omitted):
-
-```
-C2   C2h  C2v  C3   C3h  C3v  C4   C4h  C4v  C5   C5h  C5v
-C6   C6h  C6v  C7   C8   Ci   Cs   D2   D2d  D2h  D3   D3d
-D3h  D4   D4d  D4h  D5   D5d  D5h  D6   D6h  D7h  D8h  E
-I    Ih   O    Oh   S10  S4   S6   S8   T    Td   Th
+git clone https://github.com/Yluro/cosmochlore
+cd cosmochlore
+cargo build --release          # binary at target/release/cosmochlore
 ```
 
-Point-group names are case-sensitive and must match one of the symbols above exactly (_e.g._ `Oh`, not `oh` or `OH`).
-## The `cshm` algorithm
-
-The Continuous Shape Measure of a problem shape $$Q$$ relative to a reference shape $$P$$ is defined as:
-
-```math
-S_P(Q)= \mathrm{min} \left( \frac{\sum_i^n |q_i - p_i|^2}{ \sum_i^n |p_i - p_0|^2} \right) × 100
+```bash
+cosmochlore <COMMAND> <NAME.xyz> [OPTIONS]
+cosmochlore cshm tests/FeHS.xyz
+cosmochlore help <COMMAND>
 ```
-where $$N$$ is the number of vertices in the structures we are comparing, $$q_i$$ and $$p_i$$ are the position vectors of the vertices of $$Q$$ and $$P$$, respectively, and $$p_0$$ the geometric centre of the problem structure $$Q$$. 
-This minimization is carried out over all rotations, translations and scalings **and** over all $$N!$$ possible permutations of point pairs assignments.
 
-The rotation/translation/scaling part is solved via an SVD-based Kabsch-style alignment. The combinatorial problem: finding the best point pair matches between $$Q$$ and $$P$$ is done by:
+## How it works
 
-- **Fixed centre**: for centered structures, the centre atom is paired with the reference shape's centre up front instead of being searched, since no other pairing is ever valid.
-- **Branch-and-bound pruning**: after a partial assignment of point pairs, a 'best-scenario-S-value' is calculated. Permutations that won't beat the best S-value found are discarded early.
+Every command reads one `.xyz` file. The first atom is the centre unless `-c/--center` picks another one or `-n/--nc` says there is none. Results are printed as a table, and CSV/XYZ/MOL2 files are written next to the input only when a flag asks for them.
 
-## The `csom` algorithm
+- **`cshm`**: the problem and reference shapes are centred and normalised, and the optimal rotation comes from the SVD of their correlation matrix (Kabsch). The vertex pairing is found by an exact branch-and-bound search over permutations, with the centre pinned to the reference centre and partial assignments pruned by a lower bound on their final S. The cost grows factorially, so it is impractical beyond about 13 vertices.
+- **`csom`**: the structure is rotated to the orientation that minimises the mean deviation over the group's operations. Seeds are axis directions on a Fibonacci hemisphere, each also spun through the group's in-plane period when it has one. Every seed is refined with Nelder-Mead (`argmin`) over a rotation vector. Each operation's deviation uses a Hungarian atom matching within element groups, with the centre pinned. The result is the best value found, an upper bound on the true minimum.
+- **`odis`**: closed-form OctaDist parameters from the six centre-ligand vectors. `--full` also runs `cshm` (`OC-6`, `TPR-6`) and `csom` (eight octahedral subgroups).
+- **`gidx`**: closed-form angle indices, picked by the ligand count.
 
-The main problem to solve for `csom` is that symmetry element operations depend on a given's shape position in space. Once a centering criteria is stablished by the user, `csom` searches for the orientation of the structure that minimizes the average deviation from a given point group's symmetry operations. This is done by:
+Every failure path returns an error. The program never prints a number when something went wrong.
 
-1. **Fibonacci-hemisphere seeding**: `--seeds` candidate directions for the principal symmetry axis are spread evenly over the upper hemisphere (an axis and its opposite are the same axis), and each seed is the rotation that aligns one of them with `z`, the principal axis of the point-group tables. Whatever the input orientation, some seed therefore starts with the true axis within the lattice spacing of `z`. Aligning the axis leaves the spin about it free, so when the point group has vertical mirror planes or perpendicular C2 axes (which make that spin matter) every direction is additionally tried at each in-plane angle, in steps no coarser than the lattice spacing, over the angle after which the group repeats -- 90° for C2v or Oh, 30° for D6h, none at all for C_n, S_n, C_nh, Cs or Ci.
-2. **Nelder-Mead refinement**: every seed is locally optimized using the derivative-free Nelder-Mead method, minimizing the average deviation over the three components of the rotation vector, until the simplex converges to `--tolerance` or `--iterations` steps are reached. The refined rotation with the lowest deviation over all seeds is kept as the structure's orientation for that point group.
-3. **Pair-matching:** The deviation is defined as the $$S_Q(\hat{O}RQ)$$ (where $$\hat{O}$$ is a given symmetry element and $$R$$ is the refined rotation matrix) minimized over the best permutation of points using the Hungarian algorithm. This matching is atom-sensitive by default, that is, atoms are only matched with others of the same element; pass `--ignore` to instead let the search match any atom to any other, regardless of label. When the structure is centered on its first atom, that atom is excluded from the Hungarian search and matched to itself directly, since it sits at the origin and is therefore invariant under every symmetry operation -- this reduces the assignment's dimensionality by one at no cost in accuracy.
+## Code structure
 
-The reported CSoM score is the deviation averaged over all every symmetry operations of a given point group.
+```
+src/
+  main.rs            dispatches the subcommand; prints any Error to stderr and exits 1
+  cli.rs             clap definitions of every subcommand and flag
+  error.rs           crate-wide Error wrapping each module's own error type (thiserror)
+  xyz.rs             .xyz parser -> Structure (optional centre + ligands)
+  yaml.rs            parser for user-defined reference shapes (cshm --ref)
+  geometry.rs        centring, normalising, rotations, angles, planes, volumes
+  out.rs             terminal tables, CSV/XYZ/MOL2 writers, output naming, --silent
+  cshm/
+    mod.rs           cshm_main, calc_cshm
+    permutations.rs  branch-and-bound search for the best vertex pairing
+    bounds.rs        lower bounds that prune the search
+    linalg.rs        correlation matrix, SVD rotation, S value
+    shape_lookup.rs  built-in shapes by vertex count and index, user-shape checks
+    automorphism.rs  shape automorphisms (test-only for now)
+    types.rs         CShMResult
+  csom/
+    mod.rs           csom_main, calc_csom
+    prepare.rs       centring modes, element labels
+    seeding.rs       Fibonacci-hemisphere axis seeds and in-plane spins
+    optimize.rs      Nelder-Mead refinement of each seed
+    deviation.rs     per-operation and per-group deviations
+    assignment.rs    Hungarian algorithm, matching within label groups
+    types.rs         settings, results, CsomError
+  odis/              mod.rs (main_odis, OdisResult), calc.rs (parameters)
+  gidx/              mod.rs (main_gidx, GidxResult), calc/tau{4,5,6,8}.rs
+  data/
+    standard_shapes.rs   the 92 built-in shapes, GENERATED from shapes/*.yaml
+    shapes/              shapes_<N>vertex.yaml, source of standard_shapes.rs
+    pgs.rs               operation matrices of the 47 point groups (principal axis on z)
+    symops.rs            single named operations (unused for now)
+    elements.rs          covalent radii (MOL2 bonds)
+tests/               .xyz/.yaml/.csv fixtures used by the unit tests
+*.py                 dev scripts: shape-table generator, point-group checker,
+                     fixture generators, csom visualisers
+PLAN.md              open work
+SHIPPED.md           invariants and baselines of shipped work
+CSM_PLAN.md          brief for the planned csm module
+```
 
-## Octahedral distortion parameters
-
-`odis` reports the `OctaDist` bond-length and angular distortion parameters for a six-coordinate centre — mean M–X distance, `zeta` (bond-length distortion), `delta` (normalized bond-length variance), `sigma` (cis-angle distortion), `theta` (face-twisting distortion, 0° for a perfect octahedron up to 1170° for the ideal trigonal prism) and `tau` (trans-angle distortion) — plus `mu`, the norm of the mean ligand-vector (a measure of how far the centre sits from the ligands' vector centroid), and `volume`, the coordination polyhedron's volume in Å³ (found by decomposing its eight triangular faces into tetrahedra with the ligand centroid as their common apex).
-
-Additionally, the `odis` module can run `cshm` against the ideal octahedron/trigonal prism and `csom` against the point groups most commonly seen in octahedral distortions.
-
-## Geometry indices
-
-`gidx` reports the geometry indices of a four-, five-, six- or eight-coordinate centre from its ligand–centre–ligand angles alone, so bond lengths play no part. The coordination number is the number of ligands in the file (any other count is an error): four ligands give τ4 and τ4′, five give τ5, six give τ6 and τ6′, and eight give τ8 and τ8′. The angles each index is built from are reported too.
-
-### Four and five ligands
-
-Only the two largest of all the angles between pairs of ligands are used, the largest as β and the second largest as α (so β ≥ α). θ = arccos(−1/3) ≈ 109.47° is the tetrahedral angle.
-
-**τ4**<sup>6</sup> is 0 for a square plane and 1 for a regular tetrahedron; the ideal seesaw (0.64) and trigonal pyramid (0.85) lie in between.
-
-$$\tau_4 = \frac{360^\circ - (\alpha + \beta)}{360^\circ - 2\theta}$$
-
-**τ4′**<sup>7</sup> has the same limits, but it also weighs the difference between the two angles, so geometries with the same α + β (the ideal seesaw and a tetrahedron flattened to 135° and 135°) no longer share a value.
-
-$$\tau_4' = \frac{\beta - \alpha}{360^\circ - \theta} + \frac{180^\circ - \beta}{180^\circ - \theta}$$
-
-**τ5**<sup>5</sup> is 0 for a square pyramid and 1 for a trigonal bipyramid.
-
-$$\tau_5 = \frac{\beta - \alpha}{60^\circ}$$
-
-### Six ligands
-
-**τ6**<sup>8</sup> uses the three principal (trans) angles α1 ≥ α2 ≥ α3. It is 0 for an octahedron and 0.75 for a trigonal prism with trans angles of 135°. The paper gives no rule for picking them in a distorted structure, so `gidx` pairs the six ligands into three disjoint pairs whose angles add up to the most (the three largest angles whenever those do not share a ligand).
-
-$$\tau_6 = \frac{3 \times 180^\circ - (\alpha_1 + \alpha_2 + \alpha_3)}{180^\circ}$$
-
-**τ6′** is cosmochlore's own complement to τ6 and is not part of the paper<sup>8</sup>. It uses the five smallest of the 15 ligand–centre–ligand angles, γ1 ≤ … ≤ γ5, which may share a ligand. It is 0 for an octahedron (cis angles of 90°), 0.456 for the equal-edge trigonal prism and 1 for a pentagonal pyramid (base angles of 72°). It measures how tightly the ligands pack, so it also grows for chelates with small bite angles, and it can exceed 1 (a planar hexagon gives 1.667). The five base angles of a real pentagonal pyramid add up to about 360° however distorted the base is, so (1 + τ6′) / 2 is the value the paper quotes for such a centre.
-
-$$\tau_6' = \frac{5 \times 90^\circ - \sum_{i=1}^{5} \gamma_i}{90^\circ}$$
-
-### Eight ligands
-
-**τ8**<sup>9</sup> is 0 for the square antiprism and the cube, and 1 for the trigonal dodecahedron. θ and φ are the angles that the two diagonals of a "square face" of the eight ligands subtend at the centre. As in the paper, the face holding the first ligand is found from the ligand across it (the one at the third largest of its seven angles) and the two ligands closest to both; the other four ligands make the second face. Each face gives a τ8 and both are reported: two faces that disagree (about 1 and 0) point to a bicapped trigonal prism.
-
-$$\tau_8 = \frac{|\theta - \phi|}{129.82^\circ - 97.07^\circ}$$
-
-**τ8′**<sup>9</sup> is 1 for the trigonal dodecahedron and 0 for the square antiprism. The cube also reads 1, so τ8′ separates the antiprism from the other two and τ8 the cube from the dodecahedron. δA and δB are the dihedral angles between the planes through the centre and each pair of A ligands, and of B ligands. The larger diagonal of a face joins its two A ligands and the smaller one its two B ligands; the first A ligand is paired with the A at the smallest angle to it, and the first B with the B at the largest.
-
-$$\tau_8' = 1 - \frac{|180^\circ - (\delta_A + \delta_B)|}{180^\circ - 2 \times 65.53^\circ}$$
-
-The paper's Δ = τ8′ − τ8 (`cube_delta`) is output too, with the larger τ8 of the two faces: it is 1 for a cube and 0 for the ideal dodecahedron and antiprism.
-
-### Exact constants
-
-The papers print rounded constants; `gidx` uses the exact ones, so the ideal polyhedra give exactly 0 or 1. For τ4 and τ4′ these are θ and 360° − 2θ (printed 109.5° and 141°). For τ8 and τ8′, the paper's 129.8°, 97.1° and 65.5° come from the hard-sphere polyhedra of Kepert<sup>10</sup>: in his dodecahedron the A and B sites sit at 36.85° and 69.46° from the S4 axis, so the face diagonals subtend arccos(−cos²36.85°) = 129.8208° and arccos(−cos²69.46°) = 97.0714°. In his antiprism all edges are equal and the planes close to arccos(√2 − 1) = 65.5302°.
-
-### Geometry indices of the ideal shapes
-
-The values `gidx` gives for the [built-in reference shapes](#reference-polyhedra) with four, five and six vertices (centre at the origin), angles in degrees:
-
-| Symbol    | Shape                     | Symmetry       | α      | β      | τ4    | τ4′   |
-|-----------|---------------------------|----------------|--------|--------|-------|-------|
-| `SP-4`    | Square                    | D<sub>4h</sub> | 180.00 | 180.00 | 0.000 | 0.000 |
-| `T-4`     | Tetrahedron               | T<sub>d</sub>  | 109.47 | 109.47 | 1.000 | 1.000 |
-| `SS-4`    | Seesaw                    | C<sub>2v</sub> | 90.00  | 180.00 | 0.638 | 0.359 |
-| `vTBPY-4` | Vacant trigonal bipyramid | C<sub>3v</sub> | 120.00 | 120.00 | 0.851 | 0.851 |
-
-| Symbol    | Shape                          | Symmetry       | α      | β      | τ5    |
-|-----------|--------------------------------|----------------|--------|--------|-------|
-| `PP-5`    | Pentagon                       | D<sub>5h</sub> | 144.00 | 144.00 | 0.000 |
-| `vOC-5`   | Vacant octahedron              | C<sub>4v</sub> | 180.00 | 180.00 | 0.000 |
-| `TBPY-5`  | Trigonal bipyramid             | D<sub>3h</sub> | 120.00 | 180.00 | 1.000 |
-| `SPY-5`   | Spherical square pyramid       | C<sub>4v</sub> | 151.04 | 151.04 | 0.000 |
-| `JTBPY-5` | Johnson trigonal bipyramid J12 | D<sub>3h</sub> | 120.00 | 180.00 | 1.000 |
-
-| Symbol    | Shape                         | Symmetry       | τ6    | τ6′   |
-|-----------|-------------------------------|----------------|-------|-------|
-| `OC-6`    | Octahedron                    | O<sub>h</sub>  | 0.000 | 0.000 |
-| `TPR-6`   | Trigonal prism                | D<sub>3h</sub> | 0.740 | 0.456 |
-| `PPY-6`   | Pentagonal pyramid            | C<sub>5v</sub> | 0.900 | 1.000 |
-| `JPPY-6`  | Johnson pentagonal pyramid J2 | C<sub>5v</sub> | 0.900 | 1.000 |
-| `HP-6`    | Hexagon                       | D<sub>6h</sub> | 0.000 | 1.667 |
-
-Slightly distorted versions of the same shapes are found in the crystal structures below, one six-coordinate cadmium each (coordinates from their CIF files; "Paper τ6" is the value the paper<sup>8</sup> gives for the site):
-
-| Structure          | Closest ideal shape | Paper τ6 | τ6    | τ6′   |
-|--------------------|---------------------|----------|-------|-------|
-| `IQATAY` Cd1       | Octahedron          | 0        | 0.000 | 0.120 |
-| `IQATAY` Cd2       | Octahedron          | 0.06     | 0.059 | 0.188 |
-| `IQATAY` Cd3       | Octahedron          | 0.16     | 0.159 | 0.305 |
-| `IQATAY` Cd4       | Octahedron          | 0.17     | 0.173 | 0.293 |
-| Title compound Cd2 | Octahedron          | 0.27     | 0.270 | 0.471 |
-| `ULESAH` Cd1       | Trigonal prism      | 0.73     | 0.734 | 0.511 |
-| `VAPSAG` Cd1       | Pentagonal pyramid  | 1.02     | 0.820 | 1.044 |
-| `CIJBII` Cd1       | Pentagonal pyramid  | 1.0      | 0.682 | 0.995 |
-
-For the two pyramids the paper's value is (1 + τ6′) / 2 (1.022 and 0.998), see above.
-
-| Symbol                                                   | Shape                                    | Symmetry       | τ8            | τ8′   | Δ      |
-|----------------------------------------------------------|------------------------------------------|----------------|---------------|-------|--------|
-| `SAPR-8`                                                 | Square antiprism                         | D<sub>4d</sub> | 0.000         | 0.000 | 0.000  |
-| `TDD-8`                                                  | Triangular dodecahedron                  | D<sub>2d</sub> | 1.000         | 1.000 | 0.000  |
-| `CU-8`                                                   | Cube                                     | O<sub>h</sub>  | 0.000         | 1.000 | 1.000  |
-| `BTPR-8`                                                 | Biaugmented trigonal prism               | C<sub>2v</sub> | 1.167 / 0.000 | 0.408 | −0.758 |
-| `JBTPR-8`                                                | Johnson-Biaugmented trigonal prism (J50) | C<sub>2v</sub> | 1.167 / 0.000 | 0.408 | −0.758 |
-| `JSD-8`                                                  | Snub disphenoid (J84)                    | D<sub>2d</sub> | 1.222         | 1.000 | −0.222 |
-| [WF<sub>4</sub>(PH<sub>3</sub>)<sub>4</sub>]<sup>+</sup> | DFT structure from the paper<sup>9</sup> | D<sub>2</sub>  | 0.356         | 0.406 | 0.049  |
-
-Δ = τ8′ − τ8 (the larger τ8 of the two faces). The two values of τ8 for the biaugmented trigonal prism are those of its two square faces. The last row is the DFT-optimised structure of the paper's supporting information (donor atoms only, `tests/tau8/WF4_PH3_4_D2.xyz`), in between the dodecahedron and the antiprism; its two faces give the same τ8.
-
-A few things to keep in mind when reading them:
-
-- The indices only see angles, so shapes that share their largest angles share their index.
-- τ8 and τ8′ are defined for the dodecahedron, antiprism, cube and bicapped-prism family. For other eight-vertex shapes τ8′ can be negative (`ETBPY-8`: −0.533) or undefined: a plane through the centre and two exactly opposite ligands does not exist, and `gidx` reports an error (`JGBF-8`, `HBPY-8`).
-- For some chelates the supporting information's numbers differ from this procedure: it lists τ8 = 1.22 for [WF<sub>4</sub>(dpb)<sub>2</sub>]<sup>+</sup> (D<sub>2d</sub>) where `gidx` gives 1.10 from the coordinates in the same file, and 0.05 and 0.02 for the C<sub>2</sub> state of [WF<sub>4</sub>(dpe)<sub>2</sub>]<sup>+</sup> where it gives 0.06 and 0.05. I could not trace the difference.
-- The uniform trigonal prism (all edges equal) has trans angles of 135.58°, so its τ6 is 0.740. The 0.75 quoted in the paper<sup>8</sup> is for trans angles of exactly 135°. 
-
-_Note: The paper quotes τ6 = 1.00 for a pentagonal pyramid, but it gets there by summing the five angles between adjacent base vectors (5 × 72° = 360°) instead of three trans angles. `gidx` takes three trans angles for τ6, so the ideal pentagonal pyramid, whose trans angles are 144°, 144° and 90°, reads 0.900 there and 1.000 in τ6′, which uses those five base angles._
-
-## Acknowledgements
-
-This project reimplements several shape and symmetry algorithms found in other programs such as: [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib), [Continuous Symmetry Operation Measure](https://github.com/VRMNielsen/Continous-Symmetry-Operation-Measure-Program) and [OctaDist](https://github.com/OctaDist/OctaDist). Cosmochlore is an independent, from-scratch implementation of all these measurements and is not affiliated with any of the original authors.
-
-The dependencies and parts of the code taken from other libraries are explained under the **License** section.
+Unit tests live next to the code (`tests.rs` or `#[cfg(test)] mod tests`). There is no `lib.rs`, so there are no integration tests. Contributor and agent rules are in [AGENTS.md](AGENTS.md).
 
 ## License
 
-**The code, binaries and sample tests are provided as is, with no warranty of any kind.** This program is licensed under the GNU General Public Licence v3.0 (GPL-3.0). See the `LICENSE.md` file or https://www.gnu.org/licenses/gpl-3.0.html for full terms.
+**The code, binaries and sample tests are provided as is, with no warranty of any kind.** Cosmochlore is licensed under the GNU General Public Licence v3.0 (GPL-3.0); see [LICENSE.md](LICENSE.md). It is an independent implementation, not affiliated with the authors of the programs below.
 
-The branch and bound, the partial asignement method and the model shapes of the `cshm` module are based on `cosymlib` (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, licensed under the MIT Licence.
+- The branch and bound, the partial assignment method and the model shapes of `cshm` are based on [`cosymlib`](https://github.com/GrupEstructuraElectronicaSimetria/cosymlib) (`shp.f90`), Copyright (c) 2021 Pere Alemany, Efrem Bernuz, Abel Carreras and Miquel Llunell, MIT Licence.
+- The Fibonacci seeding and point-group tables of `csom` are based on [`csom_main.py`](https://github.com/VRMNielsen/Continous-Symmetry-Operation-Measure-Program), Copyright (c) 2024 Villads R. M. Nielsen, Boris Le Guennic and Thomas Just Sørensen, GPL-3.0.
+- Parts of `odis` are based on [`OctaDist`](https://github.com/OctaDist/OctaDist), Copyright (c) 2019-2026 Rangsiman Ketkaew et al., GPL-3.0.
 
-The fibonacci seeding and point group tables of the `csom` module are based on `csom_main.py`, Copyright (c) 2024 Villads R. M. Nielsen, Boris Le Guennic and Thomas Just Sørensen, licensed under the GNU General Public Licence v3.0 (GPL-3.0).
-
-Parts of the `odis` module is are based on the [`OctaDist`](https://octadist.github.io/)<sup>3</sup> algorithm, Copyright (c) 2019-2026  Rangsiman Ketkaew et al., licensed under the GNU General Public Licence v3.0 (GPL-3.0).
-
-The program relies on the [`clap`](https://crates.io/crates/clap) crate for argument parsing. Dual-licensed under the Apache 2.0 or MIT licences.
-
-The program relies on the [`nalgebra`](https://docs.rs/nalgebra/latest/nalgebra/) crate for the fast linear algebra computations. Licensed under the Apache 2.0 licence.
-
-The program relies on the [`itertools`](https://crates.io/crates/itertools) crate for combinatorial iteration. Dual-licensed under the Apache 2.0 or MIT licences.
-
-The program relies on the [`argmin`](https://crates.io/crates/argmin) and [`argmin-math`](https://crates.io/crates/argmin-math) crates for the Nelder-Mead optimization of the symmetry axis in `csom`. Dual-licensed under the Apache 2.0 or MIT licences.
-
-
-## References
-
-1. Cirera, J., Ruiz, E., & Alvarez, S. (2005). Continuous Shape Measures as a Stereochemical Tool in Organometallic Chemistry. _Organometallics_, 24(7), 1556–1562. https://doi.org/10.1021/om049150z
-2. Alvarez, S., Alemany, P., Casanova, D., Cirera, J., Llunell, M., & Avnir, D. (2005). Shape maps and polyhedral interconversion paths in transition metal chemistry. _Coordination Chemistry Reviews_, 249(17–18), 1693–1708. https://doi.org/10.1016/j.ccr.2005.03.031
-3. Nielsen, V. R. M., Le Guennic, B., & Sørensen, T. J. (2024). Evaluation of Point Group Symmetry in Lanthanide(III) Complexes: A New Implementation of a Continuous Symmetry Operation Measure with Autonomous Assignment of the Principal Axis. _The Journal of Physical Chemistry A_, 128(28), 5740–5751. https://doi.org/10.1021/acs.jpca.4c00801
-4. Ketkaew, R., Tantirungrotechai, Y., Harding, P., Chastanet, G., Guionneau, P., Marchivie, M., & Harding, D. J. (2021). OctaDist: a tool for calculating distortion parameters in spin crossover and coordination complexes. _Dalton Transactions_, 50(3), 1086–1096. https://doi.org/10.1039/d0dt03988h
-5. Addison, A. W., Rao, T. N., Reedijk, J., van Rijn, J., & Verschoor, G. C. (1984). Synthesis, structure, and spectroscopic properties of copper(II) compounds containing nitrogen–sulphur donor ligands; the crystal and molecular structure of aqua[1,7-bis(N-methylbenzimidazol-2′-yl)-2,6-dithiaheptane]copper(II) perchlorate. _Journal of the Chemical Society, Dalton Transactions_, (7), 1349–1356. https://doi.org/10.1039/DT9840001349
-6. Yang, L., Powell, D. R., & Houser, R. P. (2007). Structural variation in copper(I) complexes with pyridylmethylamide ligands: structural analysis with a new four-coordinate geometry index, τ4. _Dalton Transactions_, (9), 955–964. https://doi.org/10.1039/B617136B
-7. Okuniewski, A., Rosiak, D., Chojnacki, J., & Becker, B. (2015). Coordination polymers and molecular structures among complexes of mercury(II) halides with selected 1-benzoylthioureas. _Polyhedron_, 90, 47–57. https://doi.org/10.1016/j.poly.2015.01.035
-8. Stoeckli-Evans, H., Shankar, M. G., Kumaravel, R., Subashini, A., Sabari Girisun, T., Ramamurthi, K., Kučeráková, M., Dušek, M., & Crochet, A. (2025). Di-μ3-chlorido-1:2:3κ3Cl;2:3:4κ3Cl-di-μ2-chlorido-1:2κ2Cl;3:4κ2Cl-tetrakis[(4-amino-1,5-dimethyl-2-phenyl-2,3-dihydro-1H-pyrazol-3-one-κ2N4,O)chlorido-cadmium(II)] 1.7-hydrate: a new six-coordinate geometry index, τ6. _Acta Crystallographica Section E_, 81(5), 393–400. https://doi.org/10.1107/S2056989025003123
-9. Turnbull, D., Wetmore, S. D., & Gerken, M. (2021). Stabilisation of [W<sup>V</sup>F<sub>4</sub>]<sup>+</sup> by N- and P-Donor Ligands: d<sup>1</sup> Second-Order Jahn–Teller Effects in Octacoordinate Complexes. _Chemistry – A European Journal_, 27(44), 11335–11343. https://doi.org/10.1002/chem.202100863
-10. Kepert, D. L. (1978). Aspects of the stereochemistry of eight-coordination. In _Progress in Inorganic Chemistry_, Vol. 24 (pp. 179–249). John Wiley & Sons, New York.
-
+Dependencies and acknowledgements are listed on the docs site's [license page](https://yluro.github.io/cosmochlore-docs/license), and the literature on its [references page](https://yluro.github.io/cosmochlore-docs/references).

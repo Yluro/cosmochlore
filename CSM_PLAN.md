@@ -197,7 +197,7 @@ v = **+u** and O = (h−1)A for P, and v = **−u** for P⁻¹. Do the same for 
 ## 3 · Known symgroup defects and the improvements to make
 
 Fortran references are at commit `7c75587`. Each row is something `csm` must do differently
-(and document in the README).
+(and document on the docs site).
 
 | # | symgroup behaviour | Effect | cosmochlore `csm` |
 |---|---|---|---|
@@ -220,7 +220,7 @@ Fortran references are at commit `7c75587`. Each row is something `csm` must do 
 returned permutation is valid and its Newton step converged. Where values differ, the PR must:
 1. evaluate symgroup's returned permutation with our evaluator;
 2. show it is invalid (D1–D3) or that our axis gives a strictly larger overlap (D5);
-3. list the case in the README "Differences from symgroup" note.
+3. list the case in the docs site's "Differences from symgroup" note.
 
 ---
 
@@ -403,13 +403,13 @@ subcommands' output.
 - `OPEN` **P3.4** Console table: Group | CSM | Axis | (exact/approx marker). Print a note line
   when any value came from the approximate path. Add the new output patterns to `.gitignore`
   (`PLAN.md` E7 lesson).
-- `OPEN` **P3.5** README:
-  - Command row and flags table.
-  - "The `csm` algorithm" section: definition (§2.2), valid permutations, exact orientation,
-    branch-and-bound.
-  - "CSM vs CSoM" paragraph (§0.1).
-  - "Differences from symgroup" (D1–D3, D5, D7).
-  - Licence attribution for symgroup (MIT) and references (§8).
+- `OPEN` **P3.5** Documentation (user docs live in `Yluro/cosmochlore-docs`, see `AGENTS.md`):
+  - README: a row in the command table, a `csm/` entry in the code structure, and the licence
+    attribution for symgroup (MIT) in the License section.
+  - Docs site: a `content/Modules/csm.md` page with the flags table, the algorithm (definition
+    §2.2, valid permutations, exact orientation, branch-and-bound) and the "Differences from
+    symgroup" note (D1–D3, D5, D7); a `content/theory/` page with the "CSM vs CSoM" paragraph
+    (§0.1); the references (§8).
   - Update `PLAN.md` Part II item 9 status.
 
 ### Phase 4 — Continuous chirality measure
