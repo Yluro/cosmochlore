@@ -30,7 +30,7 @@ pub enum Command {
     Csom(CsomArgs),
     /// Octahedral Distortion Analysis
     Odis(OdisArgs),
-    /// Geometry Indices for four-, five- and six-coordinate centres (tau4, tau4', tau5, tau6)
+    /// Geometry Indices for four-, five-, six- and eight-coordinate centres (tau4, tau4', tau5, tau6, tau6', tau8, tau8')
     Gidx(GidxArgs),
 }
 

@@ -457,8 +457,8 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
       - 21b: certificate (step 6). `find_best_permutation` takes an optional incumbent and node
         budget, and `CShMResult` gains `exact`. With no incumbent and no budget, results are
         unchanged.
-      - 21c: `-m/--match`, `--nodes`, `CshmSettings`, the output marker, the CSV column, a README
-        section ("The `--match` modes"), and new output patterns in `.gitignore` if any (E7).
+      - 21c: `-m/--match`, `--nodes`, `CshmSettings`, the output marker, the CSV column, a docs
+        section in `content/Modules/cshm.md` ("The `--match` modes"), and new output patterns in `.gitignore` if any (E7).
     - **Not adopted from Polynator**: hand-written belts per model (derived automatically here);
       the q2 angular estimate (exact scoring is cheap); strategies 2 and 3 for prolate and oblate
       models, which built-in shapes above CN 12 do not need.
