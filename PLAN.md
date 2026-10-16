@@ -10,15 +10,14 @@ Line references drift; grep before trusting one.
 
 1. **C3** — make grouping deterministic and drop the per-call sort. Contained and measurable
    against the csom baseline.
-2. **C5** — score seeds first, refine only the best 2–3.
-3. **Small residue** — A4, D6, D1, D2, B8, B9, C14. Finish **D10** alongside, before any new
+2. **Small residue** — A4, D6, D1, D2, B8, B9, C14. Finish **D10** alongside, before any new
    subcommand adds writers.
-4. **Measure 1** — minimal-distortion paths / shape maps.
-5. **Measure 16** (rest), then **14** (retires the all-47 default), then **13**.
-6. **Measures 17–18** — ADPs and the TDPS library. 17 step 1 and 18 first; they need no sampling.
-7. **Measure 19** — dynamic shapes: 19a with the FeHS fixtures, then 19b and item 20. Only needs
-   the existing `cshm` B&B, so it can move ahead of steps 1–6. Do 19c with measure 1; 19d last.
-8. **Measure 21** — 21a → 21b → 21c, before any `dshm` family at CN ≥ 12. Touches only `cshm`;
+3. **Measure 1** — minimal-distortion paths / shape maps.
+4. **Measure 16** (rest), then **14** (retires the all-47 default), then **13**.
+5. **Measures 17–18** — ADPs and the TDPS library. 17 step 1 and 18 first; they need no sampling.
+6. **Measure 19** — dynamic shapes: 19a with the FeHS fixtures, then 19b and item 20. Only needs
+   the existing `cshm` B&B, so it can move ahead of steps 1–5. Do 19c with measure 1; 19d last.
+7. **Measure 21** — 21a → 21b → 21c, before any `dshm` family at CN ≥ 12. Touches only `cshm`;
    `--match exact` keeps today's output.
 
 ## Open fixes
@@ -29,7 +28,6 @@ Line references drift; grep before trusting one.
 | B8 | `rotation_matrix()` transposes, `rotation_matrix_from_vector()` doesn't | `src/geometry.rs` |
 | B9 | `csom --ignore` is a flag, `cshm` always ignores labels (measure 12 closes it) | `src/cli.rs` |
 | C3 | Per-call z/y/x sort in label grouping (details below) | `src/csom/assignment.rs` |
-| C5 | All 20 seeds fully refined; score first, refine best 2–3 (~10× on the seed loop) | `src/csom/optimize.rs` |
 | C8 | Shape / seed / point-group loops are serial; use `rayon` | `src/cshm/mod.rs`, `src/csom/` |
 | C12 | `builtin_shapes()` rebuilds the 90-shape `HashMap` on every lookup | `src/data/standard_shapes.rs` |
 | C14 | No `[profile.release]` (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`) | `Cargo.toml` |

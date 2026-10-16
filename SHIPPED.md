@@ -150,6 +150,10 @@ Arbitrary centre position via `--center`. Multi-frame xyz and `--cn` are still o
 - **A7** — 2-vertex shapes are unreachable (centering makes them identical). `src/xyz.rs`
 - **C4** — the csom deviation denominator is only constant when centroid-centred; with
   `--center`/`--vector` it varies. Recomputing is O(n) next to an O(n³) Hungarian; don't branch on it.
+- **C5 (tried, failed)** — score all 20 seeds, refine only the best 2–3. Tried on a branch that was
+  deleted long ago. Seeds that score badly at the start often refine into the global minimum, so
+  the shortcut missed minima, and the speed-up was small. Don't retry it. Any seed-loop speed-up
+  must keep every global minimum the full 20-seed refinement finds. `src/csom/optimize.rs`
 - **C9 / C13** — automorphism dedup was removed outright.
 - **E4** — `tests/FeCl6_table.csv` and `FeCl6_ideal.xyz` deleted (`7354442`). The SHAPE 2.1 values
   are pinned inline in `src/cshm/tests.rs` (water 0.035/33.342, Eu7 2.109/2.630/7.288).
