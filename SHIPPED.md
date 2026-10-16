@@ -13,8 +13,9 @@ moved them, so grep before trusting one.
 - `odis --full` on FeHS: ~375 ms (was 600 ms before B10).
 - cshm 11-vertex B&B timing: 404 ms min (unchanged by D7).
 - Clippy: **0 warnings** with `--all-targets -D warnings`, no `allow`s added to silence it.
-- README example blocks are verbatim release-binary output on `tests/FeHS.xyz` + `tests/ebcT-6.yaml`.
-  Regenerate them if any printed value changes.
+- The example blocks on the docs site (`content/Modules/*.md` in `Yluro/cosmochlore-docs`, moved
+  there from the README) are verbatim release-binary output on the `tests/` fixtures
+  (`FeHS.xyz` + `ebcT-6.yaml`, ...). Regenerate them if any printed value changes.
 
 ## Correctness
 
@@ -93,7 +94,7 @@ moved them, so grep before trusting one.
   Generated tables in `data/pgs.rs` and `data/standard_shapes.rs` carry `#[rustfmt::skip]`, and
   the shapes generator emits it. `rustfmt.toml` pins `newline_style = "Native"` (CRLF checkout).
 - **E5** — README rows match `cli.rs` (`--iterations` 200, `--pg` optional, `-e`/`--tol`). Keep
-  README flags in sync with `cli.rs` on every CLI change.
+  the docs options tables (`content/Modules/*.md`) in sync with `cli.rs` on every CLI change.
 - **E6** (`f9cccad`) — `automorphism.rs` and `structure_from_shape` are `#[cfg(test)]`;
   `twist_top_face` deleted. Measure 19 will need `find_automorphisms` un-gated.
 - **E7** — `.gitignore` covers `.idea/` and every output name `out.rs` writes
@@ -104,7 +105,7 @@ moved them, so grep before trusting one.
 
 ### 2 · Θ face-twist + octahedral volume (Ketkaew 2021)
 
-Part of `odis`; printed as the `Theta`/`Volume` rows in the README example.
+Part of `odis`; printed as the `Theta`/`Volume` rows in the `odis` docs example.
 
 ### 3 · Geometry indices — `gidx` (τ4, τ4', τ5, τ6, τ6', τ8, τ8')
 
@@ -112,7 +113,8 @@ Part of `odis`; printed as the `Theta`/`Volume` rows in the README example.
 Yang 2007, Okuniewski 2015, Stoeckli-Evans 2025, Turnbull/Wetmore/Gerken 2021.
 
 Fixtures and pinned values:
-- Ideal built-in shapes; README lists every 4-, 5- and 6-vertex ideal shape's values.
+- Ideal built-in shapes; the docs page `content/theory/geometry-indices.md` lists every 4-, 5-, 6-
+  and 8-vertex ideal shape's values.
 - `tests/ML4.xyz`, `tests/ML5.xyz`, `tests/FeHS.xyz`.
 - `tests/CdONCl4.xyz` (τ6 0.27), `tests/CdONCl3.xyz` (τ5 0.31) — the paper's Cd centres from its SI.
 - `tests/cd6/`: CSD Cd sites IQATAY Cd1-4, ULESAH, VAPSAG, CIJBII.
