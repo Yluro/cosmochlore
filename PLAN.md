@@ -8,8 +8,8 @@ Line references drift; grep before trusting one.
 
 ## Next up
 
-1. **C17, then C3** — resolve the point group once; make grouping deterministic and drop the
-   per-call sort. Both are contained and measurable against the 0.22 s csom baseline.
+1. **C3** — make grouping deterministic and drop the per-call sort. Contained and measurable
+   against the csom baseline.
 2. **C5** — score seeds first, refine only the best 2–3.
 3. **Small residue** — A4, D6, D1, D2, B8, B9, C14. Finish **D10** alongside, before any new
    subcommand adds writers.
@@ -33,22 +33,12 @@ Line references drift; grep before trusting one.
 | C8 | Shape / seed / point-group loops are serial; use `rayon` | `src/cshm/mod.rs`, `src/csom/` |
 | C12 | `builtin_shapes()` rebuilds the 90-shape `HashMap` on every lookup | `src/data/standard_shapes.rs` |
 | C14 | No `[profile.release]` (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`) | `Cargo.toml` |
-| C17 | Point group re-resolved by name in the hot loop (details below) | `src/csom/deviation.rs` |
 | D1 | `center_and_normalise` duplicates `center_by_centroid` + `normalise`; doc comment truncated | `src/geometry.rs` |
 | D2 | Dead `points` array built only to construct `vectors` | `src/odis/calc.rs` |
 | D6 | Stale `//if args.crab {print_crab()}` comment; `find_best_permutation`'s rotation return unused | `src/main.rs`, `src/cshm/mod.rs` |
 | D10 | Wire in the `Table` / `CsvWriter` structs, retire the `--silent` global (details below) | `src/out.rs` |
 | E1 | No `lib.rs`, so no integration tests | — |
 | E3 | `bnb_is_faster_than_bf` asserts on wall-clock time | `src/cshm/tests.rs` |
-
-### C17 — resolve the point group once
-
-`point_group_dev` calls `get_pointgroup(pg)` — a 47-arm `&str` match — on every cost
-evaluation, then `to_matrix3` re-converts every `[[f64;3];3]` (47 conversions per Oh eval).
-`refine_axis_from_seed` builds a whole `HashMap<&str, Vec<Matrix3>>` via `get_pointgroup_map`
-just to test `.is_none()`, once per seed. Resolve once in `calc_csom` to a `Vec<Matrix3>` (or
-`&'static [SymmetryOperation]`) and hand that to `OrientationProblem`.
-`src/csom/deviation.rs`, `src/csom/optimize.rs`
 
 ### C3 — deterministic label grouping
 

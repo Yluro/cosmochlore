@@ -58,6 +58,13 @@ moved them, so grep before trusting one.
 - **C15** — `point_group_dev` (hot loop) sums per-operation deviations via
   `operation_deviation_scalar`: no `String` or `Vec<CsomOperation>` per call. The full breakdown
   (`point_group_operation_deviations` / `operation_deviation`) is only for `--full`/`--operated`.
+- **C17** — the point group is resolved once per `search_best_axis` call by `pointgroup_matrices`
+  (a `Vec<Matrix3>`). `point_group_dev` and `refine_axis_from_seed` take `&[Matrix3<f64>]`, and
+  `point_group_dev` returns `f64`, so no name lookup, `to_matrix3` or `expect` is left in the cost
+  loop. `get_pointgroup_map` was removed. Output is byte-identical (`csom tests/FeHS.xyz -p Oh D4h
+  C2v --full`, `tests/La03.xyz -p Oh Ci`). Wall time is unchanged within noise (~0.60 s release on
+  the dev machine before and after), so the remaining cost is in the assignment (C3) and the seed
+  loop (C5). `src/csom/deviation.rs`, `src/csom/optimize.rs`
 - **C16** — the one `point_group_operation_deviations` call in `calc_csom` (gated by
   `with_operations`) is the only full computation. `src/csom/mod.rs`
 - **C14 (part)** — `license = "GPL-3.0-only"` in `Cargo.toml` (`734c0a9`). Release profile still open.

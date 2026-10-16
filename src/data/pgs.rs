@@ -11,7 +11,6 @@
 // editing this file: it checks that every table is the group its name says.
 
 use nalgebra::Matrix3;
-use std::collections::HashMap;
 use std::f64::consts::FRAC_1_SQRT_2;
 
 // std::f64::consts has no sqrt(3)/2 or 36°/72° trig constants, so these are
@@ -106,19 +105,6 @@ pub fn get_pointgroup(name: &str) -> Option<&'static [SymmetryOperation]> {
         "Th" => Some(POINTGROUP_TH),
         _ => None,
     }
-}
-
-/// Look up a point group as a HashMap<operation name, Vec<Matrix3<f64>>>.
-/// An operation name (e.g. "3C2") can repeat with a different matrix
-/// each time; all matrices sharing a name are collected under that key.
-pub fn get_pointgroup_map(name: &str) -> Option<HashMap<&'static str, Vec<Matrix3<f64>>>> {
-    get_pointgroup(name).map(|ops| {
-        let mut map: HashMap<&'static str, Vec<Matrix3<f64>>> = HashMap::new();
-        for (op_name, matrix) in ops {
-            map.entry(*op_name).or_default().push(to_matrix3(*matrix));
-        }
-        map
-    })
 }
 
 #[rustfmt::skip]

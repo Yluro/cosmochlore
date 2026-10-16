@@ -2,7 +2,7 @@ use crate::csom::assignment::best_permutation_multiple_atoms;
 use crate::csom::types::CsomError;
 use crate::csom::types::CsomOperationResult;
 use crate::data::pgs::{SymmetryOperation, get_pointgroup, to_matrix3};
-use nalgebra::Vector3;
+use nalgebra::{Matrix3, Vector3};
 
 /// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)
 ///
@@ -71,7 +71,14 @@ fn operation_deviation(
     }
 }
 
-/// Average CSM deviation of `points` from every symmetry operation of point group `pg`.
+/// The symmetry matrices of point group `pg`, converted once for the refinement search.
+pub(crate) fn pointgroup_matrices(pg: &str) -> Result<Vec<Matrix3<f64>>, CsomError> {
+    let ops =
+        get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
+    Ok(ops.iter().map(|(_, m)| to_matrix3(*m)).collect())
+}
+
+/// Average CSM deviation of `points` from every symmetry operation in `matrices`.
 ///
 /// Returns only the average S-value for all operation in a point group.
 /// It does not build a CsomResult
@@ -79,19 +86,16 @@ fn operation_deviation(
 pub fn point_group_dev(
     points: &[Vector3<f64>],
     groups: &[Vec<usize>],
-    pg: &str,
+    matrices: &[Matrix3<f64>],
     ignore_labels: bool,
     has_centre: bool,
-) -> Result<f64, CsomError> {
-    let ops =
-        get_pointgroup(pg).ok_or_else(|| CsomError::WrongSpaceGroup { pg: pg.to_string() })?;
-
-    let sum: f64 = ops
+) -> f64 {
+    let sum: f64 = matrices
         .iter()
-        .map(|op| operation_deviation_scalar(points, groups, ignore_labels, has_centre, op))
+        .map(|m| operation_deviation_scalar(points, groups, ignore_labels, has_centre, m))
         .sum();
 
-    Ok(sum / ops.len() as f64)
+    sum / matrices.len() as f64
 }
 
 /// Deviation of `points` from a single symmetry operation, without the [`CsomOperationResult`]
@@ -101,9 +105,8 @@ fn operation_deviation_scalar(
     groups: &[Vec<usize>],
     ignore_labels: bool,
     has_centre: bool,
-    (_, matrix): &SymmetryOperation,
+    sym_op: &Matrix3<f64>,
 ) -> f64 {
-    let sym_op = to_matrix3(*matrix);
     let image: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
     let (a, b, _) =
         best_permutation_multiple_atoms(points, &image, groups, ignore_labels, has_centre);

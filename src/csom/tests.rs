@@ -220,10 +220,8 @@ fn oc_for_oh_point_group() {
     let pg_name = "Oh";
 
     let groups = group_by_label(&labels);
-    let average_dev = point_group_dev(&shape, &groups, pg_name, false, true);
-    assert!(average_dev.is_ok());
-
-    let average_dev = average_dev.unwrap();
+    let matrices = pointgroup_matrices(pg_name).unwrap();
+    let average_dev = point_group_dev(&shape, &groups, &matrices, false, true);
     assert!(
         average_dev.abs() < 1e-3,
         "expected average_dev = 0.0, found {}",
@@ -336,8 +334,9 @@ fn refine_axis_from_seed_converges_for_perfect_octahedron() {
     // Start from a slightly off-identity guess so the simplex has real work to do.
     let axis0 = Vector3::new(0.01, 0.02, 0.03);
 
-    let (_, cost) = refine_axis_from_seed(axis0, &structure, "Oh", 1000, 1e-8, false)
-        .expect("Oh is a valid point group");
+    let matrices = pointgroup_matrices("Oh").expect("Oh is a valid point group");
+    let (_, cost) = refine_axis_from_seed(axis0, &structure, &matrices, 1000, 1e-8, false)
+        .expect("refinement runs");
 
     assert!(
         cost.abs() < 1e-3,
@@ -346,11 +345,8 @@ fn refine_axis_from_seed_converges_for_perfect_octahedron() {
 }
 
 #[test]
-fn refine_axis_from_seed_rejects_unknown_point_group() {
-    let structure = octahedron_structure();
-    let axis0 = Vector3::zeros();
-
-    let result = refine_axis_from_seed(axis0, &structure, "NotAGroup", 1000, 1e-8, false);
+fn unknown_point_group_is_rejected() {
+    let result = pointgroup_matrices("NotAGroup");
 
     assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
 }
