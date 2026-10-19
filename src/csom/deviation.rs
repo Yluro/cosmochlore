@@ -6,12 +6,17 @@ use nalgebra::{Matrix3, Vector3};
 
 /// Shape deviation for two given shapes. It returns squared-distance-sum deviation (0 to 100)
 ///
-/// Assumes centered and normalized points.
-/// Assumes correct point-to-point correspondence.
-pub(crate) fn sds_dev(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> f64 {
+/// Assumes centered and normalized points. Scores `reference[i]` against
+/// `problem[pairing[i]]`, summing in atom order so the result is bit-stable.
+pub(crate) fn sds_dev(
+    reference: &[Vector3<f64>],
+    problem: &[Vector3<f64>],
+    pairing: &[usize],
+) -> f64 {
     let n = reference.len() as f64;
     let problem_centroid = problem.iter().sum::<Vector3<f64>>() / n;
 
+    // Permutation-invariant: needs no pairing.
     let denominator: f64 = problem
         .iter()
         .map(|p| (p - problem_centroid).norm_squared())
@@ -19,8 +24,8 @@ pub(crate) fn sds_dev(reference: &[Vector3<f64>], problem: &[Vector3<f64>]) -> f
 
     let numerator: f64 = reference
         .iter()
-        .zip(problem)
-        .map(|(p, q)| (q - p).norm_squared())
+        .zip(pairing)
+        .map(|(p, &j)| (problem[j] - p).norm_squared())
         .sum();
 
     100.0 * numerator / denominator
@@ -59,13 +64,13 @@ fn operation_deviation(
     // The assignment only decides which image point each atom is *scored against*; it
     // never changes whose image a point is, so `image` stays in the input's atom order
     // and the pairing is reported separately.
-    let (a, b, pairing) =
+    let pairing =
         best_permutation_multiple_atoms(points, &image, groups, ignore_labels, has_centre);
 
     CsomOperationResult {
         name: name.to_string(),
         matrix: sym_op,
-        deviation: sds_dev(&a, &b),
+        deviation: sds_dev(points, &image, &pairing),
         image,
         pairing,
     }
@@ -108,7 +113,7 @@ fn operation_deviation_scalar(
     sym_op: &Matrix3<f64>,
 ) -> f64 {
     let image: Vec<Vector3<f64>> = points.iter().map(|p| sym_op * p).collect();
-    let (a, b, _) =
+    let pairing =
         best_permutation_multiple_atoms(points, &image, groups, ignore_labels, has_centre);
-    sds_dev(&a, &b)
+    sds_dev(points, &image, &pairing)
 }
