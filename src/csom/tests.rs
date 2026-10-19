@@ -40,7 +40,7 @@ fn can_rotate_and_assign() {
         .map(|v| rot_mat * *v)
         .collect::<Vec<Vector3<f64>>>();
 
-    let (_, perm) = best_permutation(&shape, rotated.as_slice());
+    let perm = best_permutation(&shape, rotated.as_slice());
     let expected_perm = vec![0, 1, 3, 4, 5, 2, 6];
 
     assert_eq!(perm, expected_perm)
@@ -78,14 +78,13 @@ fn mismatched_gives_nonzero_dev() {
         .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&stripped);
-    let (a, b, _) =
+    let pairing =
         best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, false);
 
-    // Sanity: same length, all atoms retained.
-    assert_eq!(a.len(), shape.len());
-    assert_eq!(b.len(), shape.len());
+    // Sanity: every atom gets a partner.
+    assert_eq!(pairing.len(), shape.len());
 
-    let sds = sds_dev(&a, &b);
+    let sds = sds_dev(&shape, &rotated, &pairing);
     assert!(
         sds > 1e-6,
         "expected nonzero deviation due to mismatched Cl group, got {sds}"
@@ -120,16 +119,15 @@ fn ignoring_labels_finds_the_perfect_match_across_mismatched_labels() {
         .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&labels);
-    let (_, honouring_labels, _) =
+    let honouring_labels =
         best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, false);
     assert!(
-        sds_dev(&shape, &honouring_labels) > 1e-6,
+        sds_dev(&shape, &rotated, &honouring_labels) > 1e-6,
         "mismatched label should prevent a perfect match"
     );
 
-    let (a, b, _) =
-        best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, true, false);
-    let sds = sds_dev(&a, &b);
+    let pairing = best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, true, false);
+    let sds = sds_dev(&shape, &rotated, &pairing);
     assert!(
         sds < 1e-6,
         "expected near-zero deviation once labels are ignored, got {sds}"
@@ -154,15 +152,13 @@ fn pinned_centre_atom_is_never_reassigned() {
         .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&labels);
-    let (a, b, _) =
-        best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, true);
+    let pairing = best_permutation_multiple_atoms(&shape, rotated.as_slice(), &groups, false, true);
 
-    // The pinned centre (origin) must appear paired with itself among the returned pairs.
-    let centre_pair = a.iter().zip(b.iter()).find(|(pa, _)| pa.norm() < 1e-9);
-    let (_, centre_b) = centre_pair.expect("origin point should be present in the output");
-    assert!(
-        centre_b.norm() < 1e-9,
-        "pinned centre should be matched to itself, got {centre_b}"
+    // The pinned centre pairs with itself.
+    assert_eq!(
+        pairing[0], 0,
+        "pinned centre should be matched to itself, got atom {}",
+        pairing[0]
     );
 }
 
@@ -196,9 +192,9 @@ fn matches_expected_sds_after_permutation() {
         .collect::<Vec<Vector3<f64>>>();
 
     let groups = group_by_label(&stripped);
-    let (a, b, _) =
+    let pairing =
         best_permutation_multiple_atoms(&square, operated.as_slice(), &groups, false, false);
-    let sds = sds_dev(&a, &b);
+    let sds = sds_dev(&square, &operated, &pairing);
     assert!((sds - 100.0).abs() < 1e-6, "expected sds = 100, got {sds}");
 }
 
@@ -227,6 +223,51 @@ fn oc_for_oh_point_group() {
         "expected average_dev = 0.0, found {}",
         average_dev
     );
+}
+
+#[test]
+fn label_groups_come_out_in_label_order() {
+    let labels: Vec<String> = ["O", "N", "Cl", "N"]
+        .iter()
+        .map(|l| l.to_string())
+        .collect();
+    assert_eq!(group_by_label(&labels), vec![vec![2], vec![1, 3], vec![0]]);
+}
+
+#[test]
+fn group_order_does_not_change_the_score() {
+    // Distorted mixed-ligand octahedron: several groups, nonzero scores.
+    let mut shape: Vec<Vector3<f64>> = vec![
+        Vector3::new(0.013, -0.021, 0.008),
+        Vector3::new(0.031, 0.017, -1.083),
+        Vector3::new(1.112, -0.044, 0.026),
+        Vector3::new(-0.052, 0.947, 0.061),
+        Vector3::new(-0.981, 0.073, -0.037),
+        Vector3::new(0.024, -1.036, 0.049),
+        Vector3::new(-0.067, 0.029, 0.918),
+    ];
+    let labels: Vec<String> = ["Fe", "N", "Cl", "O", "N", "Cl", "O"]
+        .iter()
+        .map(|l| l.to_string())
+        .collect();
+    let _ = center_by_first_point(&mut shape);
+    let _ = normalise(&mut shape);
+
+    let groups = group_by_label(&labels);
+    let reversed: Vec<Vec<usize>> = groups.iter().rev().cloned().collect();
+    assert_ne!(groups, reversed);
+
+    for pg in ["Oh", "D4h", "C3v", "Cs"] {
+        let matrices = pointgroup_matrices(pg).unwrap();
+        let forward = point_group_dev(&shape, &groups, &matrices, false, true);
+        let backward = point_group_dev(&shape, &reversed, &matrices, false, true);
+        assert!(forward > 1e-6, "{pg}: expected a nonzero deviation");
+        assert_eq!(
+            forward.to_bits(),
+            backward.to_bits(),
+            "{pg}: score depends on the group order ({forward} vs {backward})"
+        );
+    }
 }
 
 #[test]
