@@ -8,16 +8,14 @@ Line references drift; grep before trusting one.
 
 ## Next up
 
-1. **C3** — make grouping deterministic and drop the per-call sort. Contained and measurable
-   against the csom baseline.
-2. **Small residue** — A4, D6, D1, D2, B8, B9, C14. Finish **D10** alongside, before any new
+1. **Small residue** — A4, D6, D1, D2, B8, B9, C14. Finish **D10** alongside, before any new
    subcommand adds writers.
-3. **Measure 1** — minimal-distortion paths / shape maps.
-4. **Measure 16** (rest), then **14** (retires the all-47 default), then **13**.
-5. **Measures 17–18** — ADPs and the TDPS library. 17 step 1 and 18 first; they need no sampling.
-6. **Measure 19** — dynamic shapes: 19a with the FeHS fixtures, then 19b and item 20. Only needs
-   the existing `cshm` B&B, so it can move ahead of steps 1–5. Do 19c with measure 1; 19d last.
-7. **Measure 21** — 21a → 21b → 21c, before any `dshm` family at CN ≥ 12. Touches only `cshm`;
+2. **Measure 1** — minimal-distortion paths / shape maps.
+3. **Measure 16** (rest), then **14** (retires the all-47 default), then **13**.
+4. **Measures 17–18** — ADPs and the TDPS library. 17 step 1 and 18 first; they need no sampling.
+5. **Measure 19** — dynamic shapes: 19a with the FeHS fixtures, then 19b and item 20. Only needs
+   the existing `cshm` B&B, so it can move ahead of steps 1–4. Do 19c with measure 1; 19d last.
+6. **Measure 21** — 21a → 21b → 21c, before any `dshm` family at CN ≥ 12. Touches only `cshm`;
    `--match exact` keeps today's output.
 
 ## Open fixes
@@ -27,7 +25,6 @@ Line references drift; grep before trusting one.
 | A4 | `odis --full` writes the cshm, csom and odis CSVs without `--table` | `src/odis/mod.rs` |
 | B8 | `rotation_matrix()` transposes, `rotation_matrix_from_vector()` doesn't | `src/geometry.rs` |
 | B9 | `csom --ignore` is a flag, `cshm` always ignores labels (measure 12 closes it) | `src/cli.rs` |
-| C3 | Per-call z/y/x sort in label grouping (details below) | `src/csom/assignment.rs` |
 | C8 | Shape / seed / point-group loops are serial; use `rayon` | `src/cshm/mod.rs`, `src/csom/` |
 | C12 | `builtin_shapes()` rebuilds the 90-shape `HashMap` on every lookup | `src/data/standard_shapes.rs` |
 | C14 | No `[profile.release]` (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`) | `Cargo.toml` |
@@ -37,15 +34,6 @@ Line references drift; grep before trusting one.
 | D10 | Wire in the `Table` / `CsvWriter` structs, retire the `--silent` global (details below) | `src/out.rs` |
 | E1 | No `lib.rs`, so no integration tests | — |
 | E3 | `bnb_is_faster_than_bf` asserts on wall-clock time | `src/cshm/tests.rs` |
-
-### C3 — deterministic label grouping
-
-The z/y/x sort in `best_permutation_multiple_atoms` runs on every op call. It exists only
-because `group_by_label` collects a `HashMap` into a `Vec` in random order, so without it the
-float sum in `sds_dev` would differ in the last bit across runs. Build the groups
-deterministically once (`BTreeMap`, or sort by first index) and drop the sort. The scalar path
-(`operation_deviation_scalar`) then needs no `final_a`/`final_b`: sum the squared distances
-straight off `pairs`. `src/csom/assignment.rs`, `src/csom/deviation.rs`
 
 ### D10 — table and CSV writer structs
 

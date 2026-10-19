@@ -61,6 +61,9 @@ cargo fmt --check
   needs a matching pattern in `.gitignore`.
 - Dev-only files (helper scripts, plans) are marked `export-ignore` in `.gitattributes` so they stay
   out of source archives. Add new ones there.
+- Keep doc comments and comments short: one or two lines saying what the item does and any
+  non-obvious contract. History, rationale and plan IDs go in the commit message or SHIPPED.md,
+  not the code.
 
 ## CLI changes and documentation
 

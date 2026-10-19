@@ -65,6 +65,18 @@ moved them, so grep before trusting one.
   C2v --full`, `tests/La03.xyz -p Oh Ci`). Wall time is unchanged within noise (~0.60 s release on
   the dev machine before and after), so the remaining cost is in the assignment (C3) and the seed
   loop (C5). `src/csom/deviation.rs`, `src/csom/optimize.rs`
+- **C3** — label groups come from a `BTreeMap` (label order) instead of a `HashMap`, and the
+  per-call z/y/x sort of the matched pairs is gone. `best_permutation_multiple_atoms` returns only
+  the `pairing`; `sds_dev(reference, problem, pairing)` scores `reference[i]` against
+  `problem[pairing[i]]` with every sum in atom order, so the score doesn't depend on the group
+  order (`group_order_does_not_change_the_score` pins this to the bit). `best_permutation` returns
+  just the assignment. Any new scorer must sum in atom order through the pairing, never in group
+  or match order. Printed values are unchanged on the csom/odis/cshm fixtures (FeHS, FeCl6, La03,
+  CdONCl3, ML5, sample, ideal_water, ideal_benzene; all 47 groups, `--full`, `--operated`,
+  `--ignore`). The one byte that moved is the Ci rotation in `La03_csom_table.csv`: the inversion
+  commutes with every rotation, so the Ci (and E) axis is arbitrary and follows last-bit noise.
+  Wall time ~15 % lower on the dev machine (FeHS `-p Oh D4h` 545 → 460 ms, La03 all 47 groups
+  8.96 → 7.83 s). `src/csom/assignment.rs`, `src/csom/deviation.rs`
 - **C16** — the one `point_group_operation_deviations` call in `calc_csom` (gated by
   `with_operations`) is the only full computation. `src/csom/mod.rs`
 - **C14 (part)** — `license = "GPL-3.0-only"` in `Cargo.toml` (`734c0a9`). Release profile still open.
