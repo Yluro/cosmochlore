@@ -12,31 +12,26 @@ mod yaml;
 
 use crate::cli::{Cli, Command};
 use crate::error::Error;
-use crate::out::welcome_msg;
 use clap::Parser;
 use std::time::Instant;
 
-fn main() -> Result<(), Error> {
-    let main_start = Instant::now();
-    let args = Cli::parse();
-
-    out::set_silent(args.silent);
-    welcome_msg();
-
-    let run = match args.command {
-        Command::Cshm(cshm_args) => cshm::cshm_main(cshm_args),
-        Command::Csom(csom_args) => csom::csom_main(csom_args),
-        Command::Odis(odis_args) => odis::main_odis(odis_args),
-        Command::Gidx(gidx_args) => gidx::main_gidx(gidx_args),
-    };
-
-    if let Err(err) = run {
+fn main() {
+    let start = Instant::now();
+    let cli = Cli::parse();
+    out::banner(cli.silent);
+    if let Err(err) = dispatch(cli.command, cli.silent) {
         eprintln!("Error: {err}");
         std::process::exit(1);
     }
+    out::finished(start.elapsed(), cli.silent);
+}
 
-    let main_time = main_start.elapsed();
-    out::say_finished(main_time);
-    //if args.crab {print_crab()}
-    run
+/// Runs one subcommand and hands its result to `out`.
+fn dispatch(command: Command, silent: bool) -> Result<(), Error> {
+    match command {
+        Command::Cshm(args) => Ok(out::cshm(&cshm::run(&args)?, &args, silent)?),
+        Command::Csom(args) => Ok(out::csom(&csom::run(&args)?, &args, silent)?),
+        Command::Odis(args) => Ok(out::odis(&odis::run(&args)?, &args, silent)?),
+        Command::Gidx(args) => Ok(out::gidx(&gidx::run(&args)?, &args, silent)?),
+    }
 }
