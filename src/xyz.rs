@@ -24,6 +24,14 @@ impl Structure {
     }
 }
 
+/// Characters that break the CSV writers.
+pub const FORBIDDEN_CHARS: [char; 2] = [',', '"'];
+
+/// The first character of `text` that is in [`FORBIDDEN_CHARS`], if any.
+pub fn forbidden_char(text: &str) -> Option<char> {
+    text.chars().find(|c| FORBIDDEN_CHARS.contains(c))
+}
+
 fn read_file(path: &str) -> Result<String, XyzParseError> {
     std::fs::read_to_string(path).map_err(XyzParseError::Io)
 }
@@ -85,6 +93,13 @@ fn parse_xyz_contents(content: &str, center: Option<usize>) -> Result<Structure,
 
         // Main logic, asign labels and xyz coords.
         let label = parts[0];
+        if let Some(ch) = forbidden_char(label) {
+            return Err(XyzParseError::ForbiddenLabel {
+                line_no: i + 3,
+                label: label.to_string(),
+                ch,
+            });
+        }
         let mut coords: Vector3<f64> = Vector3::zeros(); // Create array [0.0, 0.0, 0.0]
         for (j, part) in parts[1..4].iter().enumerate() {
             coords[j] = match part.parse::<f64>() {
@@ -157,6 +172,12 @@ pub enum XyzParseError {
     BadHeader(String), // File has wrong header
     #[error("bad line in {line_no}: {line}")]
     BadLine { line_no: usize, line: String }, // File has a bad line (not enough whitespaces)
+    #[error("atom label '{label}' in line {line_no} contains the forbidden character '{ch}'")]
+    ForbiddenLabel {
+        line_no: usize,
+        label: String,
+        ch: char,
+    },
     #[error("bad coordinates in line {line_no}: {source}")]
     BadCoordinate {
         line_no: usize,
@@ -237,6 +258,17 @@ mod tests {
                 line: _
             })
         ));
+    }
+
+    #[test]
+    fn forbidden_label_error() {
+        for (label, bad) in [("Fe,1", ','), ("N\"2", '"')] {
+            let input = format!("3\ncomment\n{label} 0.0 0.0 0.0\nH 1.0 0.0 0.0\nH 0.0 1.0 0.0\n");
+            assert!(matches!(
+                parse_xyz_contents(&input, Some(0)),
+                Err(XyzParseError::ForbiddenLabel { line_no: 3, label: l, ch }) if l == label && ch == bad
+            ));
+        }
     }
 
     #[test]

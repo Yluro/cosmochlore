@@ -1,4 +1,5 @@
 use crate::data::standard_shapes::ReferenceShape;
+use crate::xyz::forbidden_char;
 use nalgebra::Vector3;
 
 #[derive(Debug, PartialEq)]
@@ -10,6 +11,25 @@ enum Section {
 
 fn read_yaml(path: &str) -> Result<String, YamlParseError> {
     Ok(std::fs::read_to_string(path)?)
+}
+
+/// Rejects a text field holding one of `xyz::FORBIDDEN_CHARS`, which would break the CSV output.
+fn check_text(
+    file: &str,
+    field: &'static str,
+    value: &str,
+    line_no: usize,
+) -> Result<(), YamlParseError> {
+    match forbidden_char(value) {
+        Some(ch) => Err(YamlParseError::ForbiddenCharacter {
+            file: file.to_string(),
+            field,
+            value: value.to_string(),
+            ch,
+            line_no,
+        }),
+        None => Ok(()),
+    }
 }
 
 fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, YamlParseError> {
@@ -56,8 +76,10 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
                 });
             }
 
+            check_text(file, "symbol", &new_symbol, line_no)?;
+
             // reset everything for the new entry
-            symbol = Some(line.trim_end_matches(':').to_string());
+            symbol = Some(new_symbol);
             id = None;
             symm = None;
             name = None;
@@ -94,6 +116,7 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
                     line_no,
                 });
             }
+            check_text(file, "symm", value, line_no)?;
             symm = Some(value.to_string());
             continue;
         }
@@ -108,6 +131,7 @@ fn parse_yaml_str(content: &str, file: &str) -> Result<Vec<ReferenceShape>, Yaml
                     line_no,
                 });
             }
+            check_text(file, "name", value, line_no)?;
             name = Some(value.to_string());
             continue;
         }
@@ -267,6 +291,14 @@ pub enum YamlParseError {
         field: &'static str,
         line_no: usize,
     }, // field appeared, but has no value
+    #[error("{field} '{value}' in file {file} at line {} contains the forbidden character '{ch}'", line_no + 1)]
+    ForbiddenCharacter {
+        file: String,
+        field: &'static str,
+        value: String,
+        ch: char,
+        line_no: usize,
+    }, // text field that would break the CSV output
     #[error("unexpected contents in file {file} at line {}", line_no + 1)]
     UnparsableLine { file: String, line_no: usize }, // Some entry has unexpected fields. It reaches the end of the "if chain" without getting parsed.
     #[error("found unexpected coordinate block in file {file} at line {} ", line_no + 1)]
@@ -348,6 +380,38 @@ TEST-2:
                 assert_eq!(field, "name");
             }
             other => panic!("unexpected result: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn forbidden_character_error() {
+        let entry = |symbol: &str, symm: &str, name: &str| {
+            format!(
+                "{symbol}:
+  symmetry: {symm}
+  name: {name}
+  vertices:
+    - [1.0, 0.0, 0.0]
+    - [-0.5, 0.87, 0.0]
+    - [-0.5, -0.87, 0.0]
+  center:
+    - [0.0, 0.0, 0.0]
+"
+            )
+        };
+        // (input, field, character, 0-based line)
+        let cases = [
+            (entry("T,3", "D3h", "Trigonal"), "symbol", ',', 0),
+            (entry("T-3", "D3\"h", "Trigonal"), "symm", '"', 1),
+            (entry("T-3", "D3h", "Trigonal, flat"), "name", ',', 2),
+        ];
+        for (input, bad_field, bad_ch, bad_line) in cases {
+            match parse_yaml_str(&input, "test.yaml") {
+                Err(YamlParseError::ForbiddenCharacter {
+                    field, ch, line_no, ..
+                }) => assert_eq!((field, ch, line_no), (bad_field, bad_ch, bad_line)),
+                other => panic!("{bad_field}: unexpected result: {other:?}"),
+            }
         }
     }
 
