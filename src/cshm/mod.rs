@@ -15,8 +15,7 @@ pub(crate) mod types;
 use crate::cli::CshmArgs;
 use crate::data::standard_shapes::ReferenceShape;
 use crate::error::Error;
-use crate::out::{print_crab, print_cshm_table, write_cshm_csv, write_cshm_reconstructed_xyz};
-use crate::xyz::Structure;
+use crate::xyz::{Atom, Structure};
 use crate::{xyz, yaml};
 use nalgebra::Vector3;
 pub(crate) use permutations::find_best_permutation;
@@ -56,7 +55,6 @@ pub fn calc_cshm(
     results
 }
 
-pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
 /// `problem` with every atom moved to its matched vertex of the fitted shape. `perm[p]` is the
 /// vertex of `fitted` matched to atom `p` of `problem.atoms()`.
 fn ideal_structure(problem: &Structure, perm: &[usize], fitted: &[Vector3<f64>]) -> Structure {
@@ -78,6 +76,9 @@ fn ideal_structure(problem: &Structure, perm: &[usize], fitted: &[Vector3<f64>])
         ligands: atoms.collect(),
     }
 }
+
+/// Measures the input structure against the selected reference shapes.
+pub fn run(args: &CshmArgs) -> Result<Vec<CShMResult>, Error> {
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user; the parser wants a 0-based table index.
     let center = xyz::resolve_center(args.not_centered, args.center.map(|c| c - 1));
@@ -87,48 +88,21 @@ fn ideal_structure(problem: &Structure, perm: &[usize], fitted: &[Vector3<f64>])
     let n = structure.ligands.len() as u8;
 
     // 3. Fetch builtin-shapes for that vertex count and index selection
-    let indices = &args.shapes;
-    let mut ref_shapes = resolve_shapes(n, indices.as_deref())?;
+    let mut ref_shapes = resolve_shapes(n, args.shapes.as_deref())?;
 
     // 4. If user has input any shapes, add them to compare list.
-    if let Some(files) = &args.user_shapes {
-        let mut user_shapes: Vec<ReferenceShape> = Vec::new();
-
-        for file in files {
-            let mut s = yaml::parse_custom_shapes(file)?;
-            user_shapes.append(&mut s);
-        }
-
-        for shape in user_shapes {
-            // For each parsed shape, check its vertex count and append to list if right.
+    for file in args.user_shapes.iter().flatten() {
+        for shape in yaml::parse_custom_shapes(file)? {
             check_vertex_count(&shape, n)?;
             ref_shapes.push(shape);
         }
     }
 
     // 5. Compute the CShM for each reference shape against the selected problem structures.
-
-    let has_centre = center.is_some();
-    let results = calc_cshm(ref_shapes, &structure, has_centre);
-
-    // 6. Output results.
-    print_cshm_table(&results, &args.name);
-
-    // 7. If --table is passed
-    if args.table {
-        write_cshm_csv(&results, &args.name)?;
-    }
-
-    // 8. If --ideal is passed
-    if args.ideal {
-        let labels: Vec<String> = structure.atoms().into_iter().map(|a| a.label).collect();
-        write_cshm_reconstructed_xyz(&args.name, &results, &labels)?;
-    }
-
-    // If --crab is passed.
-    if args.crab {
-        print_crab();
-    }
-
-    Ok(())
+    Ok(calc_cshm(
+        ref_shapes,
+        &structure,
+        center.is_some(),
+        args.ideal,
+    ))
 }
