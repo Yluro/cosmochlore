@@ -22,6 +22,14 @@ impl Structure {
         atoms.extend(self.ligands.iter().cloned());
         atoms
     }
+
+    /// Labels and coordinates as two lists, in [`Structure::atoms`] order.
+    pub fn labels_and_coords(&self) -> (Vec<String>, Vec<Vector3<f64>>) {
+        self.atoms()
+            .into_iter()
+            .map(|a| (a.label, a.coords))
+            .unzip()
+    }
 }
 
 /// Characters that break the CSV writers.
