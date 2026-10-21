@@ -27,6 +27,7 @@ pub fn calc_cshm(
     reference_shapes: Vec<ReferenceShape>,
     problem_structure: &Structure,
     has_centre: bool,
+    with_ideal: bool, // Also recover the rotation matrix to rebuild the ideal shape
 ) -> Vec<CShMResult> {
     let problem: Vec<Vector3<f64>> = problem_structure
         .atoms()
@@ -42,19 +43,41 @@ pub fn calc_cshm(
         let (s, best_perm, reconstructed, _) =
             find_best_permutation(&mut reference, &mut problem_copy, has_centre);
 
+        let ideal =
+            with_ideal.then(|| ideal_structure(problem_structure, &best_perm, &reconstructed));
         results.push(CShMResult {
             name: shape.name,
             symbol: shape.symbol,
             symm: shape.symm,
             cshm: s,
-            perm: best_perm,
-            xyz: reconstructed,
+            ideal,
         })
     }
     results
 }
 
 pub fn cshm_main(args: CshmArgs) -> Result<(), Error> {
+/// `problem` with every atom moved to its matched vertex of the fitted shape. `perm[p]` is the
+/// vertex of `fitted` matched to atom `p` of `problem.atoms()`.
+fn ideal_structure(problem: &Structure, perm: &[usize], fitted: &[Vector3<f64>]) -> Structure {
+    let mut atoms = problem
+        .atoms()
+        .into_iter()
+        .zip(perm)
+        .map(|(atom, &vertex)| Atom {
+            label: atom.label,
+            coords: fitted[vertex],
+        });
+    let centre = if problem.centre.is_some() {
+        atoms.next()
+    } else {
+        None
+    };
+    Structure {
+        centre,
+        ligands: atoms.collect(),
+    }
+}
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user; the parser wants a 0-based table index.
     let center = xyz::resolve_center(args.not_centered, args.center.map(|c| c - 1));
