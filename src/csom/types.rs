@@ -65,8 +65,14 @@ pub struct CsomOperationResult {
     /// position and carries atom `i`'s label.
     pub image: Vec<Vector3<f64>>,
 
-    /// `pairing[i]` is the atom whose image atom `i` was scored against. Honouring labels
-    /// that is always an atom of the same element; with `--ignore` an atom can be paired
-    /// with the image of a different element, which is what lowers the deviation.
+    /// `pairing[i]` is the atom whose image atom `i` was scored against.
     pub pairing: Vec<usize>,
+}
+
+/// What `csom` hands to `out`
+pub struct CsomRun {
+    pub labels: Vec<String>,
+    pub coords: Vec<Vector3<f64>>,
+    pub has_centre: bool,
+    pub results: Vec<CsomResult>,
 }
