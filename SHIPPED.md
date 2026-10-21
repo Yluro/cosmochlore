@@ -23,7 +23,12 @@ moved them, so grep before trusting one.
 - **A2** — a vacuous assertion was missing `.abs()`. `src/odis/calc.rs`
 - **A3** — ligand-count error text now matches the count. `src/odis/mod.rs`
 - **A5** — symmetry ops "i" and "sigma_h" were mislabeled. `src/data/symops.rs`
-- **A8** — CSV fields are RFC 4180 escaped through `csv_field` (comma, quote, CR/LF). `src/out.rs`
+- **A8** — CSV fields are written unquoted. Instead, the parsers reject the characters that
+  would need quoting (`xyz::FORBIDDEN_CHARS`: comma, double quote): `.xyz` atom labels
+  (`XyzParseError::ForbiddenLabel`) and the YAML `symbol`, `symm` and `name`
+  (`YamlParseError::ForbiddenCharacter`). Every other text field is built in (shapes, point
+  groups, operations) and has none. Replaced the RFC 4180 `csv_field` escaping. A new text
+  field from user input must go through the same check. `src/xyz.rs`, `src/yaml.rs`
 - **A9** — the central atom is pinned in the permutation search (8.7× speedup). Any change to
   `src/cshm/permutations.rs` must keep the centre pinned; see E8 for what unpinning hid.
 - **E8** — `tests/ebcT-6.yaml` had its `centre` and fourth vertex swapped. Fixed in the fixture and
@@ -103,8 +108,46 @@ moved them, so grep before trusting one.
   is in `cshm/test_utils.rs`. Pure move, all outputs byte-identical.
 - **`--silent` (`52188d9`)** — top-level `-s` (before the subcommand) silences banner, tables,
   progress lines and "Program finished"; errors stay on stderr; CSV/xyz files are still written.
-  Implemented as a stopgap (`SILENT` `AtomicBool`, `set_silent()`, `say!` macro in `src/out.rs`)
-  that D10 will retire. Behaviour must survive that refactor.
+- **D10** — `--silent` is a plain parameter: `main` passes `cli.silent` to `dispatch`, the `out`
+  entry points and the banner/finished lines, and from there to every printer and writer
+  (`create_output`, `Table::print`, `write_csv`, the xyz/mol2 writers). `say!(silent,
+  ...)` is `println!` behind that flag. The `SILENT` `AtomicBool` and `set_silent()` are gone.
+  `tests/output.rs` passed unchanged: same stdout, and empty stdout with the same files under `-s`.
+- **D11** — output owned by `out`. `cshm::run`, `csom::run`, `odis::run` and `gidx::run` return
+  `Vec<CShMResult>`, `CsomRun`, `OdisRun` and `GidxResult`; `main::dispatch` hands them with the
+  args to `out::cshm` / `csom` / `odis` / `gidx`. No module imports `crate::out`. `src/out/` is
+  one file per command (`cshm.rs`, `csom.rs`, `odis.rs`, `gidx.rs`, each `pub fn <command>`
+  re-exported by `mod.rs`, with that command's xyz/mol2 writers), plus `table.rs`, `csv.rs` and
+  `mod.rs` (`say!`, banner, `output_stem`, `create_output`, `table_path`). `odis --full` reuses
+  `cshm::print` / `write_table_csv` and `csom::print` / `write_table_csv`.
+  - Tables (decided): `Table::new(&[Width::Fixed(n) | Width::Dynamic])`, then `Row::Text`,
+    `Row::Rule`, `Row::DoubleRule` and `Row::from([cells])` in order, `print(silent)`. Dynamic is
+    the longest cell, header included, + 2; rules span the table; trailing spaces trimmed. Each
+    writer lists its rows by hand with fixed widths as magic numbers; right-aligned values are
+    padded by the caller (`{:>12.4}`). A row with the wrong cell count is a bug:
+    `debug_assert` only. Two earlier attempts (`Field` / `Col` describing table and CSV at
+    once, and the D10 `Table` builder / `CsvWriter`) were dropped as too abstract.
+  - CSVs are not derived from tables: headers, decimals and layout differ (odis/gidx CSVs are one
+    row of keys and one of values). `csv::write_csv(path, what, header, rows, silent)` is a
+    stopgap until the CSV writer is designed.
+  - `CShMResult` holds `ideal: Option<Structure>`, filled only with `--ideal`
+    (`calc_cshm(.., with_ideal)`; `odis --full` passes false). `perm`, `xyz` and `CshmRun` are
+    gone. `<file>_ideal.xyz` now lists atoms in input order (centre first, as
+    `Structure::atoms()`), not reference-vertex order: same lines, reordered.
+  - Every other CSV, xyz and mol2 file is byte-identical to before (release binary, the
+    `tests/output.rs` cases plus La03 `-n -t`). stdout changed on purpose: no trailing padding,
+    a blank line before every "Input file:" (gidx had none), and the rules span the table, so
+    the odis/gidx rules are 37 wide and the cshm/csom ones shift by one or two. The docs
+    examples need regenerating.
+  - `odis --full` now computes everything before printing, so a csom failure no longer leaves
+    tables on stdout ahead of the error.
+  - `tests/output.rs`: golden stdout and files for 10 cases in `tests/expected/<case>/`
+    (`stdout.txt`, `files.txt`, file contents), plus the same run under `-s` (empty stdout, same
+    files). csom files (`_csom_table.csv`, `_details.csv`, `_operated.xyz`, `_merged.mol2`) are
+    checked by name only, since libm may move a last digit across platforms. `.gitignore`
+    re-includes `tests/expected/**` and `.gitattributes` pins it to LF. Goldens are not
+    `export-ignore`d, so `cargo test` works from a source archive. ~20 s in debug: keep CN ≥ 12
+    cases out (La03 `-n` alone took minutes).
 
 ## Build, tests, CI
 

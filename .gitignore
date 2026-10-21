@@ -17,3 +17,5 @@
 
 # Python bytecode from the helper scripts
 __pycache__/
+# ...except the golden copies the output tests compare against.
+!/tests/expected/**

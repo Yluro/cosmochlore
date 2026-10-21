@@ -8,8 +8,7 @@ Line references drift; grep before trusting one.
 
 ## Next up
 
-1. **Small residue** — A4, D6, D1, D2, B8, B9, C14. Finish **D10** alongside, before any new
-   subcommand adds writers.
+1. **Small residue** — A4, D6, D1, D2, B8, B9, C14.
 2. **Measure 1** — minimal-distortion paths / shape maps.
 3. **Measure 16** (rest), then **14** (retires the all-47 default), then **13**.
 4. **Measures 17–18** — ADPs and the TDPS library. 17 step 1 and 18 first; they need no sampling.
@@ -22,7 +21,7 @@ Line references drift; grep before trusting one.
 
 | ID | Fix | Where |
 |---|---|---|
-| A4 | `odis --full` writes the cshm, csom and odis CSVs without `--table` | `src/odis/mod.rs` |
+| A4 | `odis --full` writes the cshm, csom and odis CSVs without `--table` | `src/out/odis.rs` |
 | B8 | `rotation_matrix()` transposes, `rotation_matrix_from_vector()` doesn't | `src/geometry.rs` |
 | B9 | `csom --ignore` is a flag, `cshm` always ignores labels (measure 12 closes it) | `src/cli.rs` |
 | C8 | Shape / seed / point-group loops are serial; use `rayon` | `src/cshm/mod.rs`, `src/csom/` |
@@ -30,24 +29,9 @@ Line references drift; grep before trusting one.
 | C14 | No `[profile.release]` (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`) | `Cargo.toml` |
 | D1 | `center_and_normalise` duplicates `center_by_centroid` + `normalise`; doc comment truncated | `src/geometry.rs` |
 | D2 | Dead `points` array built only to construct `vectors` | `src/odis/calc.rs` |
-| D6 | Stale `//if args.crab {print_crab()}` comment; `find_best_permutation`'s rotation return unused | `src/main.rs`, `src/cshm/mod.rs` |
-| D10 | Wire in the `Table` / `CsvWriter` structs, retire the `--silent` global (details below) | `src/out.rs` |
+| D6 | `find_best_permutation`'s rotation return unused | `src/cshm/mod.rs` |
 | E1 | No `lib.rs`, so no integration tests | — |
 | E3 | `bnb_is_faster_than_bf` asserts on wall-clock time | `src/cshm/tests.rs` |
-
-### D10 — table and CSV writer structs
-
-`Table`, `Column`, `Align`, `Width` and `CsvWriter` exist in `src/out.rs` (`813456a`) but are
-`#[allow(dead_code)]`; the free `print_*_table` / `write_*_csv` functions still do the work.
-
-- **Table**: rows (label, value, unit) plus section breaks, rendered once. `GidxResult` and
-  `OdisResult` supply their rows, so a new CN or measure is not a new `println!` block.
-- **CsvWriter**: header + row API over `csv_field`; one place creates the file and prints the
-  "Writing ... to" line.
-- **`--silent`**: both structs own `silent: bool`, set from `args.silent`. Then delete the `SILENT`
-  `AtomicBool`, `set_silent()`, the `say!` macro and the `set_silent` call in `main.rs`.
-- **Test**: stdout is empty under `--silent` for every subcommand; non-silent output is
-  byte-identical before and after.
 
 ## Measures
 
@@ -98,8 +82,8 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
       best line), δ_planar (to the best plane) and δ_spherical (spread of |q_i| about its mean). The
       same eigen-decomposition as items 6 and 7, so build all three together.
     - Per-vertex deviations of the fitted ideal shape (Polynator's `.aso` file): |q_i − v_i| in Å, its
-      mean and SD, split into radial (|q_i| − |v_i|) and angular parts. `CShMResult.xyz` already
-      holds v_i. Item 17 step 1 tests the same vector against the ADPs.
+      mean and SD, split into radial (|q_i| − |v_i|) and angular parts. `CShMResult::ideal` (from
+      `calc_cshm(.., with_ideal)`) holds v_i, atoms in input order. Item 17 step 1 tests the same vector against the ADPs.
     - Convex-hull volume and surface area of the structure and of the fitted ideal shape for any CN
       (`odis` only has the octahedral volume). Quickhull is enough for n ≤ 60.
     - Ranking with a parameter penalty (Polynator's "variable tax": δ + 1.5 per free variable, used
@@ -452,8 +436,8 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
 
       At CN = 12, `auto` switches to `belt`. In every CN-12 measurement above, the plain B&B
       finished in well under the budget, so the certificate completes and the values equal
-      today's. The permutation can still be a different, symmetry-equivalent one, which reorders
-      the atoms in the `--ideal` file. Byte-identical output is therefore guaranteed for
+      today's. The permutation can still be a different, symmetry-equivalent one, which moves
+      atoms to other vertices in the `--ideal` file. Byte-identical output is therefore guaranteed for
       `--match exact` always, and for `auto` only when CN < 12.
 
       `--nodes N` sets the certificate budget. Default 10⁷: the B&B ran at ~0.7 M nodes/s, so that
@@ -529,9 +513,9 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
       or on none; Cholesky check rejects non-positive-definite tensors. Timeo exports **U_cart
       in the xyz frame** (cctbx `adp_utils.u_cif_as_u_cart`), so cosmochlore never needs the cell.
       Plain 4-column files keep byte-identical output.
-    - **Step 1, paper-faithful per-vertex test** (cheap, no sampling): `CShMResult.xyz` already holds
-      the ideal shape fitted onto the structure in Å, so compare each ligand's
-      |q_i − ideal_{perm(i)}| with its own 1.5382·√Uiso_i (or a Mahalanobis distance in U_i for the
+    - **Step 1, paper-faithful per-vertex test** (cheap, no sampling): `CShMResult::ideal` holds
+      the ideal shape fitted onto the structure in Å, atoms in input order, so compare each
+      ligand's |q_i − ideal_i| with its own 1.5382·√Uiso_i (or a Mahalanobis distance in U_i for the
       anisotropic version). Report per shape: max ratio and "within thermal ellipsoids yes/no".
       This uses the structure's own ADPs instead of the CSD-wide r_max.
     - **Step 2, `--rmax` fallback without ADPs**: same test against the paper's constants (scaled by

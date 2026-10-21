@@ -51,9 +51,13 @@ cargo fmt --check
 - Never print a number when something went wrong. Every failure returns the module's error type
   (`thiserror`), wired into `crate::Error` in `src/error.rs`. Don't `unwrap`/`expect` on anything
   that comes from user input.
+- Only `src/out/` prints to stdout or writes files, and stdout only through `say!(silent, ...)`
+  with the `silent` flag passed down from `main`. Computation modules return results and never
+  import `crate::out`.
 - The output of `cshm`, `csom`, `odis` and `gidx` must stay byte-identical unless the change is
-  meant to alter it. Baselines are in SHIPPED.md (for example, `csom tests/FeHS.xyz -p Oh D4h`
-  gives Oh 5.380 and D4h 5.611 in about 0.22 s).
+  meant to alter it. `tests/output.rs` checks it against `tests/expected/`; after an intended
+  change, rerun it with `UPDATE_EXPECTED=1` and review the diff. Baselines are in SHIPPED.md
+  (for example, `csom tests/FeHS.xyz -p Oh D4h` gives Oh 5.380 and D4h 5.611 in about 0.22 s).
 - `cshm` keeps the centre pinned in the permutation search (SHIPPED.md A9).
 - Tests must be path-portable and must not assert on wall-clock time. Count search nodes instead.
 - Don't add a dependency without giving the reason in the PR.
@@ -83,13 +87,16 @@ in the same piece of work, or say in the PR that they need updating:
 
 ## Adding a subcommand
 
-1. An args struct and a `Command` variant in `src/cli.rs`, dispatched in `src/main.rs`.
-2. A module directory whose `mod.rs` holds the entry point (`fn(args) -> Result<(), Error>`), with
-   its tests in `tests.rs` behind `#[cfg(test)]`.
+1. An args struct and a `Command` variant in `src/cli.rs`, and a `dispatch` arm in `src/main.rs`
+   that hands the module's result to `out`.
+2. A module directory whose `mod.rs` holds `run(&Args) -> Result<XRun, Error>`, which computes and
+   prints nothing, with its tests in `tests.rs` behind `#[cfg(test)]`.
 3. An error enum, wired into `crate::Error`.
-4. Printers and writers in `src/out.rs`. New ones should use `Table`/`CsvWriter` (PLAN.md D10).
-5. `.gitignore` patterns for its output files, a docs page under `content/Modules/`, and a row in
-   the README command table.
+4. A `src/out/<command>.rs` with `pub fn <command>(&run, &args, silent)`, re-exported from
+   `src/out/mod.rs`. Build terminal tables row by row with `Table` / `Row` from
+   `src/out/table.rs` (fixed widths are fine), and CSVs with `src/out/csv.rs`, listed by hand.
+5. `.gitignore` patterns for its output files, a docs page under `content/Modules/`, a row in the
+   README command table, and a case in `tests/output.rs`.
 
 ## Releases
 

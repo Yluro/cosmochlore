@@ -42,31 +42,35 @@ Every failure path returns an error. The program never prints a number when some
 
 ```
 src/
-  main.rs            dispatches the subcommand; prints any Error to stderr and exits 1
+  main.rs            runs the subcommand, hands its result to out; prints any Error to stderr
   cli.rs             clap definitions of every subcommand and flag
   error.rs           crate-wide Error wrapping each module's own error type (thiserror)
   xyz.rs             .xyz parser -> Structure (optional centre + ligands)
   yaml.rs            parser for user-defined reference shapes (cshm --ref)
   geometry.rs        centring, normalising, rotations, angles, planes, volumes
-  out.rs             terminal tables, CSV/XYZ/MOL2 writers, output naming, --silent
+  out/
+    mod.rs           say! (--silent), banner, output file naming
+    table.rs         Table / Row / Width: terminal tables
+    csv.rs           CSV writer (stopgap: rows listed by hand)
+    cshm.rs ...      one file per subcommand: its tables, CSVs, XYZ and MOL2 files
   cshm/
-    mod.rs           cshm_main, calc_cshm
+    mod.rs           run, calc_cshm
     permutations.rs  branch-and-bound search for the best vertex pairing
     bounds.rs        lower bounds that prune the search
     linalg.rs        correlation matrix, SVD rotation, S value
     shape_lookup.rs  built-in shapes by vertex count and index, user-shape checks
     automorphism.rs  shape automorphisms (test-only for now)
-    types.rs         CShMResult
+    types.rs         CShMResult (ideal polyhedron with --ideal)
   csom/
-    mod.rs           csom_main, calc_csom
+    mod.rs           run, calc_csom
     prepare.rs       centring modes, element labels
     seeding.rs       Fibonacci-hemisphere axis seeds and in-plane spins
     optimize.rs      Nelder-Mead refinement of each seed
     deviation.rs     per-operation and per-group deviations
     assignment.rs    Hungarian algorithm, matching within label groups
-    types.rs         settings, results, CsomError
-  odis/              mod.rs (main_odis, OdisResult), calc.rs (parameters)
-  gidx/              mod.rs (main_gidx, GidxResult), calc/tau{4,5,6,8}.rs
+    types.rs         settings, results, CsomRun, CsomError
+  odis/              mod.rs (run, OdisResult, OdisRun), calc.rs (parameters)
+  gidx/              mod.rs (run, GidxResult), calc/tau{4,5,6,8}.rs
   data/
     standard_shapes.rs   the 92 built-in shapes, GENERATED from shapes/*.yaml
     shapes/              shapes_<N>vertex.yaml, source of standard_shapes.rs
