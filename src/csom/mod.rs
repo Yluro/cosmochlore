@@ -5,13 +5,9 @@ use crate::csom::prepare::{CenteringMode, prepare_csom_structure};
 use crate::data::pgs::POINTGROUP_NAMES;
 use crate::error::Error;
 use crate::geometry::rotation_matrix_from_vector;
-use crate::out::{
-    print_csom_table, write_csom_csv, write_csom_details_csv, write_csom_merged_mol2,
-    write_csom_operated_xyz,
-};
 use crate::xyz::{Structure, parse_xyz, resolve_center};
 use nalgebra::Vector3;
-use types::{CsomError, CsomOperationResult, CsomResult, OptimiserSettings};
+use types::{CsomError, CsomOperationResult, CsomResult, CsomRun, OptimiserSettings};
 
 mod assignment;
 mod deviation;
@@ -22,9 +18,7 @@ mod seeding;
 mod tests;
 pub(crate) mod types;
 
-pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
-    let settings = args.search_settings();
-
+pub fn run(args: &CsomArgs) -> Result<CsomRun, Error> {
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user get mapped to 0 based for parser.
     let center = resolve_center(args.not_centered, args.center.map(|c| c - 1));
@@ -34,58 +28,37 @@ pub fn csom_main(args: CsomArgs) -> Result<(), Error> {
     //    point group.
     let point_groups = args
         .point_groups
+        .clone()
         .unwrap_or_else(|| POINTGROUP_NAMES.iter().map(|pg| pg.to_string()).collect());
 
     // Capture the atom labels and original coordinates, in file order, before `structure` is
     // consumed by `calc_csom`.
-    let has_centre_atom = structure.centre.is_some();
+    let has_centre = structure.centre.is_some();
     let atoms = structure.atoms();
     let labels: Vec<String> = atoms.iter().map(|a| a.label.clone()).collect();
-    let original_coords: Vec<Vector3<f64>> = atoms.iter().map(|a| a.coords).collect();
+    let coords: Vec<Vector3<f64>> = atoms.iter().map(|a| a.coords).collect();
 
-    // The per-operation breakdown (and the operated coordinates it now carries) is only
-    // computed when either --full or --operated actually needs it.
+    // The per-operation breakdown (and the operated coordinates it carries) is only computed
+    // when either --full or --operated needs it.
     let with_operations = args.full || args.operated;
 
     // 3. Prepare the structure and measure it against each point group.
     let results = calc_csom(
         structure,
-        args.centering_mode,
-        args.vector,
+        args.centering_mode.clone(),
+        args.vector.clone(),
         &point_groups,
-        settings,
+        args.search_settings(),
         with_operations,
         args.ignore_labels,
     )?;
 
-    print_csom_table(&results, &args.name);
-
-    // 4. If requested, write the summary table (point group, deviation, rotation) to a .csv file.
-    if args.table {
-        write_csom_csv(&results, &args.name)?;
-    }
-
-    // 5. If requested, write the per-operation breakdown (name, matrix, deviation) to a .csv
-    //    file per point group.
-    if args.full {
-        write_csom_details_csv(&results, &args.name, &labels)?;
-    }
-
-    // 6. If requested, write the operated coordinates (recovered rotation + each symmetry
-    //    operation applied to the original structure) to a .xyz file per point group, plus a
-    //    merged .mol2 overlaying every image in one 3D structure for viewers such as Mercury.
-    if args.operated {
-        write_csom_operated_xyz(&results, &args.name, &labels, &original_coords)?;
-        write_csom_merged_mol2(
-            &results,
-            &args.name,
-            &labels,
-            &original_coords,
-            has_centre_atom,
-        )?;
-    }
-
-    Ok(())
+    Ok(CsomRun {
+        labels,
+        coords,
+        has_centre,
+        results,
+    })
 }
 
 /// Prepares `structure` for CSOM analysis and, for each of `point_groups`, searches for the

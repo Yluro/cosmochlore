@@ -4,7 +4,6 @@ mod tests;
 
 use crate::cli::GidxArgs;
 use crate::error::Error;
-use crate::out::*;
 use crate::xyz;
 pub use calc::calculate_gidx;
 
@@ -66,19 +65,9 @@ pub enum GidxError {
     UndefinedPlane,
 }
 
-pub fn main_gidx(args: GidxArgs) -> Result<(), Error> {
-    // 1. Extract structure from .xyz
+/// Computes the geometry indices for the centre's coordination number.
+pub fn run(args: &GidxArgs) -> Result<GidxResult, Error> {
     let center = xyz::resolve_center(false, args.center.map(|c| c - 1));
     let structure = xyz::parse_xyz(&args.name, center)?;
-
-    // 2. Calculate the geometry indices for the structure's coordination number
-    let gidx_result = calculate_gidx(&structure)?;
-
-    // 3. Output results
-    print_gidx_table(&gidx_result, &args.name);
-    if args.table {
-        write_gidx_csv(&gidx_result, &args.name)?
-    };
-
-    Ok(())
+    Ok(calculate_gidx(&structure)?)
 }

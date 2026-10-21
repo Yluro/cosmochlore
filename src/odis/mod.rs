@@ -3,11 +3,11 @@ pub mod calc;
 use crate::cli::OdisArgs;
 use crate::cshm::calc_cshm;
 use crate::cshm::shape_lookup::resolve_shapes;
+use crate::cshm::types::CShMResult;
 use crate::csom::calc_csom;
 use crate::csom::prepare::CenteringMode;
-use crate::csom::types::OptimiserSettings;
+use crate::csom::types::{CsomResult, OptimiserSettings};
 use crate::error::Error;
-use crate::out::*;
 use crate::xyz;
 pub use calc::calculate_od;
 
@@ -31,37 +31,35 @@ pub enum OdisError {
     IncorrectNumberOfPoints { n: usize },
 }
 
-pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
+/// What `odis` hands to `out`: the distortion parameters and, with `--full`, the cshm and csom
+/// results against the octahedral references.
+pub struct OdisRun {
+    pub result: OdisResult,
+    pub full: Option<OdisFull>,
+}
+
+pub struct OdisFull {
+    pub cshm: Vec<CShMResult>,
+    pub csom: Vec<CsomResult>,
+}
+
+/// Computes the octahedral distortion parameters, plus cshm and csom with `--full`.
+pub fn run(args: &OdisArgs) -> Result<OdisRun, Error> {
     // 1. Extract structure from .xyz
     let center = xyz::resolve_center(false, args.center.map(|c| c - 1));
     let structure = xyz::parse_xyz(&args.name, center)?;
 
     // 2. Calculate the common parameters
-    let odis_result = calculate_od(&structure)?;
-
-    // 3. Output results
-    print_odis_table(&odis_result, &args.name);
-    if args.table || args.full {
-        write_odis_csv(odis_result, &args.name)?
-    };
-
-    // End the program here if --full is not passed.
+    let result = calculate_od(&structure)?;
     if !args.full {
-        return Ok(());
-    };
+        return Ok(OdisRun { result, full: None });
+    }
 
-    // 4. Calculate cshm against OC-6 and TRP-6 if --full is passed.
-    let n = 6; // Number of vertices
-    let indices = Some(Vec::from([2, 3])); // Indices of OC and TRP
-    let ref_shapes = resolve_shapes(n, indices.as_deref())?;
-    let has_centre = true;
+    // 3. Calculate cshm against OC-6 and TPR-6.
+    let ref_shapes = resolve_shapes(6, Some(&[2, 3]))?;
+    let cshm = calc_cshm(ref_shapes, &structure, true, false);
 
-    let cshm_results = calc_cshm(ref_shapes, &structure, has_centre);
-
-    print_cshm_table(&cshm_results, &args.name);
-    write_cshm_csv(&cshm_results, &args.name)?;
-
-    // 5. Calculate csom against relevant Oh and relevant octahedral distortions.
+    // 4. Calculate csom against Oh and the octahedral distortions.
     let csom_point_groups: Vec<String> = [
         "Oh",  // Ideal octahedron.
         "D4h", // Tetragonal distortion (axial elongation/compression, e.g. Jahn-Teller).
@@ -76,7 +74,7 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
     .map(|pg| pg.to_string())
     .collect();
 
-    let csom_results = calc_csom(
+    let csom = calc_csom(
         structure,
         CenteringMode::First,
         None,
@@ -85,8 +83,9 @@ pub fn main_odis(args: OdisArgs) -> Result<(), Error> {
         false,
         false,
     )?;
-    print_csom_table(&csom_results, &args.name);
-    write_csom_csv(&csom_results, &args.name)?;
 
-    Ok(())
+    Ok(OdisRun {
+        result,
+        full: Some(OdisFull { cshm, csom }),
+    })
 }
