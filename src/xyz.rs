@@ -30,6 +30,28 @@ impl Structure {
             .map(|a| (a.label, a.coords))
             .unzip()
     }
+
+    /// The same atoms moved to `coords`, given in [`Structure::atoms`] order.
+    pub fn with_coords(&self, coords: &[Vector3<f64>]) -> Structure {
+        debug_assert_eq!(coords.len(), self.atoms().len(), "one position per atom");
+        let mut atoms = self
+            .atoms()
+            .into_iter()
+            .zip(coords)
+            .map(|(atom, &coords)| Atom {
+                label: atom.label,
+                coords,
+            });
+        let centre = if self.centre.is_some() {
+            atoms.next()
+        } else {
+            None
+        };
+        Structure {
+            centre,
+            ligands: atoms.collect(),
+        }
+    }
 }
 
 /// Characters that break the CSV writers.
