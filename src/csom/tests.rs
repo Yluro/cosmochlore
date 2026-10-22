@@ -216,7 +216,7 @@ fn oc_for_oh_point_group() {
     let pg_name = "Oh";
 
     let groups = group_by_label(&labels);
-    let matrices = pointgroup_matrices(pg_name).unwrap();
+    let matrices = pointgroup_operations(pg_name).unwrap();
     let average_dev = point_group_dev(&shape, &groups, &matrices, false, true);
     assert!(
         average_dev.abs() < 1e-3,
@@ -258,7 +258,7 @@ fn group_order_does_not_change_the_score() {
     assert_ne!(groups, reversed);
 
     for pg in ["Oh", "D4h", "C3v", "Cs"] {
-        let matrices = pointgroup_matrices(pg).unwrap();
+        let matrices = pointgroup_operations(pg).unwrap();
         let forward = point_group_dev(&shape, &groups, &matrices, false, true);
         let backward = point_group_dev(&shape, &reversed, &matrices, false, true);
         assert!(forward > 1e-6, "{pg}: expected a nonzero deviation");
@@ -375,7 +375,7 @@ fn refine_axis_from_seed_converges_for_perfect_octahedron() {
     // Start from a slightly off-identity guess so the simplex has real work to do.
     let axis0 = Vector3::new(0.01, 0.02, 0.03);
 
-    let matrices = pointgroup_matrices("Oh").expect("Oh is a valid point group");
+    let matrices = pointgroup_operations("Oh").expect("Oh is a valid point group");
     let (_, cost) = refine_axis_from_seed(axis0, &structure, &matrices, 1000, 1e-8, false)
         .expect("refinement runs");
 
@@ -387,7 +387,7 @@ fn refine_axis_from_seed_converges_for_perfect_octahedron() {
 
 #[test]
 fn unknown_point_group_is_rejected() {
-    let result = pointgroup_matrices("NotAGroup");
+    let result = pointgroup_operations("NotAGroup");
 
     assert!(matches!(result, Err(CsomError::WrongSpaceGroup { .. })));
 }
