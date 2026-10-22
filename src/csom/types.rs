@@ -1,3 +1,4 @@
+use crate::xyz::Structure;
 use nalgebra::{Matrix3, Vector3};
 
 /// Knobs of the symmetry-axis search. `Default` is the one place the values live: the `csom`
@@ -22,10 +23,45 @@ impl Default for OptimiserSettings {
     }
 }
 
+/// Centering mode enumerator.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Centering {
+    /// The centre atom when the structure has one, else the centroid.
+    Auto,
+    First,
+    Centroid,
+    /// A given point.
+    Manual(Vector3<f64>),
+}
+
+/// Everything `calc_csom` needs besides the structure and the point groups.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CsomSettings {
+    pub centering: Centering,
+    pub search: OptimiserSettings,
+    /// Match atoms regardless of their labels.
+    pub ignore_labels: bool,
+    /// Also fill every result's `operations` and `operated`.
+    pub operations: bool,
+}
+
+impl Default for CsomSettings {
+    fn default() -> Self {
+        Self {
+            centering: Centering::Auto,
+            search: OptimiserSettings::default(),
+            ignore_labels: false,
+            operations: false,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum CsomError {
     #[error("wrong point group name: {pg}")]
     WrongSpaceGroup { pg: String },
+    #[error("manual centering needs --vector X Y Z")]
+    MissingVector,
     #[error("axis optimisation failed: {0}")]
     OptimizationFailed(String),
 }
@@ -40,14 +76,11 @@ pub struct CsomResult {
     /// Rotation matrix that defines the refined axis.
     pub rotation: Matrix3<f64>,
 
-    /// Per-operation breakdown.
+    /// Per-operation breakdown, with `--details` or `--operated`.
     pub operations: Vec<CsomOperationResult>,
 
-    /// Normalization scale factor for the structure
-    pub scale: f64,
-
-    /// Centering vector used.
-    pub centroid: Vector3<f64>,
+    /// Images of operated structures with `--details` or `--operated`.
+    pub operated: Option<Vec<Structure>>,
 }
 
 /// One symmetry operation of a point group, measured against the structure at the refined axis.
@@ -67,12 +100,4 @@ pub struct CsomOperationResult {
 
     /// `pairing[i]` is the atom whose image atom `i` was scored against.
     pub pairing: Vec<usize>,
-}
-
-/// What `csom` hands to `out`
-pub struct CsomRun {
-    pub labels: Vec<String>,
-    pub coords: Vec<Vector3<f64>>,
-    pub has_centre: bool,
-    pub results: Vec<CsomResult>,
 }
