@@ -1,13 +1,13 @@
 use crate::cli::CsomArgs;
 use crate::csom::deviation::point_group_operation_deviations;
 use crate::csom::optimize::search_best_axis;
-use crate::csom::prepare::{CenteringMode, prepare_csom_structure};
+use crate::csom::prepare::prepare_csom_structure;
 use crate::data::pgs::POINTGROUP_NAMES;
 use crate::error::Error;
 use crate::geometry::rotation_matrix_from_vector;
 use crate::xyz::{Structure, parse_xyz, resolve_center};
 use nalgebra::Vector3;
-use types::{CsomError, CsomOperationResult, CsomResult, CsomRun, OptimiserSettings};
+use types::{CsomError, CsomOperationResult, CsomResult, CsomSettings};
 
 mod assignment;
 mod deviation;
@@ -18,7 +18,7 @@ mod seeding;
 mod tests;
 pub(crate) mod types;
 
-pub fn run(args: &CsomArgs) -> Result<CsomRun, Error> {
+pub fn run(args: &CsomArgs) -> Result<Vec<CsomResult>, Error> {
     // 1. Parse input .xyz file and form structure.
     // args.center is 1-based for the user get mapped to 0 based for parser.
     let center = resolve_center(args.not_centered, args.center.map(|c| c - 1));
@@ -31,52 +31,17 @@ pub fn run(args: &CsomArgs) -> Result<CsomRun, Error> {
         .clone()
         .unwrap_or_else(|| POINTGROUP_NAMES.iter().map(|pg| pg.to_string()).collect());
 
-    // Capture the atom labels and original coordinates, in file order, before `structure` is
-    // consumed by `calc_csom`.
-    let has_centre = structure.centre.is_some();
-    let atoms = structure.atoms();
-    let labels: Vec<String> = atoms.iter().map(|a| a.label.clone()).collect();
-    let coords: Vec<Vector3<f64>> = atoms.iter().map(|a| a.coords).collect();
-
-    // The per-operation breakdown (and the operated coordinates it carries) is only computed
-    // when either --full or --operated needs it.
-    let with_operations = args.full || args.operated;
-
-    // 3. Prepare the structure and measure it against each point group.
-    let results = calc_csom(
-        structure,
-        args.centering_mode.clone(),
-        args.vector.clone(),
-        &point_groups,
-        args.search_settings(),
-        with_operations,
-        args.ignore_labels,
-    )?;
-
-    Ok(CsomRun {
-        labels,
-        coords,
-        has_centre,
-        results,
-    })
+    // 3. Measure it against each point group.
+    Ok(calc_csom(&structure, &point_groups, &args.settings()?)?)
 }
 
-/// Prepares `structure` for CSOM analysis and, for each of `point_groups`, searches for the
-/// orientation of minimum deviation with `settings`.
-///
-/// When `with_operations` is true, each result's `operations` is also filled in with the
-/// deviation of every individual symmetry operation at the refined axis
-///
-/// When `ignore_labels` is true, atom labels are not used to restrict the permutation search.
-/// Returns one `CsomResult` per point group analysed.
+/// Centres `structure` and, for each of `point_groups`, searches for the orientation of minimum
+/// deviation. With `settings.operations`, each result also gets the deviation of every operation
+/// at the refined axis (`operations`) and the input with its image under each one (`operated`).
 pub fn calc_csom(
-    structure: Structure,
-    centering_mode: CenteringMode,
-    centering_vector: Option<Vec<f64>>,
+    structure: &Structure,
     point_groups: &[String],
-    settings: OptimiserSettings,
-    with_operations: bool,
-    ignore_labels: bool,
+    settings: &CsomSettings,
 ) -> Result<Vec<CsomResult>, CsomError> {
     for pg in point_groups {
         if !POINTGROUP_NAMES.contains(&pg.as_str()) {
@@ -84,18 +49,23 @@ pub fn calc_csom(
         }
     }
 
-    // Prepare the structure depending on centering mode.
-    // (prepare_csom_structure converts --vector's raw f64s into a Vector3 itself.)
-    let (csom_structure, scale, centroid) =
-        prepare_csom_structure(structure, centering_mode, centering_vector);
+    // 4. Move the structure to the measuring frame (centring and normalizing)
+    let (csom_structure, scale, centroid) = prepare_csom_structure(structure, settings.centering);
 
     let mut results: Vec<CsomResult> = Vec::new();
     for point_group in point_groups {
-        let (rotation_vector, deviation) =
-            search_best_axis(&csom_structure, point_group, settings, ignore_labels)?;
+        // 5. Find the best orientation to apply the symmetry operations.
+        let (rotation_vector, deviation) = search_best_axis(
+            &csom_structure,
+            point_group,
+            settings.search,
+            settings.ignore_labels,
+        )?;
         let rotation = rotation_matrix_from_vector(rotation_vector);
 
-        let operations: Vec<CsomOperationResult> = if with_operations {
+        // If per-operation deviations are needed, use the rotation vector from the optimiser and
+        // rerun the symmetry elements.
+        let operations: Vec<CsomOperationResult> = if settings.operations {
             // Re-measure at the refined axis to break the overall deviation down by operation.
             let rotated_points: Vec<Vector3<f64>> =
                 csom_structure.points.iter().map(|p| rotation * p).collect();
@@ -103,20 +73,31 @@ pub fn calc_csom(
                 &rotated_points,
                 &csom_structure.groups,
                 point_group,
-                ignore_labels,
+                settings.ignore_labels,
                 csom_structure.has_centre,
             )?
         } else {
             Vec::new()
         };
 
+        // Each image back in the input frame: `rotation` is orthogonal, so its transpose undoes
+        // the alignment.
+        let operated = settings.operations.then(|| {
+            let to_input = |p: &Vector3<f64>| (rotation.transpose() * p) / scale + centroid;
+            let mut blocks = vec![structure.clone()];
+            blocks.extend(operations.iter().map(|op| {
+                let coords: Vec<Vector3<f64>> = op.image.iter().map(to_input).collect();
+                structure.with_coords(&coords)
+            }));
+            blocks
+        });
+
         results.push(CsomResult {
             point_group: point_group.clone(),
             deviation,
             rotation,
             operations,
-            scale,
-            centroid,
+            operated,
         });
     }
 
