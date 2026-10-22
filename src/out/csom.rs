@@ -1,27 +1,28 @@
-//! `csom` output: the point-group table, `--table` and `--full` CSVs, and the `--operated` xyz and
-//! merged mol2.
+//! `csom` output: the point-group table, `--table` and `--details` CSVs, and the `--operated` xyz
+//! and merged mol2.
 
 use super::csv::write_csv;
 use super::table::{Row, Table, Width};
 use super::{create_output, output_stem, table_path};
 use crate::cli::CsomArgs;
 use crate::csom::prepare::strip_all_labels;
-use crate::csom::types::{CsomResult, CsomRun};
+use crate::csom::types::CsomResult;
 use crate::data::elements::covalent_radius;
+use crate::xyz::Structure;
 use nalgebra::{Matrix3, Vector3};
 use std::io::{Result, Write};
 
-pub fn csom(run: &CsomRun, args: &CsomArgs, silent: bool) -> Result<()> {
-    print(&run.results, &args.name, silent);
+pub fn csom(results: &[CsomResult], args: &CsomArgs, silent: bool) -> Result<()> {
+    print(results, &args.name, silent);
     if args.table {
-        write_table_csv(&run.results, &args.name, silent)?;
+        write_table_csv(results, &args.name, silent)?;
     }
-    if args.full {
-        write_details(run, &args.name, silent)?;
+    if args.details {
+        write_details(results, &args.name, silent)?;
     }
     if args.operated {
-        write_operated(run, &args.name, silent)?;
-        write_merged_mol2(run, &args.name, silent)?;
+        write_operated(results, &args.name, silent)?;
+        write_merged_mol2(results, &args.name, silent)?;
     }
     Ok(())
 }
@@ -61,18 +62,23 @@ pub(super) fn write_table_csv(results: &[CsomResult], file_name: &str, silent: b
 }
 
 /// `<file>_<point group>_details.csv`: name, matrix, deviation and atom pairing per operation.
-fn write_details(run: &CsomRun, file_name: &str, silent: bool) -> Result<()> {
+fn write_details(results: &[CsomResult], file_name: &str, silent: bool) -> Result<()> {
     let header = ["name", "op_matrix", "dev", "pairing"];
-    for result in &run.results {
+    for result in results {
+        // The E block is the input: its labels are the ones `pairing` indexes.
+        let Some(input) = result.operated.as_ref().and_then(|s| s.first()) else {
+            continue;
+        };
+        let (labels, _) = input.labels_and_coords();
         let rows: Vec<Vec<String>> = result
             .operations
             .iter()
             .map(|op| {
                 vec![
-                    op.name.clone(),
+                    op.name.to_string(),
                     format_matrix3(&op.matrix),
                     format!("{:.3}", op.deviation),
-                    format_pairing(&op.pairing, &run.labels),
+                    format_pairing(&op.pairing, &labels),
                 ]
             })
             .collect();
@@ -105,52 +111,46 @@ fn format_pairing(pairing: &[usize], labels: &[String]) -> String {
     pairs.join(" ")
 }
 
-/// The structure carried by each operation of `result`, back in the input frame, after an
-/// "E" block holding the input itself: `(operation name, deviation, coordinates in file order)`.
-fn operated_blocks<'a>(
-    result: &'a CsomResult,
-    original_coords: &[Vector3<f64>],
-) -> Vec<(&'a str, f64, Vec<Vector3<f64>>)> {
-    // `rotation` is orthogonal, so its transpose undoes the alignment.
-    let rotation_inv = result.rotation.transpose();
-    let mut blocks = vec![("E", 0.0, original_coords.to_vec())];
-    blocks.extend(result.operations.iter().map(|op| {
-        let points = op
-            .image
-            .iter()
-            .map(|p| (rotation_inv * p) / result.scale + result.centroid)
-            .collect();
-        (op.name.as_str(), op.deviation, points)
-    }));
-    blocks
+/// The operated blocks of `result`: `(operation name, deviation, structure)`, the input as "E"
+/// first. Empty without `--details` or `--operated`.
+fn operated_blocks(result: &CsomResult) -> Vec<(&str, f64, &Structure)> {
+    let Some(structures) = &result.operated else {
+        return Vec::new();
+    };
+    debug_assert_eq!(
+        structures.len(),
+        result.operations.len() + 1,
+        "E plus one per operation"
+    );
+    let names = std::iter::once(("E", 0.0))
+        .chain(result.operations.iter().map(|op| (op.name, op.deviation)));
+    names
+        .zip(structures)
+        .map(|((name, deviation), structure)| (name, deviation, structure))
+        .collect()
 }
 
-/// `<file>_<point group>_operated.xyz`: the input and its image under every operation.
-fn write_operated(run: &CsomRun, file_name: &str, silent: bool) -> Result<()> {
-    let labels = &run.labels;
-    for result in &run.results {
+/// `<file>_<point group>_operated.xyz`: the input and its image under every operation. Every atom
+/// keeps its own label: an image landing on another atom's site shows up as such.
+fn write_operated(results: &[CsomResult], file_name: &str, silent: bool) -> Result<()> {
+    for result in results {
         let path = format!(
             "{}_{}_operated.xyz",
             output_stem(file_name),
             result.point_group
         );
         let mut file = create_output(&path, "operated coordinates", silent)?;
-
-        // The tables in data/pgs.rs omit E, so the "E" block is the input with dev 0. Every atom
-        // keeps its own label: an image landing on another atom's site shows up as such.
-        for (name, deviation, points) in operated_blocks(result, &run.coords) {
-            writeln!(file, "{}", labels.len())?;
+        for (name, deviation, structure) in operated_blocks(result) {
+            let atoms = structure.atoms();
+            writeln!(file, "{}", atoms.len())?;
             writeln!(
                 file,
                 "{} {} dev = {:.3}",
                 result.point_group, name, deviation
             )?;
-            for (label, point) in labels.iter().zip(&points) {
-                writeln!(
-                    file,
-                    "{}  {:.6}  {:.6}  {:.6}",
-                    label, point.x, point.y, point.z
-                )?;
+            for atom in &atoms {
+                let p = atom.coords;
+                writeln!(file, "{}  {:.6}  {:.6}  {:.6}", atom.label, p.x, p.y, p.z)?;
             }
             writeln!(file)?;
         }
@@ -185,17 +185,21 @@ fn perceive_bonds(
 
 /// `<file>_<point group>_merged.mol2`: the blocks of [`write_operated`] overlaid in one
 /// structure, bonds from [`perceive_bonds`].
-fn write_merged_mol2(run: &CsomRun, file_name: &str, silent: bool) -> Result<()> {
+fn write_merged_mol2(results: &[CsomResult], file_name: &str, silent: bool) -> Result<()> {
     let stem = output_stem(file_name);
-    let labels = &run.labels;
-    let elements = strip_all_labels(labels);
-    let n_per_block = labels.len();
-    let bonds = perceive_bonds(&elements, &run.coords, run.has_centre);
 
-    for result in &run.results {
+    for result in results {
+        let blocks = operated_blocks(result);
+        let Some(&(_, _, input)) = blocks.first() else {
+            continue;
+        };
+        let (labels, coords) = input.labels_and_coords();
+        let elements = strip_all_labels(&labels);
+        let n_per_block = labels.len();
+        let bonds = perceive_bonds(&elements, &coords, input.centre.is_some());
+
         let path = format!("{}_{}_merged.mol2", stem, result.point_group);
         let mut file = create_output(&path, "merged mol2", silent)?;
-        let blocks = operated_blocks(result, &run.coords);
 
         writeln!(file, "@<TRIPOS>MOLECULE")?;
         writeln!(file, "{}_{}_merged", stem, result.point_group)?;
@@ -212,9 +216,10 @@ fn write_merged_mol2(run: &CsomRun, file_name: &str, silent: bool) -> Result<()>
 
         writeln!(file, "@<TRIPOS>ATOM")?;
         let mut atom_id = 0usize;
-        for (block_idx, (name, _, points)) in blocks.iter().enumerate() {
+        for (block_idx, (name, _, structure)) in blocks.iter().enumerate() {
             let subst_id = block_idx + 1;
-            for ((label, element), point) in labels.iter().zip(&elements).zip(points) {
+            let (_, points) = structure.labels_and_coords();
+            for ((label, element), point) in labels.iter().zip(&elements).zip(&points) {
                 atom_id += 1;
                 writeln!(
                     file,
