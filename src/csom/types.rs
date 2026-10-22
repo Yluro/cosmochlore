@@ -86,7 +86,7 @@ pub struct CsomResult {
 /// One symmetry operation of a point group, measured against the structure at the refined axis.
 pub struct CsomOperationResult {
     /// Schoenflies name of the operation.
-    pub name: String,
+    pub name: &'static str,
 
     /// The operation's matrix, in the refined (rotated) frame.
     pub matrix: Matrix3<f64>,
