@@ -15,7 +15,7 @@ pub(crate) mod types;
 use crate::cli::CshmArgs;
 use crate::data::standard_shapes::ReferenceShape;
 use crate::error::Error;
-use crate::xyz::{Atom, Structure};
+use crate::xyz::Structure;
 use crate::{xyz, yaml};
 use nalgebra::Vector3;
 pub(crate) use permutations::find_best_permutation;
@@ -58,23 +58,8 @@ pub fn calc_cshm(
 /// `problem` with every atom moved to its matched vertex of the fitted shape. `perm[p]` is the
 /// vertex of `fitted` matched to atom `p` of `problem.atoms()`.
 fn ideal_structure(problem: &Structure, perm: &[usize], fitted: &[Vector3<f64>]) -> Structure {
-    let mut atoms = problem
-        .atoms()
-        .into_iter()
-        .zip(perm)
-        .map(|(atom, &vertex)| Atom {
-            label: atom.label,
-            coords: fitted[vertex],
-        });
-    let centre = if problem.centre.is_some() {
-        atoms.next()
-    } else {
-        None
-    };
-    Structure {
-        centre,
-        ligands: atoms.collect(),
-    }
+    let coords: Vec<Vector3<f64>> = perm.iter().map(|&vertex| fitted[vertex]).collect();
+    problem.with_coords(&coords)
 }
 
 /// Measures the input structure against the selected reference shapes.
