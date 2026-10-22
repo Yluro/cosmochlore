@@ -1,4 +1,4 @@
-use crate::csom::deviation::{point_group_dev, pointgroup_matrices};
+use crate::csom::deviation::{Operation, point_group_dev, pointgroup_operations};
 use crate::csom::prepare::CsomStructure;
 use crate::csom::seeding::seed_rotation_vectors;
 use crate::csom::types::{CsomError, OptimiserSettings};
@@ -6,7 +6,7 @@ use crate::data::pgs::get_pointgroup;
 use crate::geometry::rotation_matrix_from_vector;
 use argmin::core::{CostFunction, Error, Executor, State};
 use argmin::solver::neldermead::NelderMead;
-use nalgebra::{Matrix3, Vector3};
+use nalgebra::Vector3;
 
 fn orientation_cost(
     v: &[f64],
@@ -21,10 +21,10 @@ fn orientation_cost(
 /// Binds a structure and a target point group together so argmin can minimize
 /// [`orientation_cost`] over rotation vectors: `Param` is `[x, y, z]`, an axis-angle
 /// (Rodrigues) rotation vector, and the cost is the average CSM deviation of `structure`
-/// from the point group (its symmetry `matrices`) once rotated by that vector.
+/// from the point group (its `operations`) once rotated by that vector.
 struct OrientationProblem<'a> {
     structure: &'a CsomStructure,
-    matrices: &'a [Matrix3<f64>],
+    operations: &'a [Operation],
     ignore_labels: bool,
 }
 
@@ -37,7 +37,7 @@ impl CostFunction for OrientationProblem<'_> {
             point_group_dev(
                 rotated,
                 &self.structure.groups,
-                self.matrices,
+                self.operations,
                 self.ignore_labels,
                 self.structure.has_centre,
             )
@@ -47,13 +47,13 @@ impl CostFunction for OrientationProblem<'_> {
 }
 
 /// Refines a candidate symmetry axis `axis0` with Nelder-Mead, minimizing the average csom
-/// deviation of `structure` from the point group given by its symmetry `matrices`.
+/// deviation of `structure` from the point group given by its `operations`.
 ///
-/// Returns the optimised rotation vector (axis-angle, Rodrigues form) and its deviation.
+/// Returns the optimized rotation vector (axis-angle, Rodrigues form) and its deviation.
 pub(crate) fn refine_axis_from_seed(
     axis0: Vector3<f64>,
     structure: &CsomStructure,
-    matrices: &[Matrix3<f64>],
+    operations: &[Operation],
     max_iters: usize,
     tolerance: f64,
     ignore_labels: bool,
@@ -70,7 +70,7 @@ pub(crate) fn refine_axis_from_seed(
 
     let problem = OrientationProblem {
         structure,
-        matrices,
+        operations,
         ignore_labels,
     };
 
@@ -102,7 +102,7 @@ pub(crate) fn search_best_axis(
     let ops = get_pointgroup(pg_name).ok_or_else(|| CsomError::WrongSpaceGroup {
         pg: pg_name.to_string(),
     })?;
-    let matrices = pointgroup_matrices(pg_name)?;
+    let operations = pointgroup_operations(pg_name)?;
 
     let mut best: Option<(Vector3<f64>, f64)> = None;
 
@@ -110,7 +110,7 @@ pub(crate) fn search_best_axis(
         let candidate = refine_axis_from_seed(
             axis0,
             structure,
-            &matrices,
+            &operations,
             settings.iterations,
             settings.tolerance,
             ignore_labels,
