@@ -1,6 +1,6 @@
-use crate::csom::prepare::CenteringMode;
-use crate::csom::types::OptimiserSettings;
+use crate::csom::types::{Centering, CsomError, CsomSettings, OptimiserSettings};
 use clap::{Args, Parser, Subcommand};
+use nalgebra::Vector3;
 
 /// Parses the `--center` value as a 1-based atom position, rejecting 0.
 fn parse_center_position(s: &str) -> Result<usize, String> {
