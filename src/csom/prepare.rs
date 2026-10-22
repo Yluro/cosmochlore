@@ -22,7 +22,7 @@ pub enum CenteringMode {
 }
 
 pub(crate) fn prepare_csom_structure(
-    structure: Structure,
+    structure: &Structure,
     centering_mode: CenteringMode,
     centering_vector: Option<Vec<f64>>,
 ) -> (CsomStructure, f64, Vector3<f64>) {
