@@ -145,14 +145,37 @@ pub struct CsomArgs {
     pub tolerance: f64,
 }
 
+/// `csom --mode`; `Manual` takes its point from `--vector`.
+#[derive(Debug, Clone, clap::ValueEnum)]
+pub enum CenteringMode {
+    Auto,
+    First,
+    Centroid,
+    Manual,
+}
+
 impl CsomArgs {
-    /// The search knobs as given on the command line.
-    pub fn search_settings(&self) -> OptimiserSettings {
-        OptimiserSettings {
-            seeds: self.seeds,
-            iterations: self.iterations,
-            tolerance: self.tolerance,
-        }
+    /// The calculation settings given on the command line.
+    pub fn settings(&self) -> Result<CsomSettings, CsomError> {
+        let centering = match self.centering_mode {
+            CenteringMode::Auto => Centering::Auto,
+            CenteringMode::First => Centering::First,
+            CenteringMode::Centroid => Centering::Centroid,
+            CenteringMode::Manual => match self.vector.as_deref() {
+                Some(&[x, y, z]) => Centering::Manual(Vector3::new(x, y, z)),
+                _ => return Err(CsomError::MissingVector),
+            },
+        };
+        Ok(CsomSettings {
+            centering,
+            search: OptimiserSettings {
+                seeds: self.seeds,
+                iterations: self.iterations,
+                tolerance: self.tolerance,
+            },
+            ignore_labels: self.ignore_labels,
+            operations: self.details || self.operated,
+        })
     }
 }
 
