@@ -1,4 +1,5 @@
 use crate::csom::assignment::group_by_label;
+use crate::csom::types::Centering;
 use crate::geometry::{center_by_centroid, center_by_coordinate, center_by_first_point, normalise};
 use crate::xyz::Structure;
 use nalgebra::Vector3;
@@ -13,39 +14,25 @@ pub struct CsomStructure {
     pub groups: Vec<Vec<usize>>,
 }
 
-#[derive(Debug, Clone, clap::ValueEnum)]
-pub enum CenteringMode {
-    Auto,
-    First,
-    Centroid,
-    Manual,
-}
-
 pub(crate) fn prepare_csom_structure(
     structure: &Structure,
-    centering_mode: CenteringMode,
-    centering_vector: Option<Vec<f64>>,
+    centering: Centering,
 ) -> (CsomStructure, f64, Vector3<f64>) {
     let atoms = structure.atoms();
     let striped_labels: Vec<String> = atoms.iter().map(|a| strip_label(&a.label)).collect();
     let mut points: Vec<Vector3<f64>> = atoms.iter().map(|a| a.coords).collect();
 
-    let (original_centroid, has_centre): (Vector3<f64>, bool) = match centering_mode {
-        CenteringMode::Auto => {
+    let (original_centroid, has_centre): (Vector3<f64>, bool) = match centering {
+        Centering::Auto => {
             if structure.centre.is_some() {
                 (center_by_first_point(&mut points), true)
             } else {
                 (center_by_centroid(&mut points), false)
             }
         }
-        CenteringMode::First => (center_by_first_point(&mut points), true),
-        CenteringMode::Centroid => (center_by_centroid(&mut points), false),
-        // No error handling here because data at this point should be trusted.
-        CenteringMode::Manual => {
-            //let centering_vector = centering_vector.unwrap();
-            let centering_vector = Vector3::from_column_slice(&centering_vector.unwrap());
-            (center_by_coordinate(&mut points, centering_vector), false)
-        }
+        Centering::First => (center_by_first_point(&mut points), true),
+        Centering::Centroid => (center_by_centroid(&mut points), false),
+        Centering::Manual(point) => (center_by_coordinate(&mut points, point), false),
     };
 
     let scaling_factor = normalise(&mut points);
