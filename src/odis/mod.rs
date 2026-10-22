@@ -5,8 +5,7 @@ use crate::cshm::calc_cshm;
 use crate::cshm::shape_lookup::resolve_shapes;
 use crate::cshm::types::CShMResult;
 use crate::csom::calc_csom;
-use crate::csom::prepare::CenteringMode;
-use crate::csom::types::{CsomResult, OptimiserSettings};
+use crate::csom::types::{Centering, CsomResult, CsomSettings};
 use crate::error::Error;
 use crate::xyz;
 pub use calc::calculate_od;
@@ -74,15 +73,11 @@ pub fn run(args: &OdisArgs) -> Result<OdisRun, Error> {
     .map(|pg| pg.to_string())
     .collect();
 
-    let csom = calc_csom(
-        structure,
-        CenteringMode::First,
-        None,
-        &csom_point_groups,
-        OptimiserSettings::default(),
-        false,
-        false,
-    )?;
+    let settings = CsomSettings {
+        centering: Centering::First,
+        ..CsomSettings::default()
+    };
+    let csom = calc_csom(&structure, &csom_point_groups, &settings)?;
 
     Ok(OdisRun {
         result,
