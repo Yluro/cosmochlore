@@ -60,11 +60,16 @@ moved them, so grep before trusting one.
   values. `src/csom/optimize.rs`, `src/cli.rs`
 - **C10** — closed-form 3×3 eigenvalues (Smith 1961). `src/cshm/linalg.rs`
 - **C11** — norms and suffix sums precomputed for the B&B bound. `src/cshm/bounds.rs`
-- **C15** — `point_group_dev` (hot loop) sums per-operation deviations via
-  `operation_deviation_scalar`: no `String` or `Vec<CsomOperation>` per call. The full breakdown
-  (`point_group_operation_deviations` / `operation_deviation`) is only for `--full`/`--operated`.
-- **C17** — the point group is resolved once per `search_best_axis` call by `pointgroup_matrices`
-  (a `Vec<Matrix3>`). `point_group_dev` and `refine_axis_from_seed` take `&[Matrix3<f64>]`, and
+- **C15** — `point_group_dev` (hot loop) allocates no `String` per call. One
+  `score_operation(points, .., &(name, matrix)) -> CsomOperationResult` serves both the search
+  (which keeps `.deviation`) and the breakdown (`point_group_operation_deviations`, only with
+  `--details`/`--operated`); `CsomOperationResult::name` is `&'static str` from `pgs.rs`, so
+  building the result costs nothing extra. Replaced `operation_deviation` and
+  `operation_deviation_scalar`; same image/pairing allocations as before, byte-identical output
+  and no slowdown (interleaved release runs on `csom FeHS.xyz -p Oh D4h`, 538 vs 554 ms).
+- **C17** — the point group is resolved once per `search_best_axis` call by
+  `pointgroup_operations` (`Vec<(&'static str, Matrix3)>`, was `pointgroup_matrices`).
+  `point_group_dev` and `refine_axis_from_seed` take `&[Operation]`, and
   `point_group_dev` returns `f64`, so no name lookup, `to_matrix3` or `expect` is left in the cost
   loop. `get_pointgroup_map` was removed. Output is byte-identical (`csom tests/FeHS.xyz -p Oh D4h
   C2v --full`, `tests/La03.xyz -p Oh Ci`). Wall time is unchanged within noise (~0.60 s release on
@@ -114,7 +119,7 @@ moved them, so grep before trusting one.
   ...)` is `println!` behind that flag. The `SILENT` `AtomicBool` and `set_silent()` are gone.
   `tests/output.rs` passed unchanged: same stdout, and empty stdout with the same files under `-s`.
 - **D11** — output owned by `out`. `cshm::run`, `csom::run`, `odis::run` and `gidx::run` return
-  `Vec<CShMResult>`, `CsomRun`, `OdisRun` and `GidxResult`; `main::dispatch` hands them with the
+  `Vec<CShMResult>`, `Vec<CsomResult>`, `OdisRun` and `GidxResult`; `main::dispatch` hands them with the
   args to `out::cshm` / `csom` / `odis` / `gidx`. No module imports `crate::out`. `src/out/` is
   one file per command (`cshm.rs`, `csom.rs`, `odis.rs`, `gidx.rs`, each `pub fn <command>`
   re-exported by `mod.rs`, with that command's xyz/mol2 writers), plus `table.rs`, `csv.rs` and
@@ -130,6 +135,22 @@ moved them, so grep before trusting one.
   - CSVs are not derived from tables: headers, decimals and layout differ (odis/gidx CSVs are one
     row of keys and one of values). `csv::write_csv(path, what, header, rows, silent)` is a
     stopgap until the CSV writer is designed.
+  - `CsomResult::operated: Option<Vec<Structure>>`, filled whenever operations are computed
+    (`--details` or `--operated`): `[0]` is the input (E), then the input moved by each entry of
+    `operations`, in the input frame (built in `calc_csom` with `Structure::with_coords`). The
+    details CSV takes the pairing labels from `[0]`. `CsomRun`, `CsomResult::scale` and
+    `centroid` are gone; `calc_csom` borrows the input. `csom -f/--full` was renamed
+    `-d/--details` (`odis --full` is unchanged). Byte-identical output.
+  - `calc_csom(&Structure, point_groups, &CsomSettings)`. `CsomSettings` (`src/csom/types.rs`)
+    holds `centering: Centering`, `search: OptimiserSettings`, `ignore_labels` and `operations`
+    (`--details || --operated`); its `Default` is auto centring and no operations, and `odis --full`
+    sets only `Centering::First`. Output flags stay in `CsomArgs` for `out`.
+    `CsomArgs::settings()` builds it and replaces `search_settings()`. `Centering::Manual(Vector3)`
+    carries the `--vector` point, so `prepare.rs` has no `unwrap`; the clap `CenteringMode` moved
+    to `cli.rs`. `--mode manual` without `--vector` used to panic: the attribute was the reversed
+    `requires_if("manual", "centering_mode")`, now `required_if_eq("centering_mode", "manual")`,
+    so clap rejects it (`CsomError::MissingVector` backs it up). All csom files byte-identical to
+    before in the auto, first, centroid and manual modes.
   - `CShMResult` holds `ideal: Option<Structure>`, filled only with `--ideal`
     (`calc_cshm(.., with_ideal)`; `odis --full` passes false). `perm`, `xyz` and `CshmRun` are
     gone. `<file>_ideal.xyz` now lists atoms in input order (centre first, as

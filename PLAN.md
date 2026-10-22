@@ -8,7 +8,7 @@ Line references drift; grep before trusting one.
 
 ## Next up
 
-1. **Small residue** — A4, D6, D1, D2, B8, B9, C14.
+1. **Small residue** — A4, D6, D1, D2, B8, B9, C14, D12.
 2. **Measure 1** — minimal-distortion paths / shape maps.
 3. **Measure 16** (rest), then **14** (retires the all-47 default), then **13**.
 4. **Measures 17–18** — ADPs and the TDPS library. 17 step 1 and 18 first; they need no sampling.
@@ -30,8 +30,23 @@ Line references drift; grep before trusting one.
 | D1 | `center_and_normalise` duplicates `center_by_centroid` + `normalise`; doc comment truncated | `src/geometry.rs` |
 | D2 | Dead `points` array built only to construct `vectors` | `src/odis/calc.rs` |
 | D6 | `find_best_permutation`'s rotation return unused | `src/cshm/mod.rs` |
+| D12 | Merge `csom`'s refinement flags (`-s`, `-i`, `-T`) into one (details below) | `src/cli.rs` |
 | E1 | No `lib.rs`, so no integration tests | — |
 | E3 | `bnb_is_faster_than_bf` asserts on wall-clock time | `src/cshm/tests.rs` |
+
+### D12 — one flag for the csom refinement knobs
+
+`csom` has three search flags, each documented as "recommended not to change": `-s/--seeds`,
+`-i/--iterations` and `-T/--tolerance`. `CsomArgs::settings()` folds them into
+`CsomSettings::search` (`OptimiserSettings`, B10). Merge them into a single flag. Suggested: `-r/--refine <SEEDS> <ITER>
+<TOL>`, with clap `num_args = 3` and `value_names` as `--vector` does, defaulting to
+`OptimiserSettings::default()` (20 200 1e-6). The maintainer may pick another name or format.
+
+- It frees `-s` (today it means `--silent` before the subcommand and `--seeds` after it), `-i`
+  (so measure 22 can be `-i/--ideal`, as in `cshm`) and `-T`.
+- `settings()` builds `search` from the one flag; `OptimiserSettings::default()` stays the
+  single source of the defaults.
+- Output with the defaults is unchanged (`tests/output.rs`). Docs: the `csom` options table.
 
 ## Measures
 
@@ -89,9 +104,14 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
     - Ranking with a parameter penalty (Polynator's "variable tax": δ + 1.5 per free variable, used
       only to order the list, never reported). Only matters once 19 mixes models with different dof.
 - **22 ·** Nearest symmetric structure for `csom` (`--ideal`): the folding/unfolding average of the
-    paired images (Salomon & Avnir; `CSM_PLAN.md` §2.2). Every input already exists:
-    `CsomOperationResult` holds `image` and `pairing`, and `CsomResult` holds `rotation`, `scale` and
-    `centroid`.
+    paired images (Salomon & Avnir; `CSM_PLAN.md` §2.2), the "average Q̄ of all images ÔRQ" of the
+    docs' CSoM theory page (Averaging). Every input already exists when operations are computed:
+    `CsomOperationResult` holds `image` (refined, normalised frame) and `pairing`, and
+    `CsomResult::operated` holds the same structures in the input frame: `[0]` is the input (E),
+    then one per operation. `operated[g]` is g·q_i under atom i's own label, *not* yet paired, so
+    Q̄ is not the plain atom-by-atom mean of `operated`: atom i averages `operated[g]` atom
+    π_g(i) over g. The map back to the input frame is affine and the same for every g, so that
+    average equals Rᵀ Q̄ / scale + centroid of the normalised-frame Q̄ below.
     - **Math**: work in the refined, normalised frame, with points q_i. For each table operation g,
       π_g is `pairing`, so the operation is scored on Σ_i |q_i − g q_{π_g(i)}|². Let G be {E} plus
       the table. `pgs.rs` leaves E out of every table except `E`'s own, and π_E = id. Don't count E
@@ -116,18 +136,20 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
         that group and carry on with the others. Never write a non-symmetric "ideal". For any
         input, the true nearest structure is `csm --ideal` (`CSM_PLAN.md` P3.1).
     - **Where**: new `src/csom/ideal.rs` with
-      `nearest_structure(points, operations, pg) -> Result<Nearest, CsomError>`. Suggested shape:
-      `Nearest = Symmetric { points, d2 } | Inconsistent { g, h }`, with points in the refined,
-      normalised frame. Call it in `calc_csom` where `operations` are built, since `rotated_points`
-      is in scope there. Store `nearest: Option<Nearest>` in `CsomResult`, `None` when operations
-      aren't computed. `odis` passes `with_operations = false`, so `odis` is untouched.
-    - **CLI**: long-only `--ideal`. On `CsomArgs`, `-i` already means `--iterations`. Don't take it,
-      even though `cshm` uses `-i/--ideal`. Use
-      `with_operations = args.full || args.operated || args.ideal`.
+      `nearest_structure(points, operations, pg) -> Result<Nearest, CsomError>`, computing Q̄ and d²
+      in the refined, normalised frame. Suggested shape:
+      `Nearest = Symmetric { structure: Structure, d2: f64 } | Inconsistent { g, h }`, where
+      `structure` is Q̄ mapped back to the input frame with `Structure::with_coords`, as `calc_csom`
+      builds `operated`, so it carries the input's labels like `CShMResult::ideal`. Call it in
+      `calc_csom` where `operations` are built. Store `nearest: Option<Nearest>` in `CsomResult`,
+      `None` when operations aren't computed. `odis` leaves `CsomSettings::operations` false, so
+      `odis` is untouched.
+    - **CLI**: `--ideal`, long-only until D12 frees `-i` (today `--iterations`); then
+      `-i/--ideal`, as in `cshm`. In `CsomArgs::settings()`, set `operations: details || operated ||
+      ideal`.
     - **Output**: one `<stem>_<PG>_ideal.xyz` per group, like `--operated`. `.gitignore`'s
       `*_ideal.xyz` already covers it, and the name can't collide with `cshm`'s `<stem>_ideal.xyz`.
-      Atoms stay in file order with their own labels. Map back to the input frame as
-      `out.rs` does for `--operated`: Rᵀ Q̄_i / scale + centroid. Comment line:
+      Atoms in `Structure::atoms()` order with their own labels. Comment line:
       `<PG> ideal csom = <S> d2 = <d²>`, 3 decimals as in `--operated`. The pinned centre atom has
       π_g(0) = 0 and sits at the origin, so it is written at its input position. With `--ignore`,
       Q̄_i can average atoms of different elements. Still write it under atom i's label, and say so
@@ -427,7 +449,7 @@ Agent briefs. Decisions marked "(decided)" are settled; don't reopen them.
       `-m/--mode`: a `#[derive(Debug, Clone, clap::ValueEnum)] pub enum MatchingMode { Auto,
       Exact, Belt }` (next to `CShMResult` in `src/cshm/types.rs`), declared in `CshmArgs` as
       `#[arg(short = 'm', long = "match", value_enum, default_value = "auto")]`, as `CenteringMode`
-      is in `src/csom/prepare.rs` and `CsomArgs`. `-m` is still free in `cshm`.
+      is in `src/cli.rs` and `CsomArgs`. `-m` is still free in `cshm`.
       - `auto`, the default: `exact` when CN < 12, `belt` when CN ≥ 12. CN is the number of
         ligand vertices, `structure.ligands.len()` in `cshm_main`, with the centre not counted.
       - `exact`: today's B&B at any CN, unchanged. Its help text should say that it can run for
