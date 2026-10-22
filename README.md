@@ -68,7 +68,7 @@ src/
     optimize.rs      Nelder-Mead refinement of each seed
     deviation.rs     per-operation and per-group deviations
     assignment.rs    Hungarian algorithm, matching within label groups
-    types.rs         settings, results, CsomRun, CsomError
+    types.rs         settings, results, CsomError
   odis/              mod.rs (run, OdisResult, OdisRun), calc.rs (parameters)
   gidx/              mod.rs (run, GidxResult), calc/tau{4,5,6,8}.rs
   data/
