@@ -93,14 +93,14 @@ pub struct CsomArgs {
     pub centering_mode: CenteringMode,
 
     /// Centering vector for manual centering.
-    #[arg(short = 'u', long = "vector", num_args = 3, requires_if("manual", "centering_mode"),
+    #[arg(short = 'u', long = "vector", num_args = 3, required_if_eq("centering_mode", "manual"),
     value_names = ["X", "Y", "Z"])]
     pub vector: Option<Vec<f64>>,
 
-    /// Write per-operation deviation details (name, matrix, deviation) to a .csv file for
-    /// each point group analysed.
-    #[arg(short = 'f', long = "full")]
-    pub full: bool,
+    /// Write per-operation deviation details (name, matrix, deviation, atom pairing) to a .csv
+    /// file for each point group analysed.
+    #[arg(short = 'd', long = "details")]
+    pub details: bool,
 
     /// Write the summary output table (point group, deviation, rotation matrix) to a .csv file.
     #[arg(short = 't', long = "table")]
