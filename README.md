@@ -8,7 +8,7 @@
 |---------|-----------------------------------------------------------------------------------------------------------|
 | `cshm`  | Continuous Shape Measures (CShM) against 92 built-in reference polyhedra or user-defined YAML shapes.    |
 | `csom`  | Continuous Symmetry Operation Measures (CSoM) against 47 point groups.                                    |
-| `odis`  | OctaDist-style octahedral distortion parameters of six-coordinate centres.                                |
+| `odis`  | Octahedral distortion parameters of six-coordinate centres.                                |
 | `gidx`  | Geometry indices τ4, τ4′, τ5, τ6, τ6′, τ8 and τ8′ of four-, five-, six- and eight-coordinate centres.     |
 
 ## Quick start
