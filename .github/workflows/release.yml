@@ -20,6 +20,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check tag matches Cargo.toml version
+        env:
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CARGO_VERSION="$(cargo metadata --no-deps --format-version 1 \
+                           | jq -r '.packages[] | select(.name == "cosmochlore") | .version')"
+
+          if [ "${TAG}" != "v${CARGO_VERSION}" ]; then
+            echo "::error::Tag '${TAG}' does not match Cargo.toml version '${CARGO_VERSION}' (expected 'v${CARGO_VERSION}')."
+            exit 1
+          fi
+
       - name: Build changelog from previous tag
         id: changelog
         env:
