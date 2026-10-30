@@ -481,10 +481,10 @@ fn can_reconstruct_original() {
 
 #[test]
 fn finds_correct_number_of_shapes() {
-    let map = builtin_shapes();
-
-    let mut counts: Vec<usize> = map.values().map(|shapes| shapes.len()).collect();
-    counts.sort();
+    let counts: Vec<usize> = BUILTIN_SHAPES
+        .iter()
+        .map(|(_, shapes)| shapes.len())
+        .collect();
 
     let mut expected = vec![3, 4, 4, 5, 5, 7, 13, 13, 13, 7, 13, 1, 2, 1, 1];
     expected.sort();
