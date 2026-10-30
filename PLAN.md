@@ -25,7 +25,6 @@ Line references drift; grep before trusting one.
 | B8 | `rotation_matrix()` transposes, `rotation_matrix_from_vector()` doesn't | `src/geometry.rs` |
 | B9 | `csom --ignore` is a flag, `cshm` always ignores labels (measure 12 closes it) | `src/cli.rs` |
 | C8 | Shape / seed / point-group loops are serial; use `rayon` | `src/cshm/mod.rs`, `src/csom/` |
-| C12 | `builtin_shapes()` rebuilds the 90-shape `HashMap` on every lookup | `src/data/standard_shapes.rs` |
 | C14 | No `[profile.release]` (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`) | `Cargo.toml` |
 | D1 | `center_and_normalise` duplicates `center_by_centroid` + `normalise`; doc comment truncated | `src/geometry.rs` |
 | D2 | Dead `points` array built only to construct `vectors` | `src/odis/calc.rs` |

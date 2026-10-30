@@ -89,6 +89,16 @@ moved them, so grep before trusting one.
   8.96 → 7.83 s). `src/csom/assignment.rs`, `src/csom/deviation.rs`
 - **C16** — the one `point_group_operation_deviations` call in `calc_csom` (gated by
   `with_operations`) is the only full computation. `src/csom/mod.rs`
+- **C12** — the built-in shapes are `static BUILTIN_SHAPES: &[(u8, &[BuiltinShape])]`, grouped by
+  vertex count in ascending order, with `&'static` fields, so the table allocates nothing. It
+  replaced `builtin_shapes() -> HashMap<u8, Vec<ReferenceShape>>`, which rebuilt all 92 shapes on
+  every lookup. `shape_by_vertex` returns the borrowed slice; `shapes_by_index` and
+  `resolve_shapes` convert only the shapes a run uses, through `From<&BuiltinShape> for
+  ReferenceShape`. From `resolve_shapes` on it stays `Vec<ReferenceShape>`: `cshm::run` appends
+  user YAML shapes and `CShMResult` owns its strings. `BuiltinShape`, the `From` impl and the
+  table are emitted by `generate_builtin_shapes_rs.py`. The 92 entries are field-for-field
+  identical to the old table, and `tests/output.rs` output is unchanged. Not timed: a run does
+  one lookup. `src/data/standard_shapes.rs`, `src/cshm/shape_lookup.rs`
 - **C14 (part)** — `license = "GPL-3.0-only"` in `Cargo.toml` (`734c0a9`). Release profile still open.
 
 ## Simplification
