@@ -1,27 +1,30 @@
 //! Resolves the reference shapes a `cshm` run compares against: the built-in ones by vertex
 //! count and index, plus the check every user-defined shape must pass.
 
-use crate::data::standard_shapes::{ReferenceShape, builtin_shapes};
+use crate::data::standard_shapes::{BuiltinShape, ReferenceShape, BUILTIN_SHAPES};
 
-pub(crate) fn shape_by_vertex(no_vertices: u8) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
-    let shapes_map = builtin_shapes();
-    match shapes_map.get(&no_vertices) {
-        Some(shapes) => Ok(shapes.clone()),
-        None => Err(ShapeLookupError::NoShapesForVertexCount(no_vertices)),
-    }
+pub(crate) fn shape_by_vertex(no_vertices: u8) -> Result<&'static [BuiltinShape], ShapeLookupError> {
+
+    let (_, shapes) = BUILTIN_SHAPES
+        .iter()
+        .find(|(n, _)| *n == no_vertices)
+        .ok_or(ShapeLookupError::NoShapesForVertexCount(no_vertices))?;
+
+    Ok(shapes)
+
 }
 
 pub(crate) fn shapes_by_index(
-    shapes: &[ReferenceShape],
+    shapes: &[BuiltinShape],
     indices: &[usize],
 ) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
     let mut result: Vec<ReferenceShape> = Vec::new();
 
     for idx in indices {
-        let found: Option<&ReferenceShape> = shapes.get(*idx);
+        let found: Option<&BuiltinShape> = shapes.get(*idx);
 
         match found {
-            Some(shape) => result.push(shape.clone()),
+            Some(shape) => result.push(ReferenceShape::from(shape)),
             None => return Err(ShapeLookupError::IndexOutOfBounds(*idx)),
         }
     }
@@ -32,11 +35,11 @@ pub fn resolve_shapes(
     no_vertices: u8,
     indices: Option<&[usize]>,
 ) -> Result<Vec<ReferenceShape>, ShapeLookupError> {
-    let ref_shapes = shape_by_vertex(no_vertices);
+    let ref_shapes = shape_by_vertex(no_vertices)?;
 
     match indices {
-        Some(indices) => shapes_by_index(ref_shapes?.as_slice(), indices),
-        None => Ok(ref_shapes?.to_vec()),
+        Some(indices) => shapes_by_index(ref_shapes, indices),
+        None => Ok(ref_shapes.iter().map(ReferenceShape::from).collect()), // No indices were supplied, so all shapes are passed.
     }
 }
 
